@@ -53,8 +53,8 @@ function getPhase(day,len){if(!day||day<1)return null;const d=((day-1)%(len||28)
 function ytId(url){if(!url)return null;const m=url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?\/\s]{11})/);return m?m[1]:null}
 
 let S={
-  view:'login',tab:'ciclo',loading:false,error:'',
-  user:null,profile:null,prog:null,PROG:[],week:0,
+  view:'login',tab:'hoy',loading:false,error:'',
+  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],
   sessW:-1,sessI:-1,vidW:-1,vidS:-1,vidE:-1,completions:{},
   cycleLen:28,lastBleeding:null,cycleHistory:[],
   symLog:{},menoLog:{},selSym:[],symNote:'',
@@ -71,7 +71,7 @@ function render(){
   if(S.loading){app.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:${C.bk}"><div style="text-align:center"><p style="font-size:40px;margin-bottom:10px">👑</p><p style="color:${C.g2};font-size:14px">Cargando...</p></div></div>`;return}
   if(S.view==='login'){app.innerHTML=rLogin();return}
   if(S.view==='no_prog'){app.innerHTML=rNoProg();return}
-  const tabs=[{k:'ciclo',e:'🌙',l:'Ciclo'},{k:'rutinas',e:'💪',l:'Rutinas'},{k:'medidas',e:'📏',l:'Medidas'}];
+  const tabs=[{k:'hoy',e:'📅',l:'Hoy'},{k:'ciclo',e:'🌙',l:'Ciclo'},{k:'rutinas',e:'💪',l:'Rutinas'},{k:'medidas',e:'📏',l:'Medidas'}];
   app.innerHTML=`
     <div style="background:${C.bk};padding:15px 18px 13px;position:sticky;top:0;z-index:20">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -90,7 +90,7 @@ function render(){
           <button onclick="goBack()" style="background:rgba(255,255,255,.08);border:none;padding:7px 14px;border-radius:9px;font-weight:700;font-size:12px;color:${C.g3}">← Volver</button>
         </div>`}
     <div style="padding:13px 13px 50px">
-      ${S.view==='main'&&S.tab==='ciclo'?rCiclo()
+      ${S.view==='main'&&S.tab==='hoy'?rHoy():S.view==='main'&&S.tab==='ciclo'?rCiclo()
        :S.view==='main'&&S.tab==='rutinas'?rRutinas()
        :S.view==='main'&&S.tab==='medidas'?rMedidas()
        :S.view==='pform'?rPForm()
@@ -128,6 +128,71 @@ function rNoProg(){return `
     <button onclick="doLogout()" style="margin-top:20px;background:#f3f4f6;border:none;border-radius:10px;padding:10px 20px;font-weight:600;font-size:13px">Cerrar sesión</button>
   </div>
 </div>`}
+
+
+// ── HOY ──────────────────────────────────────────────────────
+const WEEK_ES=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const MONTH_ES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+function rHoy(){
+  const now=new Date();
+  const dateLabel=WEEK_ES[now.getDay()]+', '+now.getDate()+' '+MONTH_ES[now.getMonth()]+' '+now.getFullYear();
+  const tod=S.todaySchedule;
+  const sessType=tod?.sessions?.session_type||null;
+
+  let h=`
+  <div style="background:${C.bk};border-radius:14px;padding:18px;margin-bottom:14px;color:#fff">
+    <p style="font-size:11px;color:${C.g2};text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px">Hoy es</p>
+    <p style="font-weight:900;font-size:20px;margin-bottom:2px">${dateLabel}</p>
+    <p style="font-size:12px;color:${C.g2}">Tu entrenamiento del día</p>
+  </div>`;
+
+  if(tod&&sessType&&tod.status!=='rest'){
+    // Find the session in PROG
+    let foundW=-1,foundS=-1;
+    (S.PROG||[]).forEach((wk,wi)=>{wk.forEach((sess,si)=>{if(sess.id===tod.session_id){foundW=wi;foundS=si;}})});
+    const cleanType=sessType.replace(/[🌑🌓🌕🌗⚠📅]/g,'').trim();
+    h+=`
+    <div style="background:${C.wh};border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid ${C.pr}">
+      <p style="font-size:11px;color:${C.g2};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>
+      <p style="font-weight:900;font-size:18px;color:${C.td};margin-bottom:12px">${esc(cleanType)}</p>
+      ${foundW>=0?`<button onclick="set({view:'sess',sessW:${foundW},sessI:${foundS},tab:'hoy'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ir a mi sesión de hoy</button>`:`<button onclick="set({tab:'rutinas'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ver rutinas</button>`}
+    </div>`;
+
+    if(tod.status==='completed'){
+      h+=`<div style="background:#f0fdf4;border-radius:12px;padding:13px;text-align:center;border:1px solid #bbf7d0"><p style="font-weight:700;color:#16a34a">✅ Sesión completada hoy</p></div>`;
+    }
+  } else if(tod&&tod.status==='rest'){
+    h+=card(`<div style="text-align:center;padding:16px 0">
+      <p style="font-size:36px;margin-bottom:10px">🌿</p>
+      <p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">Día de descanso</p>
+      <p style="font-size:13px;color:${C.tl}">Hoy descansas — el descanso es parte del método.</p>
+    </div>`);
+  } else {
+    h+=card(`<div style="text-align:center;padding:16px 0">
+      <p style="font-size:36px;margin-bottom:10px">📋</p>
+      <p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">Sin sesión programada hoy</p>
+      <p style="font-size:13px;color:${C.tl};line-height:1.6">Tu entrenador aún no ha programado este día.<br>Puedes explorar tus rutinas mientras tanto.</p>
+    </div>`);
+  }
+
+  // Upcoming days
+  h+=secT('Próximos días');
+  const upcoming=[];
+  for(let i=1;i<=5;i++){
+    const d=new Date(now);d.setDate(d.getDate()+i);
+    const ds=d.toISOString().split('T')[0];
+    upcoming.push({date:d,dateStr:ds,label:WEEK_ES[d.getDay()]+' '+d.getDate()});
+  }
+  h+=`<div style="display:flex;flex-direction:column;gap:7px">
+    ${upcoming.map(u=>`<div style="background:${C.wh};border-radius:11px;padding:10px 14px;box-shadow:0 1px 3px rgba(25,18,17,.07);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:600;font-size:13px;color:${C.td}">${u.label}</span>
+      <span style="font-size:12px;color:${C.g2}">Ver en rutinas →</span>
+    </div>`).join('')}
+  </div>`;
+
+  return h;
+}
 
 function rCiclo(){
   const day=getCycleDay(S.lastBleeding),ph=getPhase(day,S.cycleLen),ts=S.symLog[today()],tm=S.menoLog[today()];
@@ -338,7 +403,7 @@ async function loadClientData(){
   const symLog={};(results[3].data||[]).forEach(function(r){symLog[r.log_date]=r});
   const menoLog={};(results[4].data||[]).forEach(function(r){menoLog[r.log_date]=r});
   const completions={};(results[6].data||[]).forEach(function(r){completions[r.exercise_id+'_'+r.set_number]=true});
-  set({loading:false,view:PROG.length===0?'no_prog':'main',profile:profile,prog:prog,PROG:PROG,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions});
+  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule});
 }
 
 function buildProg(prog){
