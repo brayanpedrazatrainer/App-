@@ -28,7 +28,7 @@ let S={
   view:'login',tab:'clients',loading:false,error:'',
   user:null,clients:[],programs:[],
   selClient:null,selProgram:null,selSession:null,
-  clientMeas:[],clientCycle:[],clientSymptoms:[],clientMeno:[],
+  clientMeas:[],clientCycle:[],clientSymptoms:[],clientMeno:[],clientSchedule:{},scheduleSessions:[],scheduleYear:new Date().getFullYear(),scheduleMonth:new Date().getMonth(),
   pForm:{show:false,name:'',desc:''},
   sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'},
   eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:''},
@@ -56,7 +56,7 @@ function render(){
         </button>`).join('')}
     </div>
     <div style="padding:14px;max-width:640px;margin:0 auto;padding-bottom:40px">
-      ${S.tab==='clients'?rClients():S.tab==='programs'?rPrograms():rAddClient()}
+      ${S.view==='schedule'?rSchedule():S.tab==='clients'?rClients():S.tab==='programs'?rPrograms():rAddClient()}
     </div>`;
 }
 
@@ -124,6 +124,9 @@ function rClientDetail(){
         ${S.programs.map(p=>`<option value="${p.id}" ${p.id===c.prog_id?'selected':''}>${esc(p.name)}</option>`).join('')}
       </select>
     </div>
+    <div style="margin-top:10px">
+      <button onclick="openSchedule('${c.id}')" style="width:100%;padding:11px;background:${C.bk};color:${C.wh};border:none;border-radius:10px;font-weight:700;font-size:13px">📅 Programar mes</button>
+    </div>
     ${S.clientMeas.length>0?`
       <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:14px 0 8px">Últimas medidas</p>
       ${S.clientMeas.slice(0,3).map(m=>`
@@ -174,6 +177,87 @@ function rClientDetail(){
 }
 
 // ── PROGRAMAS ───────────────────────────────────────────────
+
+// ── SCHEDULE VIEW ────────────────────────────────────────────
+const PHASES_SC=[
+  {k:'menstrual',r:[1,5],e:'🌑',c:'#be185d',label:'Menstrual'},
+  {k:'folicular',r:[6,13],e:'🌓',c:'#1d4ed8',label:'Folicular'},
+  {k:'ovulatoria',r:[14,16],e:'🌕',c:'#b45309',label:'Ovulatoria'},
+  {k:'lutea',r:[17,28],e:'🌗',c:'#7c3aed',label:'Lútea'},
+];
+function getCycleDayForDate(date,lastBleed,len){
+  if(!lastBleed)return null;
+  const diff=Math.floor((new Date(date)-new Date(lastBleed))/86400000)+5;
+  if(diff<1)return null;
+  return((diff-1)%(len||28))+1;
+}
+function getPhaseForDate(date,lastBleed,len){
+  const d=getCycleDayForDate(date,lastBleed,len);
+  if(!d)return null;
+  return PHASES_SC.find(p=>d>=p.r[0]&&d<=p.r[1])||PHASES_SC[3];
+}
+function suggestSession(sessions,phase){
+  if(!phase||!sessions||!sessions.length)return '';
+  const k=phase.k;
+  if(k==='menstrual'){const s=sessions.find(x=>/suave/i.test(x.session_type)&&!/abdomen/i.test(x.session_type));return s?s.id:'';}
+  if(k==='folicular'){const s=sessions.find(x=>/principal.*tren inf/i.test(x.session_type));return s?s.id:'';}
+  if(k==='ovulatoria'){const s=sessions.find(x=>/cuerpo completo|integrad/i.test(x.session_type));return s?s.id:'';}
+  if(k==='lutea'){const s=sessions.find(x=>/suave/i.test(x.session_type)&&!/abdomen/i.test(x.session_type));return s?s.id:'';}
+  return '';
+}
+function getDaysInMonth(year,month){
+  const days=[];const d=new Date(year,month,1);
+  while(d.getMonth()===month){days.push(new Date(d));d.setDate(d.getDate()+1);}
+  return days;
+}
+const MONTHS_ES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DAYS_ES=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+function rSchedule(){
+  const c=S.selClient;
+  const lastBleed=S.clientCycle[0]?.last_bleeding_date||null;
+  const cycleLen=S.clientCycle[0]?.cycle_length||28;
+  const days=getDaysInMonth(S.scheduleYear,S.scheduleMonth);
+  const monthLabel=MONTHS_ES[S.scheduleMonth]+' '+S.scheduleYear;
+  const sessions=S.scheduleSessions.filter(s=>!/abdomen/i.test(s.session_type));
+  
+  return `
+    <button onclick="set({view:'main',selClient:S.selClient})" style="background:#f3f4f6;border:none;padding:8px 16px;border-radius:9px;font-weight:700;font-size:13px;margin-bottom:14px">← Volver</button>
+    <div style="background:${C.wh};border-radius:14px;padding:15px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+      <p style="font-weight:900;font-size:17px;margin-bottom:12px">📅 Programar mes · ${esc(c.name)}</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <button onclick="changeMonth(-1)" style="background:#f3f4f6;border:none;padding:8px 14px;border-radius:9px;font-weight:700">←</button>
+        <span style="font-weight:700;font-size:15px">${monthLabel}</span>
+        <button onclick="changeMonth(1)" style="background:#f3f4f6;border:none;padding:8px 14px;border-radius:9px;font-weight:700">→</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button onclick="autoFill()" style="flex:1;padding:10px;background:${C.pr};color:#fff;border:none;border-radius:9px;font-weight:700;font-size:13px">✨ Auto-rellenar ciclo</button>
+        <button onclick="saveSchedule()" style="flex:1;padding:10px;background:${C.bk};color:#fff;border:none;border-radius:9px;font-weight:700;font-size:13px">💾 Guardar mes</button>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${days.map(day=>{
+        const dateStr=day.toISOString().split('T')[0];
+        const phase=getPhaseForDate(dateStr,lastBleed,cycleLen);
+        const dayName=DAYS_ES[day.getDay()];
+        const dayNum=day.getDate();
+        const assigned=S.clientSchedule[dateStr]||'';
+        const assignedSess=sessions.find(s=>s.id===assigned);
+        return `<div style="background:${C.wh};border-radius:11px;padding:11px 13px;box-shadow:0 1px 3px rgba(0,0,0,.07);display:flex;gap:10px;align-items:center">
+          <div style="min-width:60px">
+            <p style="font-weight:700;font-size:13px;color:${C.td}">${dayName} ${dayNum}</p>
+            ${phase?`<p style="font-size:11px;color:${phase.c}">${phase.e} ${phase.label}</p>`:`<p style="font-size:11px;color:${C.g2}">—</p>`}
+          </div>
+          <select onchange="setScheduleDay('${dateStr}',this.value)"
+            style="flex:1;padding:7px 10px;border:1.5px solid ${C.g3};border-radius:8px;font-size:12px;color:${C.td};background:#fff">
+            <option value="">— Descanso —</option>
+            ${sessions.map(s=>`<option value="${s.id}" ${assigned===s.id?'selected':''}>${esc(s.session_type.replace(/[🌑🌓🌕🌗⚠]/g,'').trim())}</option>`).join('')}
+          </select>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
 function rPrograms(){
   if(S.selSession)return rSessionDetail();
   if(S.selProgram)return rProgramDetail();
@@ -482,8 +566,77 @@ async function logout(){
 }
 
 // Globals
+
+// ── SCHEDULE ACTIONS ─────────────────────────────────────────
+async function openSchedule(clientId){
+  const c=S.clients.find(x=>x.id===clientId)||S.selClient;
+  set({loading:true});
+  const [schedR,cycR,progR]=await Promise.all([
+    sb.from('scheduled_sessions').select('*').eq('client_id',clientId).gte('scheduled_date',new Date(S.scheduleYear,S.scheduleMonth,1).toISOString().split('T')[0]).lte('scheduled_date',new Date(S.scheduleYear,S.scheduleMonth+1,0).toISOString().split('T')[0]),
+    sb.from('cycle_logs').select('*').eq('client_id',clientId).order('created_at',{ascending:false}).limit(3),
+    sb.from('client_programs').select('program_id').eq('client_id',clientId).maybeSingle(),
+  ]);
+  let sessions=[];
+  if(progR.data?.program_id){
+    const sessR=await sb.from('sessions').select('id,session_type').eq('program_id',progR.data.program_id).order('week_number').order('day_number');
+    sessions=[...new Map((sessR.data||[]).map(s=>[s.session_type,s])).values()];
+  }
+  const schedule={};
+  (schedR.data||[]).forEach(r=>{if(r.session_id)schedule[r.scheduled_date]=r.session_id;else schedule[r.scheduled_date]='rest';});
+  set({loading:false,view:'schedule',selClient:c,clientCycle:cycR.data||[],scheduleSessions:sessions,clientSchedule:schedule});
+}
+function setScheduleDay(date,sessionId){
+  const sch={...S.clientSchedule};
+  if(sessionId===''||sessionId===undefined)delete sch[date];
+  else sch[date]=sessionId;
+  S.clientSchedule=sch;
+}
+function changeMonth(dir){
+  let m=S.scheduleMonth+dir,y=S.scheduleYear;
+  if(m>11){m=0;y++;}if(m<0){m=11;y--;}
+  S.scheduleMonth=m;S.scheduleYear=y;
+  if(S.selClient)openSchedule(S.selClient.id);
+}
+function autoFill(){
+  const lastBleed=S.clientCycle[0]?.last_bleeding_date||null;
+  const cycleLen=S.clientCycle[0]?.cycle_length||28;
+  const days=getDaysInMonth(S.scheduleYear,S.scheduleMonth);
+  const sessions=S.scheduleSessions.filter(s=>!/abdomen/i.test(s.session_type));
+  const sch={...S.clientSchedule};
+  let dayCount=0;
+  days.forEach(day=>{
+    const dateStr=day.toISOString().split('T')[0];
+    const dayOfWeek=day.getDay();
+    // Skip if already assigned
+    if(sch[dateStr])return;
+    // Only assign Mon, Wed, Fri (1,3,5) as default training days
+    if(dayOfWeek===1||dayOfWeek===3||dayOfWeek===5){
+      const phase=getPhaseForDate(dateStr,lastBleed,cycleLen);
+      const suggested=suggestSession(sessions,phase);
+      if(suggested)sch[dateStr]=suggested;
+    }
+  });
+  S.clientSchedule=sch;
+  render();
+}
+async function saveSchedule(){
+  if(!S.selClient)return;
+  const clientId=S.selClient.id;
+  const upserts=Object.entries(S.clientSchedule).map(([date,sessId])=>({
+    client_id:clientId,
+    scheduled_date:date,
+    session_id:sessId==='rest'?null:sessId,
+    status:sessId==='rest'?'rest':'pending',
+  }));
+  if(upserts.length===0){alert('No hay cambios que guardar.');return;}
+  set({loading:true});
+  await sb.from('scheduled_sessions').upsert(upserts,{onConflict:'client_id,scheduled_date'});
+  set({loading:false});
+  alert('✅ Mes guardado correctamente');
+}
+
 window.set=set;window.doLogin=doLogin;window.logout=logout;window.loadData=loadData;
-window.openClient=openClient;window.assignProg=assignProg;window.openProg=openProg;window.openSess=openSess;
+window.openClient=openClient;window.assignProg=assignProg;window.openSchedule=openSchedule;window.setScheduleDay=setScheduleDay;window.changeMonth=changeMonth;window.autoFill=autoFill;window.saveSchedule=saveSchedule;window.openProg=openProg;window.openSess=openSess;
 window.saveProgram=saveProgram;window.delProg=delProg;window.saveSession=saveSession;window.delSess=delSess;
 window.saveExercise=saveExercise;window.updateVideo=updateVideo;window.delEx=delEx;
 
