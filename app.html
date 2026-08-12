@@ -54,7 +54,7 @@ function ytId(url){if(!url)return null;const m=url.match(/(?:youtu\.be\/|youtube
 
 let S={
   view:'login',tab:'hoy',loading:false,error:'',
-  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],
+  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],upcomingSchedule:[],
   sessW:-1,sessI:-1,vidW:-1,vidS:-1,vidE:-1,completions:{},
   cycleLen:28,lastBleeding:null,cycleHistory:[],
   symLog:{},menoLog:{},selSym:[],symNote:'',
@@ -176,20 +176,38 @@ function rHoy(){
     </div>`);
   }
 
-  // Upcoming days
+  // Upcoming days with real session data
   h+=secT('Próximos días');
-  const upcoming=[];
-  for(let i=1;i<=5;i++){
-    const d=new Date(now);d.setDate(d.getDate()+i);
-    const ds=d.toISOString().split('T')[0];
-    upcoming.push({date:d,dateStr:ds,label:WEEK_ES[d.getDay()]+' '+d.getDate()});
+  if(S.upcomingSchedule&&S.upcomingSchedule.length>0){
+    h+=`<div style="display:flex;flex-direction:column;gap:7px">
+      ${S.upcomingSchedule.slice(0,5).map(function(u){
+        const d=new Date(u.scheduled_date+'T12:00:00');
+        const label=WEEK_ES[d.getDay()]+', '+d.getDate()+' '+MONTH_ES[d.getMonth()];
+        const sessType=u.sessions?u.sessions.session_type:'';
+        const cleanType=sessType?sessType.replace(/[🌑🌓🌕🌗⚠📅⚡🌙]/g,'').trim():'';
+        const wn=u.sessions?u.sessions.week_number:null;
+        const dn=u.sessions?u.sessions.day_number:null;
+        const isPresencial=u.session_mode==='Con Brayan';
+        const modeColor=isPresencial?C.pr:C.bk;
+        const modeLabel=isPresencial?'Con Brayan':'Sesión Reina';
+        // Find session in PROG
+        let foundW=-1,foundS=-1;
+        (S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===u.session_id){foundW=wi;foundS=si;}});});
+        const clickable=foundW>=0;
+        return '<div onclick="'+( clickable?('set({view:\'sess\',sessW:'+foundW+',sessI:'+foundS+',tab:\'hoy\'})'):'')+'" style="background:'+C.wh+';border-radius:11px;padding:11px 14px;box-shadow:0 1px 3px rgba(25,18,17,.07);cursor:'+(clickable?'pointer':'default')+'">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center">'+
+            '<div>'+
+              '<p style="font-weight:700;font-size:13px;color:'+C.td+'">'+label+'</p>'+
+              (cleanType?'<p style="font-size:11px;color:'+C.g2+';margin-top:2px">'+cleanType+'</p>':'')+
+            '</div>'+
+            '<span style="font-size:11px;font-weight:700;background:'+modeColor+';color:#fff;border-radius:20px;padding:3px 10px">'+modeLabel+'</span>'+
+          '</div>'+
+        '</div>';
+      }).join('')}
+    </div>`;
+  } else {
+    h+=card('<p style="text-align:center;font-size:13px;color:'+C.g2+';padding:8px 0">Los próximos días se cargarán pronto.</p>');
   }
-  h+=`<div style="display:flex;flex-direction:column;gap:7px">
-    ${upcoming.map(u=>`<div style="background:${C.wh};border-radius:11px;padding:10px 14px;box-shadow:0 1px 3px rgba(25,18,17,.07);display:flex;justify-content:space-between;align-items:center">
-      <span style="font-weight:600;font-size:13px;color:${C.td}">${u.label}</span>
-      <span style="font-size:12px;color:${C.g2}">Ver en rutinas →</span>
-    </div>`).join('')}
-  </div>`;
 
   return h;
 }
@@ -405,7 +423,11 @@ async function loadClientData(){
   const completions={};(results[6].data||[]).forEach(function(r){completions[r.exercise_id+'_'+r.set_number]=true});
   const todR=await sb.from('scheduled_sessions').select('*,sessions(id,session_type,week_number,day_number)').eq('client_id',userId).eq('scheduled_date',today()).maybeSingle();
   const todaySchedule=todR.data||null;
-  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule});
+  const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+  const nextWeek=new Date();nextWeek.setDate(nextWeek.getDate()+7);
+  const upcomingR=await sb.from('scheduled_sessions').select('*,sessions(id,session_type,week_number,day_number)').eq('client_id',userId).gte('scheduled_date',tomorrow.toISOString().split('T')[0]).lte('scheduled_date',nextWeek.toISOString().split('T')[0]).order('scheduled_date').limit(6);
+  const upcomingSchedule=upcomingR.data||[];
+  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule});
 }
 
 function buildProg(prog){
