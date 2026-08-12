@@ -150,7 +150,12 @@ function rHoy(){
   const now=new Date();
   const dateLabel=WEEK_ES[now.getDay()]+', '+now.getDate()+' '+MONTH_ES[now.getMonth()]+' '+now.getFullYear();
   const tod=S.todaySchedule;
-  const sessType=tod?.sessions?.session_type||null;
+  // Get session type from PROG (sessions join was removed)
+  let todSessType='';let todFoundW=-1,todFoundS=-1;
+  if(tod&&tod.session_id){
+    (S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===tod.session_id){todFoundW=wi;todFoundS=si;todSessType=sess.type;}});});
+  }
+  const sessType=todSessType;
 
   let h=`
   <div style="background:${C.bk};border-radius:14px;padding:18px;margin-bottom:14px;color:#fff">
@@ -168,7 +173,7 @@ function rHoy(){
     <div style="background:${C.wh};border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid ${C.pr}">
       <p style="font-size:11px;color:${C.g2};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>
       <p style="font-weight:900;font-size:18px;color:${C.td};margin-bottom:12px">${esc(cleanType)}</p>
-      ${foundW>=0?`<button onclick="set({view:'sess',sessW:${foundW},sessI:${foundS},tab:'hoy'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ir a mi sesión de hoy</button>`:`<button onclick="set({tab:'rutinas'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ver rutinas</button>`}
+      ${todFoundW>=0?`<button onclick="set({view:'sess',sessW:${todFoundW},sessI:${todFoundS},tab:'hoy'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ir a mi sesión de hoy</button>`:`<button onclick="set({tab:'rutinas'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ver rutinas</button>`}
     </div>`;
 
     const isCompleted=tod&&tod.status==='completed';
