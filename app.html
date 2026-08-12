@@ -54,7 +54,7 @@ function ytId(url){if(!url)return null;const m=url.match(/(?:youtu\.be\/|youtube
 
 let S={
   view:'login',tab:'hoy',loading:false,error:'',
-  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],upcomingSchedule:[],
+  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],upcomingSchedule:[],allSchedule:[],
   sessW:-1,sessI:-1,vidW:-1,vidS:-1,vidE:-1,completions:{},
   cycleLen:28,lastBleeding:null,cycleHistory:[],
   symLog:{},menoLog:{},selSym:[],symNote:'',
@@ -285,22 +285,51 @@ function rMenoForm(){
 </div>`}
 
 function rRutinas(){
-  if(!S.PROG||S.PROG.length===0)return card(`<div style="text-align:center;padding:24px 0"><p style="font-size:36px;margin-bottom:10px">⏳</p><p style="font-weight:700;font-size:15px;color:${C.td};margin-bottom:4px">Sin programa aún</p><p style="font-size:13px;color:${C.tl}">Tu entrenador asignará tu programa pronto.</p></div>`,'margin-top:4px');
-  const wk=Math.min(S.week,S.PROG.length-1);
-  const sessions=S.PROG[wk]||[];
-  let h=`<div style="display:flex;gap:6px;margin-bottom:6px">
-    ${S.PROG.map(function(_,w){return`<button onclick="set({week:${w}})" style="flex:1;padding:9px 0;border-radius:10px;font-weight:700;font-size:13px;border:2px solid ${S.week===w?C.pr:C.g3};background:${S.week===w?C.pr:C.wh};color:${S.week===w?C.wh:C.tl}">S${w+1}</button>`}).join('')}
-  </div>
-  <p style="font-size:11px;color:${C.tl};margin-bottom:13px">Semana ${wk+1} · ${sessions.length} sesiones</p>`;
-  sessions.forEach(function(sess,si){
-    const pct=sPct(sess);
-    h+=`<div onclick="set({view:'sess',sessW:${wk},sessI:${si}})" style="background:${C.wh};border-radius:14px;padding:15px;margin-bottom:10px;cursor:pointer;border:2px solid ${pct===100?C.dk:'transparent'};box-shadow:0 1px 5px rgba(25,18,17,.08)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px">
-        <div><p style="font-weight:800;font-size:17px;color:${C.td};margin-bottom:2px">${esc(sess.day)}</p><p style="font-size:12px;color:${C.tl}">${esc(sess.type)}</p></div>
-        <p style="font-size:22px;font-weight:900;color:${pct===100?C.dk:C.pr}">${pct}%</p>
-      </div>
-      <div style="height:5px;border-radius:3px;background:${C.g3};overflow:hidden"><div style="height:100%;width:${pct}%;background:${pct===100?C.dk:C.pr};border-radius:3px"></div></div>
-    </div>`;
+  if(!S.allSchedule||S.allSchedule.length===0){
+    return card(`<div style="text-align:center;padding:24px 0"><p style="font-size:36px;margin-bottom:10px">📅</p><p style="font-weight:700;font-size:15px;color:${C.td};margin-bottom:4px">Sin planificación cargada</p><p style="font-size:13px;color:${C.tl}">Tu entrenador está preparando tu plan.</p></div>`,'margin-top:4px');
+  }
+  const MONTH_FULL=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  // Group by month
+  const months={};
+  S.allSchedule.forEach(function(s){
+    const d=new Date(s.scheduled_date+'T12:00:00');
+    const mk=d.getFullYear()+'-'+(d.getMonth()+1);
+    if(!months[mk])months[mk]={label:MONTH_FULL[d.getMonth()]+' '+d.getFullYear(),sessions:[]};
+    months[mk].sessions.push(s);
+  });
+  let h='';
+  Object.values(months).forEach(function(month){
+    h+=secT(month.label.toUpperCase());
+    month.sessions.forEach(function(s){
+      let foundW=-1,foundS=-1;
+      (S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===s.session_id){foundW=wi;foundS=si;}});});
+      const d=new Date(s.scheduled_date+'T12:00:00');
+      const isToday2=s.scheduled_date===today();
+      const isCompleted2=s.status==='completed';
+      const isRest2=s.status==='rest';
+      const isPresencial2=s.session_mode==='Con Brayan';
+      const sessType=s.sessions?s.sessions.session_type:'';
+      const cleanType=sessType.replace(/[🌑🌓🌕🌗⚠📅⚡🌙]/g,'').trim()||'Recuperación Activa';
+      const dateLabel=WEEK_ES[d.getDay()]+' '+d.getDate();
+      const modeColor=isPresencial2?C.pr:C.bk;
+      const modeLabel=isPresencial2?'Con Brayan':'Sesión Reina';
+      const bgColor=isToday2?'#fff8f8':isCompleted2?'#f0fdf4':C.wh;
+      const borderStyle=isToday2?'border-left:4px solid '+C.pr:isCompleted2?'border-left:4px solid #22c55e':'border-left:4px solid transparent';
+      const clickable=foundW>=0;
+      h+=`<div onclick="${clickable?('set({view:\'sess\',sessW:'+foundW+',sessI:'+foundS+'})'):''}" style="background:${bgColor};border-radius:11px;padding:11px 14px;margin-bottom:7px;${borderStyle};box-shadow:0 1px 3px rgba(25,18,17,.07);cursor:${clickable?'pointer':'default'}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+              <span style="font-weight:700;font-size:13px;color:${C.td}">${dateLabel}</span>
+              ${isToday2?`<span style="font-size:10px;font-weight:800;background:${C.pr};color:#fff;border-radius:20px;padding:2px 8px">HOY</span>`:''}
+              ${isCompleted2?`<span style="font-size:10px;font-weight:800;background:#16a34a;color:#fff;border-radius:20px;padding:2px 8px">✅ Hecha</span>`:''}
+            </div>
+            <p style="font-size:12px;color:${C.g2}">${cleanType}</p>
+          </div>
+          <span style="font-size:11px;font-weight:700;background:${modeColor};color:#fff;border-radius:20px;padding:3px 10px;flex-shrink:0">${modeLabel}</span>
+        </div>
+      </div>`;
+    });
   });
   return h;
 }
@@ -456,8 +485,10 @@ async function loadClientData(){
   const nextWeek=new Date();nextWeek.setDate(nextWeek.getDate()+7);
   const upcomingR=await sb.from('scheduled_sessions').select('*,sessions(id,session_type,week_number,day_number)').eq('client_id',userId).gte('scheduled_date',tomorrow.toISOString().split('T')[0]).lte('scheduled_date',nextWeek.toISOString().split('T')[0]).order('scheduled_date').limit(6);
   const upcomingSchedule=upcomingR.data||[];
+  const allSchedR=await sb.from('scheduled_sessions').select('*,sessions(id,session_type,week_number,day_number)').eq('client_id',userId).gte('scheduled_date',today()).lte('scheduled_date','2026-09-30').order('scheduled_date');
+  const allSchedule=allSchedR.data||[];
   const defaultWeek=currentProgWeek(lastBleeding,cycleLen);
-  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule});
+  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule});
 }
 
 function buildProg(prog){
