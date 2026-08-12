@@ -403,6 +403,8 @@ async function loadClientData(){
   const symLog={};(results[3].data||[]).forEach(function(r){symLog[r.log_date]=r});
   const menoLog={};(results[4].data||[]).forEach(function(r){menoLog[r.log_date]=r});
   const completions={};(results[6].data||[]).forEach(function(r){completions[r.exercise_id+'_'+r.set_number]=true});
+  const todR=await sb.from('scheduled_sessions').select('*,sessions(id,session_type,week_number,day_number)').eq('client_id',userId).eq('scheduled_date',today()).maybeSingle();
+  const todaySchedule=todR.data||null;
   set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule});
 }
 
