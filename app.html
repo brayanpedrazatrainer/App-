@@ -46,7 +46,7 @@ const MF=[
   {k:'rm_kcal',l:'RM kcal',u:'kcal'},{k:'body_age',l:'Body Age',u:'años'},{k:'visceral_fat',l:'Visceral Fat',u:''},
 ];
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function today(){return new Date().toISOString().split('T')[0]}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function fmtDate(iso){if(!iso)return '';return new Date(iso).toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'})}
 function getCycleDay(d){if(!d)return null;return Math.floor((Date.now()-new Date(d))/86400000)+5}
 function getPhase(day,len){if(!day||day<1)return null;const d=((day-1)%(len||28))+1;return PHASES.find(p=>d>=p.r[0]&&d<=p.r[1])||PHASES[3]}
@@ -487,7 +487,8 @@ async function loadClientData(){
   const todaySchedule=todR.data||null;
   const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
   const nextWeek=new Date();nextWeek.setDate(nextWeek.getDate()+7);
-  const upcomingR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',tomorrow.toISOString().split('T')[0]).lte('scheduled_date',nextWeek.toISOString().split('T')[0]).order('scheduled_date').limit(6);
+  function localDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  const upcomingR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',localDate(tomorrow)).lte('scheduled_date',localDate(nextWeek)).order('scheduled_date').limit(6);
   const upcomingSchedule=upcomingR.data||[];
   const allSchedR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',today()).lte('scheduled_date','2026-09-30').order('scheduled_date');
   const allSchedule=allSchedR.data||[];
