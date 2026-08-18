@@ -232,17 +232,17 @@ function rHoy(){
 }
 
 function rCiclo(){
-  const day=getCycleDay(S.lastBleeding),ph=getPhase(day,S.cycleLen),ts=S.symLog[today()],tm=S.menoLog[today()];
+  const rawDay=getCycleDay(S.lastBleeding);const day=rawDay?((rawDay-1)%(S.cycleLen||28))+1:null;const ph=getPhase(rawDay,S.cycleLen),ts=S.symLog[today()],tm=S.menoLog[today()];
   let h='';
   if(ph){h+=`<div style="border-radius:14px;padding:15px;background:${ph.bg};border:1px solid ${ph.br}">
-    <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${ph.c};margin-bottom:3px">Día ~${day} del ciclo</p>
+    <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${ph.c};margin-bottom:3px">Día ${day} del ciclo</p>
     <p style="font-size:22px;font-weight:900;color:${ph.c};margin-bottom:6px">${ph.e} Fase ${ph.l}</p>
     <p style="font-size:13px;color:#4a5568;line-height:1.5;margin-bottom:10px">${ph.tip}</p>
     <div style="background:rgba(255,255,255,.7);border-radius:9px;padding:9px 12px">
       <p style="font-size:12px;font-weight:600;color:${ph.c};margin:0">💪 <span style="font-weight:400;color:#374151">${ph.tr}</span></p>
     </div>
   </div>`;}
-  else{h+=card(`<div style="text-align:center;padding:18px 0"><p style="font-size:34px;margin-bottom:10px">🌙</p><p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">¡Bienvenida, Reina!</p><p style="font-size:13px;color:${C.tl}">Registra el último día de tu sangrado para ver tu fase.</p></div>`);}
+  else{h+=card(`<div style="text-align:center;padding:18px 0"><p style="font-size:34px;margin-bottom:10px">🌙</p><p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">¡Bienvenida, Reina!</p><p style="font-size:13px;color:${C.tl}">Registra el último día de tu sangrado para ver tu fase.</p><p style=\"font-size:12px;color:${C.g2};margin-top:6px\">Si tu ciclo es irregular o usas implante subdérmico, guíate por tu energía del día — alta = sesión principal · baja = sesión suave.</p></div>`);}
   h+=`<div style="display:flex;gap:8px;margin-top:12px">
     <button onclick="set({view:'pform'})" style="flex:1;padding:11px 6px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:12px">🌙 Mi sangrado</button>
     <button onclick="set({view:'sform',selSym:[],symNote:''})" style="flex:1;padding:11px 6px;background:${C.wh};color:${C.pr};border:2px solid ${C.pr};border-radius:11px;font-weight:700;font-size:12px">📋 Síntomas</button>
