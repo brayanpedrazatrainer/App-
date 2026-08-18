@@ -358,64 +358,55 @@ function rSess(){
     <p style="font-size:12px;color:${C.g2};margin-bottom:2px">${esc(sess.type)}</p>
     <p style="font-size:11px;color:${C.pr};font-weight:600">${dc}/${(sess.ex||[]).length} ejercicios completados</p>
   </div>`;
-  // Render exercises with blindaje grouping
-  const exList=sess.ex||[];
-  let visN=0;
-  let idx2=0;
-  const q=String.fromCharCode(39);
-  while(idx2<exList.length){
-    const ex=exList[idx2];
-    const isBlin=ex.n===q+'Blindaje articular ligero'+q.replace(q,'');
-    const isBlindaje=ex.n==='Blindaje articular ligero';
-    if(isBlindaje){
-      visN++;
-      const subEx=[];
-      let j=idx2+1;
-      while(j<exList.length && exList[j].m && exList[j].m.indexOf('tobillo')>=0){subEx.push({e:exList[j],oi:j});j++;}
-      let bh='<div style="background:#f5f3ff;border-radius:14px;padding:13px;margin-bottom:8px;border:2px solid #c4b5f8">';
-      bh+='<div style="display:flex;gap:10px">';
-      bh+='<div style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:#7c3aed;color:#fff">'+visN+'</div>';
-      bh+='<div style="flex:1">';
-      bh+='<p style="font-weight:700;font-size:14px;color:#1a1f18;margin-bottom:2px">Blindaje articular ligero</p>';
-      bh+='<p style="font-size:11px;color:#7c3aed;margin-bottom:10px">'+esc(ex.m)+'</p>';
-      if(subEx.length>0){
-        bh+='<div style="display:flex;flex-direction:column;gap:8px">';
-        subEx.forEach(function(item){
-          const se=item.e;const soi=item.oi;
-          const aD=Array.from({length:se.sets},function(_,k){return S.completions[se.eid+'_'+k]}).every(Boolean);
-          bh+='<div style="background:'+(aD?'#3b0764':'#fff')+';border-radius:10px;padding:10px 12px;border:1.5px solid '+(aD?'#7c3aed':'#ddd8fe')+'">';
-          bh+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">';
-          bh+='<span style="font-weight:700;font-size:12px;color:'+(aD?'#e9d5ff':'#1a1f18')+'">'+esc(se.n)+'</span>';
-          if(se.v){bh+='<button onclick="set({view:q+'+'"'+'vid'+'"'+'+q,vidW:'+S.sessW+',vidS:'+S.sessI+',vidE:'+soi+'})" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600">&#9654; Ver</button>';}
-          bh+='</div><div style="display:flex;gap:5px">';
-          for(let k=0;k<se.sets;k++){
-            const d=S.completions[se.eid+'_'+k];
-            bh+='<button id="sb-'+se.eid+'-'+k+'" onclick="tSet(q+'+'"'+se.eid+'"'+'+q,'+k+','+se.sets+')" style="width:34px;height:34px;border-radius:7px;font-weight:700;font-size:11px;border:2px solid '+(d?'#7c3aed':'#ddd8fe')+';background:'+(d?'#7c3aed':'#fff')+';color:'+(d?'#fff':'#9ca3af')+'">'+(d?'&#10003;':'S'+(k+1))+'</button>';
-          }
-          bh+='</div></div>';
-        });
-        bh+='</div>';
-      }
-      bh+='</div></div></div>';
-      h+=bh;
-      idx2=j;
+  (sess.ex||[]).forEach(function(ex,idx){
+    const allD=Array.from({length:ex.sets},function(_,i){return S.completions[ex.eid+'_'+i]}).every(Boolean);
+    const isSub=ex.m&&ex.m.indexOf('tobillo')>=0;
+    const isBlinHdr=ex.n==='Blindaje articular ligero';
+    if(isSub){return;} // sub-exercises rendered inside blin block
+    if(isBlinHdr){
+      // Find sub-exercises
+      const subExs=(sess.ex||[]).filter(function(e){return e.m&&e.m.indexOf('tobillo')>=0;});
+      h+=`<div style="background:#f8f8f8;border-radius:14px;margin-bottom:8px;overflow:hidden;box-shadow:0 1px 4px rgba(25,18,17,.08)">
+        <div onclick="var d=document.getElementById('blin${idx}');d.style.display=d.style.display==='none'?'flex':'none'" style="padding:13px;cursor:pointer;display:flex;gap:11px;align-items:center;background:${C.wh}">
+          <div style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:#fde8e8;color:${C.dk}">${idx+1}</div>
+          <div style="flex:1">
+            <p style="font-weight:700;font-size:14px;color:${C.td};margin-bottom:2px">${esc(ex.n)}</p>
+            <p style="font-size:11px;color:${C.tl}">${esc(ex.m)} · ${ex.sets}×${esc(ex.reps)} · 60s</p>
+          </div>
+          <span style="font-size:18px;color:${C.g2}">▸</span>
+        </div>
+        <div id="blin${idx}" style="display:none;flex-direction:column;gap:8px;padding:0 13px 13px">
+          ${subExs.map(function(se,si){
+            const aD=Array.from({length:se.sets},function(_,k){return S.completions[se.eid+'_'+k]}).every(Boolean);
+            const seIdx=(sess.ex||[]).indexOf(se);
+            return `<div style="background:${aD?'#1a0a09':C.bg};border-radius:10px;padding:10px 12px;border:2px solid ${aD?C.pr:C.g3}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+                <p style="font-weight:700;font-size:13px;color:${aD?C.wh:C.td}">${esc(se.n)}</p>
+                ${se.v?`<button onclick="set({view:'vid',vidW:${S.sessW},vidS:${S.sessI},vidE:${seIdx}})" style="background:${C.pr};color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600">▶ Ver</button>`:''}
+              </div>
+              <div style="display:flex;gap:5px">
+                ${Array.from({length:se.sets},function(_,k){const d=S.completions[se.eid+'_'+k];return`<button id="sb-${se.eid}-${k}" onclick="tSet('${se.eid}',${k},${se.sets})" style="width:34px;height:34px;border-radius:7px;font-weight:700;font-size:11px;border:2px solid ${d?C.pr:C.g3};background:${d?C.pr:C.wh};color:${d?C.wh:C.tl}">${d?'✓':'S'+(k+1)}</button>`}).join('')}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
     } else {
-      const allD=Array.from({length:ex.sets},function(_,k){return S.completions[ex.eid+'_'+k]}).every(Boolean);
-      visN++;
-      let eh='<div id="ec-'+ex.eid+'" style="background:'+(allD?'#1a0a09':C.wh)+';border-radius:14px;padding:13px;margin-bottom:8px;border:2px solid '+(allD?C.pr:'transparent')+';box-shadow:0 1px 4px rgba(25,18,17,.08)"><div style="display:flex;gap:11px">';
-      eh+='<div id="nb-'+ex.eid+'" style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:'+(allD?C.pr:'#fde8e8')+';color:'+(allD?C.wh:C.dk)+'">'+(allD?'&#10003;':visN)+'</div>';
-      eh+='<div style="flex:1"><p style="font-weight:700;font-size:14px;color:'+(allD?C.wh:C.td)+';margin-bottom:2px">'+esc(ex.n)+'</p>';
-      eh+='<p style="font-size:11px;color:'+(allD?C.g2:C.tl)+';margin-bottom:9px">'+esc(ex.m)+' · '+ex.sets+'×'+esc(ex.reps)+' reps · 60s</p>';
-      eh+='<div style="display:flex;gap:6px;margin-bottom:9px">';
-      for(let k=0;k<ex.sets;k++){
-        const d=S.completions[ex.eid+'_'+k];
-        eh+='<button id="sb-'+ex.eid+'-'+k+'" onclick="tSet('+JSON.stringify(ex.eid)+','+k+','+ex.sets+')" style="width:37px;height:37px;border-radius:8px;font-weight:700;font-size:12px;border:2px solid '+(d?C.pr:C.g3)+';background:'+(d?C.pr:C.wh)+';color:'+(d?C.wh:C.tl)+'">'+(d?'&#10003;':'S'+(k+1))+'</button>';
-      }
-      eh+='</div><button onclick="set({view:'+JSON.stringify('vid')+',vidW:'+S.sessW+',vidS:'+S.sessI+',vidE:'+idx2+'})" style="background:'+C.bk+';color:'+C.g3+';border:1px solid #3a3330;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600">&#9654; Ver demostración</button></div></div></div>';
-      h+=eh;
-      idx2++;
+      h+=`<div id="ec-${ex.eid}" style="background:${allD?'#1a0a09':C.wh};border-radius:14px;padding:13px;margin-bottom:8px;border:2px solid ${allD?C.pr:'transparent'};box-shadow:0 1px 4px rgba(25,18,17,.08)">
+        <div style="display:flex;gap:11px">
+          <div id="nb-${ex.eid}" style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:${allD?C.pr:'#fde8e8'};color:${allD?C.wh:C.dk}">${allD?'✓':idx+1}</div>
+          <div style="flex:1">
+            <p style="font-weight:700;font-size:14px;color:${allD?C.wh:C.td};margin-bottom:2px">${esc(ex.n)}</p>
+            <p style="font-size:11px;color:${allD?C.g2:C.tl};margin-bottom:9px">${esc(ex.m)} · ${ex.sets}×${esc(ex.reps)} reps · 60s</p>
+            <div style="display:flex;gap:6px;margin-bottom:9px">
+              ${Array.from({length:ex.sets},function(_,i){const d=S.completions[ex.eid+'_'+i];return`<button id="sb-${ex.eid}-${i}" onclick="tSet('${ex.eid}',${i},${ex.sets})" style="width:37px;height:37px;border-radius:8px;font-weight:700;font-size:12px;border:2px solid ${d?C.pr:C.g3};background:${d?C.pr:C.wh};color:${d?C.wh:C.tl}">${d?'✓':'S'+(i+1)}</button>`}).join('')}
+            </div>
+            <button onclick="set({view:'vid',vidW:${S.sessW},vidS:${S.sessI},vidE:${idx}})" style="background:${C.bk};color:${C.g3};border:1px solid #3a3330;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600">▶ Ver demostración</button>
+          </div>
+        </div>
+      </div>`;
     }
-  }
+  });
   return h;
 }
 
