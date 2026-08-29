@@ -228,7 +228,7 @@ function rHoy(){
     <div style="background:${C.wh};border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid ${C.pr}">
       <p style="font-size:11px;color:${C.g2};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>
       <p style="font-weight:900;font-size:18px;color:${C.td};margin-bottom:12px">${esc(cleanType)}</p>
-      ${todFoundW>=0?'<button onclick="set({view:'+'"'+'sess'+'"'+',sessW:'+todFoundW+',sessI:'+todFoundS+',tab:'+'"'+'hoy'+'"'+'})" style="width:100%;padding:13px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ir a mi sesión de hoy</button>':'<button onclick="set({tab:'+'"'+'rutinas'+'"'+'})" style="width:100%;padding:13px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ver rutinas</button>'}
+      ${todFoundW>=0?`<button data-w="${todFoundW}" data-s="${todFoundS}" onclick="set({view:'sess',sessW:+this.dataset.w,sessI:+this.dataset.s,tab:'hoy'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ir a mi sesión de hoy</button>`:`<button onclick="set({tab:'rutinas'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ver rutinas</button>`}
     </div>`;
     if(isCompleted){
       h+=`<div style="background:#f0fdf4;border-radius:12px;padding:13px;text-align:center;border:1px solid #bbf7d0;margin-bottom:12px"><p style="font-weight:700;color:#16a34a">✅ Sesión completada hoy — ¡Reina!</p></div>`;
@@ -282,7 +282,7 @@ function rHoy(){
         const isPresencial2=u.session_mode==='Con Brayan';
         const modeColor=isPresencial2?C.pr:C.bk;
         const modeLabel=isPresencial2?'Con Brayan':'Sesión Reina';
-        return '<div onclick="'+(foundWU>=0?'set({view:'+'"'+'sess'+'"'+',sessW:'+foundWU+',sessI:'+foundSU+'})':'')+'" style="background:'+C.wh+';border-radius:11px;padding:11px 14px;box-shadow:0 1px 3px rgba(25,18,17,.07);display:flex;justify-content:space-between;align-items:center;cursor:'+(foundWU>=0?'pointer':'default')+'"><div><p style="font-weight:700;font-size:13px;color:'+C.td+'">'+label+'</p>'+(cleanType2?'<p style="font-size:11px;color:'+C.g2+';margin-top:2px">'+cleanType2+'</p>':'')+'</div><span style="font-size:11px;font-weight:700;background:'+modeColor+';color:#fff;border-radius:20px;padding:3px 10px">'+modeLabel+'</span></div>';
+        return '<div data-wu="'+foundWU+'" data-su="'+foundSU+'" onclick="'+(foundWU>=0?'set({view:\'sess\',sessW:+this.dataset.wu,sessI:+this.dataset.su})':'')+'" style="background:'+C.wh+';border-radius:11px;padding:11px 14px;box-shadow:0 1px 3px rgba(25,18,17,.07);display:flex;justify-content:space-between;align-items:center;cursor:'+(foundWU>=0?'pointer':'default')+'"><div><p style="font-weight:700;font-size:13px;color:'+C.td+'">'+label+'</p>'+(cleanType2?'<p style="font-size:11px;color:'+C.g2+';margin-top:2px">'+cleanType2+'</p>':'')+'</div><span style="font-size:11px;font-weight:700;background:'+modeColor+';color:#fff;border-radius:20px;padding:3px 10px">'+modeLabel+'</span></div>';
       }).join('')}
     </div>`;
   } else {
@@ -387,7 +387,7 @@ function rRutinas(){
       const bgColor=isToday2?'#fff8f8':isCompleted2?'#f0fdf4':C.wh;
       const borderStyle=isToday2?'border-left:4px solid '+C.pr:isCompleted2?'border-left:4px solid #22c55e':'border-left:4px solid transparent';
       const clickable=foundW>=0;
-      h+=`<div onclick="${clickable?('set({view:\'sess\',sessW:'+foundW+',sessI:'+foundS+'})'):''}" style="background:${bgColor};border-radius:11px;padding:11px 14px;margin-bottom:7px;${borderStyle};box-shadow:0 1px 3px rgba(25,18,17,.07);cursor:${clickable?'pointer':'default'}">
+      h+=`<div data-w="${foundW}" data-s="${foundS}" onclick="${clickable?'set({view:\'sess\',sessW:+this.dataset.w,sessI:+this.dataset.s})':''}" style="background:${bgColor};border-radius:11px;padding:11px 14px;margin-bottom:7px;${borderStyle};box-shadow:0 1px 3px rgba(25,18,17,.07);cursor:${clickable?'pointer':'default'}">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="flex:1">
             <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
