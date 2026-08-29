@@ -54,7 +54,7 @@ function ytId(url){if(!url)return null;const m=url.match(/(?:youtu\.be\/|youtube
 
 let S={
   view:'login',tab:'hoy',loading:false,error:'',
-  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],upcomingSchedule:[],allSchedule:[],
+  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],upcomingSchedule:[],allSchedule:[],perfilExt:{},checkin:null,motorTarjeta:null,escenario:'C',
   sessW:-1,sessI:-1,vidW:-1,vidS:-1,vidE:-1,completions:{},
   cycleLen:28,lastBleeding:null,cycleHistory:[],
   symLog:{},menoLog:{},selSym:[],symNote:'',
@@ -150,12 +150,21 @@ function rHoy(){
   const now=new Date();
   const dateLabel=WEEK_ES[now.getDay()]+', '+now.getDate()+' '+MONTH_ES[now.getMonth()]+' '+now.getFullYear();
   const tod=S.todaySchedule;
-  // Get session type from PROG (sessions join was removed)
+  const perfilExt=S.perfilExt||{};
+  const checkin=S.checkin;
+  const mt=S.motorTarjeta;
+  const semaforo=checkin?checkin.semaforo:null;
+  const SEMCOLOR={verde:'#16a34a',amarillo:'#ca8a04',rojo:'#dc2626'};
+  const SEMICON={verde:'🟢',amarillo:'🟡',rojo:'🔴'};
+  const SEMLABEL={verde:'Todo bien',amarillo:'Día regular',rojo:'Sin energía'};
+
+  // Buscar sesión en PROG desde manual o motor
   let todSessType='';let todFoundW=-1,todFoundS=-1;
   if(tod&&tod.session_id){
     (S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===tod.session_id){todFoundW=wi;todFoundS=si;todSessType=sess.type;}});});
   }
-  const sessType=todSessType;
+  const cleanType=(todSessType?todSessType.replace(/[🌑🌓🌕🌗⚠📅⚡🌙]/g,'').trim():'')||'Sesión de hoy';
+  const isCompleted=tod&&tod.status==='completed';
 
   let h=`
   <div style="background:${C.bk};border-radius:14px;padding:18px;margin-bottom:14px;color:#fff">
@@ -164,28 +173,71 @@ function rHoy(){
     <p style="font-size:12px;color:${C.g2}">Tu entrenamiento del día</p>
   </div>`;
 
-  const isCompleted=tod&&tod.status==='completed';
+  // ── CHECK-IN (si no se ha hecho hoy) ────────────────────────────
+  if(!checkin){
+    h+=`<div style="background:${C.wh};border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(25,18,17,.09)">
+      <p style="font-weight:800;font-size:15px;color:${C.td};margin-bottom:4px">¿Cómo llegaste hoy?</p>
+      <p style="font-size:12px;color:${C.tl};margin-bottom:12px">Tu respuesta ajusta la sesión</p>
+      <div style="display:flex;gap:8px">
+        <button onclick="guardarCheckin('verde')" style="flex:1;padding:12px 0;background:#f0fdf4;border:2px solid #22c55e;border-radius:11px;font-weight:700;font-size:13px;color:#16a34a">🟢<br>Bien</button>
+        <button onclick="guardarCheckin('amarillo')" style="flex:1;padding:12px 0;background:#fefce8;border:2px solid #eab308;border-radius:11px;font-weight:700;font-size:13px;color:#ca8a04">🟡<br>Regular</button>
+        <button onclick="guardarCheckin('rojo')" style="flex:1;padding:12px 0;background:#fef2f2;border:2px solid #ef4444;border-radius:11px;font-weight:700;font-size:13px;color:#dc2626">🔴<br>Sin energía</button>
+      </div>
+    </div>`;
+  } else {
+    // Semáforo badge
+    h+=`<div style="background:${C.wh};border-radius:11px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 3px rgba(25,18,17,.07)">
+      <span style="font-size:20px">${SEMICON[semaforo]||'🟢'}</span>
+      <div>
+        <p style="font-weight:700;font-size:13px;color:${SEMCOLOR[semaforo]||C.td}">${SEMLABEL[semaforo]||'Todo bien'}</p>
+        ${semaforo==='amarillo'?'<p style="font-size:11px;color:'+C.tl+'">Una serie menos en cada ejercicio</p>':''}
+        ${semaforo==='rojo'?'<p style="font-size:11px;color:'+C.tl+'">Solo activación y cierre hoy — cuídate</p>':''}
+      </div>
+      <button onclick="guardarCheckin(null);set({checkin:null})" style="margin-left:auto;background:none;border:none;font-size:11px;color:${C.g2}">Cambiar</button>
+    </div>`;
+  }
+
+  // ── SELECTOR DE ESCENARIO ────────────────────────────────────────
+  if(perfilExt.ruta){
+    const ESC_LABELS={A:'🏠 Casa',B:'💪 Mancuernas',C:'🏋️ Gimnasio'};
+    h+=`<div style="display:flex;gap:6px;margin-bottom:12px">
+      ${['A','B','C'].map(e=>'<button onclick="S.escenario='+'"'+e+'"'+';render()" style="flex:1;padding:8px 0;border-radius:9px;font-size:12px;font-weight:700;border:2px solid '+(S.escenario===e?C.pr:C.g3)+';background:'+(S.escenario===e?C.pr:C.wh)+';color:'+(S.escenario===e?'#fff':C.tl)+'">'+ESC_LABELS[e]+'</button>').join('')}
+    </div>`;
+  }
+
+  // ── SESIÓN DEL DÍA ───────────────────────────────────────────────
   if(tod&&tod.status!=='rest'){
-    // Find the session in PROG
-    let foundW=-1,foundS=-1;
-    (S.PROG||[]).forEach((wk,wi)=>{wk.forEach((sess,si)=>{if(sess.id===tod.session_id){foundW=wi;foundS=si;}})});
-    const cleanType=sessType.replace(/[🌑🌓🌕🌗⚠📅]/g,'').trim();
+    const faseInfo=mt?FASE_LABELS[mt.fase]:null;
     h+=`
     <div style="background:${C.wh};border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid ${C.pr}">
       <p style="font-size:11px;color:${C.g2};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>
       <p style="font-weight:900;font-size:18px;color:${C.td};margin-bottom:12px">${esc(cleanType)}</p>
-      ${todFoundW>=0?`<button onclick="set({view:'sess',sessW:${todFoundW},sessI:${todFoundS},tab:'hoy'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ir a mi sesión de hoy</button>`:`<button onclick="set({tab:'rutinas'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ver rutinas</button>`}
+      ${todFoundW>=0?'<button onclick="set({view:'+'"'+'sess'+'"'+',sessW:'+todFoundW+',sessI:'+todFoundS+',tab:'+'"'+'hoy'+'"'+'})" style="width:100%;padding:13px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ir a mi sesión de hoy</button>':'<button onclick="set({tab:'+'"'+'rutinas'+'"'+'})" style="width:100%;padding:13px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ver rutinas</button>'}
     </div>`;
-
     if(isCompleted){
-      h+=`<div style="background:#f0fdf4;border-radius:12px;padding:13px;text-align:center;border:1px solid #bbf7d0"><p style="font-weight:700;color:#16a34a">✅ Sesión completada hoy</p></div>`;
+      h+=`<div style="background:#f0fdf4;border-radius:12px;padding:13px;text-align:center;border:1px solid #bbf7d0;margin-bottom:12px"><p style="font-weight:700;color:#16a34a">✅ Sesión completada hoy — ¡Reina!</p></div>`;
     }
   } else if(tod&&tod.status==='rest'){
     h+=card(`<div style="text-align:center;padding:16px 0">
       <p style="font-size:36px;margin-bottom:10px">🌿</p>
-      <p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">Día de descanso</p>
-      <p style="font-size:13px;color:${C.tl}">Hoy descansas — el descanso es parte del método.</p>
+      <p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">Recuperación Activa</p>
+      <p style="font-size:13px;color:${C.tl}">Hoy mueves el cuerpo suave — es parte del método.</p>
     </div>`);
+  } else if(mt){
+    // Motor activo pero sin tarjetas cargadas aún
+    const fi=FASE_LABELS[mt.fase]||{e:'📅',l:mt.fase,color:C.pr};
+    h+=`<div style="background:${C.wh};border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid ${fi.color}">
+      <p style="font-size:11px;color:${C.g2};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Motor de ciclo activo</p>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+        <span style="font-size:28px">${fi.e}</span>
+        <div>
+          <p style="font-weight:900;font-size:17px;color:${fi.color}">${fi.l}</p>
+          <p style="font-size:12px;color:${C.tl}">Orden ${mt.orden} · Ruta ${mt.ruta}</p>
+        </div>
+      </div>
+      <p style="font-size:13px;color:${C.tl};line-height:1.6">Las tarjetas de entrenamiento se cargarán pronto. Ve a Rutinas para ver tus sesiones disponibles.</p>
+      <button onclick="set({tab:'rutinas'})" style="width:100%;padding:11px;background:${C.bk};color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;margin-top:10px">💪 Ver mis rutinas</button>
+    </div>`;
   } else {
     h+=card(`<div style="text-align:center;padding:16px 0">
       <p style="font-size:36px;margin-bottom:10px">📋</p>
@@ -194,7 +246,15 @@ function rHoy(){
     </div>`);
   }
 
-  // Upcoming days with real session data
+  // ── BOTÓN "ME LLEGÓ EL PERÍODO" ──────────────────────────────────
+  const mostrarBtnPeriodo=perfilExt.ruta==='lunar'||
+    ['irregular','perimenopausia'].includes(perfilExt.sub_perfil);
+  if(mostrarBtnPeriodo){
+    h+=`<button onclick="if(confirm('¿Confirmas que te llegó el período hoy?'))marcarPeriodo()" style="width:100%;padding:12px;background:${C.wh};color:${C.pr};border:2px solid ${C.pr};border-radius:11px;font-weight:700;font-size:13px;margin-bottom:14px">🌙 Me llegó el período</button>`;
+  }
+
+  // ── PRÓXIMOS DÍAS ────────────────────────────────────────────────
+  secT('Próximos días');
   h+=secT('Próximos días');
   if(S.upcomingSchedule&&S.upcomingSchedule.length>0){
     h+=`<div style="display:flex;flex-direction:column;gap:7px">
@@ -202,26 +262,11 @@ function rHoy(){
         const d=new Date(u.scheduled_date+'T12:00:00');
         const label=WEEK_ES[d.getDay()]+', '+d.getDate()+' '+MONTH_ES[d.getMonth()];
         let sessTypeU='';let foundWU=-1,foundSU=-1;(S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===u.session_id){foundWU=wi;foundSU=si;sessTypeU=sess.type;}});});
-        const sessType=sessTypeU;
-        const cleanType=(sessType?sessType.replace(/[🌑🌓🌕🌗⚠📅⚡🌙]/g,'').trim():'')||'Sesión de hoy';
-        const wn=u.sessions?u.sessions.week_number:null;
-        const dn=u.sessions?u.sessions.day_number:null;
-        const isPresencial=u.session_mode==='Con Brayan';
-        const modeColor=isPresencial?C.pr:C.bk;
-        const modeLabel=isPresencial?'Con Brayan':'Sesión Reina';
-        // Find session in PROG
-        let foundW=-1,foundS=-1;
-        (S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===u.session_id){foundW=wi;foundS=si;}});});
-        const clickable=foundW>=0;
-        return '<div onclick="'+( clickable?('set({view:\'sess\',sessW:'+foundW+',sessI:'+foundS+',tab:\'hoy\'})'):'')+'" style="background:'+C.wh+';border-radius:11px;padding:11px 14px;box-shadow:0 1px 3px rgba(25,18,17,.07);cursor:'+(clickable?'pointer':'default')+'">'+
-          '<div style="display:flex;justify-content:space-between;align-items:center">'+
-            '<div>'+
-              '<p style="font-weight:700;font-size:13px;color:'+C.td+'">'+label+'</p>'+
-              (cleanType?'<p style="font-size:11px;color:'+C.g2+';margin-top:2px">'+cleanType+'</p>':'')+
-            '</div>'+
-            '<span style="font-size:11px;font-weight:700;background:'+modeColor+';color:#fff;border-radius:20px;padding:3px 10px">'+modeLabel+'</span>'+
-          '</div>'+
-        '</div>';
+        const cleanType2=sessTypeU?sessTypeU.replace(/[🌑🌓🌕🌗⚠📅⚡🌙]/g,'').trim():'';
+        const isPresencial2=u.session_mode==='Con Brayan';
+        const modeColor=isPresencial2?C.pr:C.bk;
+        const modeLabel=isPresencial2?'Con Brayan':'Sesión Reina';
+        return '<div onclick="'+(foundWU>=0?'set({view:'+'"'+'sess'+'"'+',sessW:'+foundWU+',sessI:'+foundSU+'})':'')+'" style="background:'+C.wh+';border-radius:11px;padding:11px 14px;box-shadow:0 1px 3px rgba(25,18,17,.07);display:flex;justify-content:space-between;align-items:center;cursor:'+(foundWU>=0?'pointer':'default')+'"><div><p style="font-weight:700;font-size:13px;color:'+C.td+'">'+label+'</p>'+(cleanType2?'<p style="font-size:11px;color:'+C.g2+';margin-top:2px">'+cleanType2+'</p>':'')+'</div><span style="font-size:11px;font-weight:700;background:'+modeColor+';color:#fff;border-radius:20px;padding:3px 10px">'+modeLabel+'</span></div>';
       }).join('')}
     </div>`;
   } else {
@@ -230,6 +275,7 @@ function rHoy(){
 
   return h;
 }
+
 
 function rCiclo(){
   const rawDay=getCycleDay(S.lastBleeding);const day=rawDay?((rawDay-1)%(S.cycleLen||28))+1:null;const ph=getPhase(rawDay,S.cycleLen),ts=S.symLog[today()],tm=S.menoLog[today()];
@@ -466,6 +512,93 @@ async function doLogin(){
   await loadClientData();
 }
 
+
+// ── MOTOR DE CICLO ───────────────────────────────────────────────
+// Regla de oro: si existe fila en scheduled_sessions → usarla siempre
+// El motor solo actúa cuando NO hay fila para esa clienta y esa fecha
+
+const FASE_LABELS={
+  luna_nueva:{e:'🌑',l:'Luna Nueva',color:'#be185d'},
+  creciente:{e:'🌓',l:'Creciente',color:'#1d4ed8'},
+  llena:{e:'🌕',l:'Luna Llena',color:'#b45309'},
+  menguante_a:{e:'🌗',l:'Menguante A',color:'#7c3aed'},
+  menguante_b:{e:'🌘',l:'Menguante B',color:'#374151'},
+  semana_1:{e:'💪',l:'Semana 1 · Resistir',color:'#059669'},
+  semana_2:{e:'🔥',l:'Semana 2 · Forjar',color:'#dc2626'},
+  semana_3:{e:'⚡',l:'Semana 3 · Conquistar',color:'#7c3aed'},
+  semana_4:{e:'🛡',l:'Semana 4 · Blindar',color:'#0891b2'},
+};
+
+function mapearFaseLunar(dia,dur){
+  if(dur<22||dur>40)return{fase:'menguante_b',orden:1};
+  const r={
+    luna_nueva:[1,5],
+    creciente:[6,dur-15],
+    llena:[dur-14,dur-12],
+    menguante_a:[dur-11,dur-5],
+    menguante_b:[dur-4,dur]
+  };
+  const mx={luna_nueva:5,creciente:8,llena:3,menguante_a:7,menguante_b:5};
+  for(const[f,[ini,fin]]of Object.entries(r)){
+    if(dia>=ini&&dia<=fin){
+      const orden=((dia-ini)%mx[f])+1;
+      return{fase:f,orden};
+    }
+  }
+  return{fase:'menguante_b',orden:1};
+}
+
+async function calcularTarjetaMotor(perfil,userId,fecha){
+  if(!perfil.ancla)return null;
+  const ancla=new Date(perfil.ancla+'T00:00:00');
+  const hoy=new Date(fecha+'T00:00:00');
+  const dias=Math.floor((hoy-ancla)/86400000);
+  if(dias<0)return null;
+  let fase,orden;
+  if(perfil.ruta==='energia'){
+    const db=(dias%28)+1;
+    fase='semana_'+Math.ceil(db/7);
+    orden=((db-1)%7)+1;
+  } else {
+    const dur=perfil.duracion_ciclo||28;
+    const diaCiclo=dias+1;
+    if(diaCiclo>dur){
+      fase='menguante_b';
+      orden=(((diaCiclo-dur)-1)%5)+1;
+    } else {
+      const r=mapearFaseLunar(diaCiclo,dur);
+      fase=r.fase;orden=r.orden;
+    }
+  }
+  const ruta=perfil.ruta||'lunar';
+  const{data}=await sb.from('plantilla_tarjetas')
+    .select('*,plantillas!inner(nombre,ruta,activa)')
+    .eq('fase',fase).eq('orden',orden)
+    .eq('plantillas.ruta',ruta).eq('plantillas.activa',true)
+    .maybeSingle();
+  return{fase,orden,ruta,tarjeta:data||null};
+}
+
+async function marcarPeriodo(){
+  const userId=S.user.id;
+  const hoy=today();
+  await Promise.all([
+    sb.from('profiles').update({ancla:hoy}).eq('id',userId),
+    sb.from('cycle_logs').insert({client_id:userId,last_bleeding_date:hoy,cycle_length:S.perfilExt.duracion_ciclo||28})
+  ]);
+  S.perfilExt={...S.perfilExt,ancla:hoy};
+  const motorTarjeta=await calcularTarjetaMotor(S.perfilExt,userId,hoy);
+  const ch=[{last_bleeding_date:hoy,cycle_length:S.perfilExt.duracion_ciclo||28},...(S.cycleHistory||[])].slice(0,12);
+  set({motorTarjeta,lastBleeding:hoy,cycleHistory:ch});
+}
+
+async function guardarCheckin(semaforo){
+  const{data}=await sb.from('checkins')
+    .upsert({client_id:S.user.id,fecha:today(),semaforo},{onConflict:'client_id,fecha'})
+    .select().single();
+  set({checkin:data||{semaforo}});
+}
+
 async function loadClientData(){
   set({loading:true});
   const userId=S.user.id;
@@ -503,8 +636,20 @@ async function loadClientData(){
   const symLog={};(results[3].data||[]).forEach(function(r){symLog[r.log_date]=r});
   const menoLog={};(results[4].data||[]).forEach(function(r){menoLog[r.log_date]=r});
   const completions={};(results[6].data||[]).forEach(function(r){completions[r.exercise_id+'_'+r.set_number]=true});
-  const todR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).eq('scheduled_date',today()).maybeSingle();
+  const[todR,profExtR,checkinR]=await Promise.all([
+    sb.from('scheduled_sessions').select('*').eq('client_id',userId).eq('scheduled_date',today()).maybeSingle(),
+    sb.from('profiles').select('plan,ruta,sub_perfil,nivel,duracion_ciclo,ancla,escenario_default,dias_presenciales').eq('id',userId).single(),
+    sb.from('checkins').select('*').eq('client_id',userId).eq('fecha',today()).maybeSingle(),
+  ]);
   const todaySchedule=todR.data||null;
+  const perfilExt=profExtR.data||{};
+  const checkin=checkinR.data||null;
+  // Motor: solo actúa si NO hay fila manual (Regla de Oro)
+  let motorTarjeta=null;
+  if(!todaySchedule&&perfilExt.ancla){
+    motorTarjeta=await calcularTarjetaMotor(perfilExt,userId,today());
+  }
+  const escenario=perfilExt.escenario_default||'C';
   const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
   const nextWeek=new Date();nextWeek.setDate(nextWeek.getDate()+7);
   function localDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
@@ -513,7 +658,7 @@ async function loadClientData(){
   const allSchedR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',today()).lte('scheduled_date','2026-09-30').order('scheduled_date');
   const allSchedule=allSchedR.data||[];
   const defaultWeek=currentProgWeek(lastBleeding,cycleLen);
-  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule});
+  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario});
 }
 
 function buildProg(prog){
@@ -626,7 +771,7 @@ async function markSessionDone(){
     render();
   }
 }
-window.set=set;window.doLogin=doLogin;window.doLogout=doLogout;window.goBack=goBack;
+window.set=set;window.doLogin=doLogin;window.guardarCheckin=guardarCheckin;window.marcarPeriodo=marcarPeriodo;window.doLogout=doLogout;window.goBack=goBack;
 window.saveBleeding=saveBleeding;window.tSym=tSym;window.saveSym=saveSym;
 window.saveMeno=saveMeno;window.tSet=tSet;window.tM=tM;window.saveMed=saveMed;window.today=today;window.markSessionDone=markSessionDone;
 
