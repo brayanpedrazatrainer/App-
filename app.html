@@ -187,7 +187,7 @@ function rHoy(){
       pregsHtml+='<div style="margin-bottom:11px"><p style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+p.label+'</p><div style="display:flex;gap:6px">';
       p.ops.forEach(function(o){
         const sel=draft[p.campo]===o.v;
-        pregsHtml+='<button onclick="seleccionarCheckin('+JSON.stringify(p.campo)+','+o.v+')" style="flex:1;padding:9px 4px;border-radius:9px;font-size:12px;font-weight:'+(sel?700:400)+';border:2px solid '+(sel?C.pr:C.g3)+';background:'+(sel?'#fde8e8':C.wh)+';color:'+(sel?C.pr:C.tl)+'">'+o.l+'</button>';
+        pregsHtml+='<button onclick="seleccionarCheckin(this.dataset.c,+this.dataset.v)" data-c="'+p.campo+'" data-v="'+o.v+'" style="flex:1;padding:9px 4px;border-radius:9px;font-size:12px;font-weight:'+(sel?700:400)+';border:2px solid '+(sel?C.pr:C.g3)+';background:'+(sel?'#fde8e8':C.wh)+';color:'+(sel?C.pr:C.tl)+'">'+o.l+'</button>';
       });
       pregsHtml+='</div></div>';
     });
