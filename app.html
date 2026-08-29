@@ -150,37 +150,31 @@ function rHoy(){
   const now=new Date();
   const dateLabel=WEEK_ES[now.getDay()]+', '+now.getDate()+' '+MONTH_ES[now.getMonth()]+' '+now.getFullYear();
   const tod=S.todaySchedule;
-  const perfilExt=S.perfilExt||{};
   const checkin=S.checkin;
-  const mt=S.motorTarjeta;
   const semaforo=checkin?checkin.semaforo:null;
   const SEMCOLOR={verde:'#16a34a',amarillo:'#ca8a04',rojo:'#dc2626'};
   const SEMICON={verde:'🟢',amarillo:'🟡',rojo:'🔴'};
-
-  // Buscar sesión en PROG desde manual o motor
-  let todSessType='';let todFoundW=-1,todFoundS=-1;
-  if(tod&&tod.session_id){
-    (S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===tod.session_id){todFoundW=wi;todFoundS=si;todSessType=sess.type;}});});
-  }
-  const cleanType=(todSessType?todSessType.replace(/[🌑🌓🌕🌗⚠📅⚡🌙]/g,'').trim():'')||'Sesión de hoy';
+  const perfilExt=S.perfilExt||{};
+  const mt=S.motorTarjeta;
   const isCompleted=tod&&tod.status==='completed';
+  let h='';
 
-  let h=`
-  <div style="background:${C.bk};border-radius:14px;padding:18px;margin-bottom:14px;color:#fff">
+  // Header fecha
+  h+=`<div style="background:${C.bk};border-radius:14px;padding:18px;margin-bottom:14px;color:#fff">
     <p style="font-size:11px;color:${C.g2};text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px">Hoy es</p>
     <p style="font-weight:900;font-size:20px;margin-bottom:2px">${dateLabel}</p>
     <p style="font-size:12px;color:${C.g2}">Tu entrenamiento del día</p>
   </div>`;
 
-  // ── CHECK-IN (si no se ha hecho hoy) ────────────────────────────
-  const draft=S.checkinDraft||{};
-  const PREGUNTAS=[
-    {campo:'energia', label:'Energía', ops:[{v:1,l:'En el piso'},{v:2,l:'Normal'},{v:3,l:'Encendida'}]},
-    {campo:'animo',   label:'Ánimo',   ops:[{v:1,l:'Plana'},{v:2,l:'Sensible'},{v:3,l:'Firme'}]},
-    {campo:'molestias',label:'Molestias',ops:[{v:1,l:'Ninguna'},{v:2,l:'Algo'},{v:3,l:'Fuertes'}]},
-    {campo:'sueno',   label:'Sueño',   ops:[{v:1,l:'Mal'},{v:2,l:'Regular'},{v:3,l:'Bien'}]},
-  ];
+  // Check-in
   if(!checkin){
+    const draft=S.checkinDraft||{};
+    const PREGUNTAS=[
+      {campo:'energia',  label:'Energía',   ops:[{v:1,l:'En el piso'},{v:2,l:'Normal'},{v:3,l:'Encendida'}]},
+      {campo:'animo',    label:'Ánimo',      ops:[{v:1,l:'Plana'},{v:2,l:'Sensible'},{v:3,l:'Firme'}]},
+      {campo:'molestias',label:'Molestias',  ops:[{v:1,l:'Ninguna'},{v:2,l:'Algo'},{v:3,l:'Fuertes'}]},
+      {campo:'sueno',    label:'Sueño',      ops:[{v:1,l:'Mal'},{v:2,l:'Regular'},{v:3,l:'Bien'}]},
+    ];
     let pregsHtml='';
     PREGUNTAS.forEach(function(p){
       pregsHtml+='<div style="margin-bottom:11px"><p style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+p.label+'</p><div style="display:flex;gap:6px">';
@@ -190,108 +184,102 @@ function rHoy(){
       });
       pregsHtml+='</div></div>';
     });
-    h+=`<div style="background:${C.wh};border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(25,18,17,.09)">
-      <p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:3px">¿Cómo amaneciste?</p>
-      <p style="font-size:12px;color:${C.tl};margin-bottom:14px">Tu respuesta ajusta la sesión de hoy</p>
-      ${pregsHtml}
-    </div>`;
+    h+='<div style="background:'+C.wh+';border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(25,18,17,.09)"><p style="font-weight:800;font-size:16px;color:'+C.td+';margin-bottom:3px">¿Cómo amaneciste?</p><p style="font-size:12px;color:'+C.tl+';margin-bottom:14px">Tu respuesta ajusta la sesión de hoy</p>'+pregsHtml+'</div>';
   } else {
-    // Semáforo badge
-    h+=`<div style="background:${C.wh};border-radius:11px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 3px rgba(25,18,17,.07)">
-      <span style="font-size:20px">${SEMICON[semaforo]||'🟢'}</span>
-      <div>
-        <p style="font-weight:700;font-size:13px;color:${SEMCOLOR[semaforo]||C.td}">Check-in de hoy registrado ✓</p>
-      </div>
-      <button onclick="borrarCheckin()" style="margin-left:auto;background:none;border:none;font-size:11px;color:${C.g2}">Cambiar</button>
-    </div>
-    <div style="display:flex;gap:6px;margin-top:6px">
-      ${semaforo!=='verde'?`<button onclick="ajustarSemaforo(1)" style="flex:1;padding:6px;background:#f0fdf4;border:1px solid #22c55e;border-radius:8px;font-size:11px;font-weight:600;color:#16a34a">Me siento mejor →</button>`:''}
-      ${semaforo!=='rojo'?`<button onclick="ajustarSemaforo(-1)" style="flex:1;padding:6px;background:#fef2f2;border:1px solid #ef4444;border-radius:8px;font-size:11px;font-weight:600;color:#dc2626">Me siento peor →</button>`:''}
-    </div>`;
-  }
-
-  // ── SELECTOR DE ESCENARIO ────────────────────────────────────────
-  if(perfilExt.ruta){
-    const ESC_LABELS={A:'🏠 Casa',B:'💪 Mancuernas',C:'🏋️ Gimnasio'};
-    h+=`<div style="display:flex;gap:6px;margin-bottom:12px">
-      ${['A','B','C'].map(e=>'<button onclick="S.escenario='+'"'+e+'"'+';render()" style="flex:1;padding:8px 0;border-radius:9px;font-size:12px;font-weight:700;border:2px solid '+(S.escenario===e?C.pr:C.g3)+';background:'+(S.escenario===e?C.pr:C.wh)+';color:'+(S.escenario===e?'#fff':C.tl)+'">'+ESC_LABELS[e]+'</button>').join('')}
-    </div>`;
-  }
-
-  // ── SESIÓN DEL DÍA ───────────────────────────────────────────────
-  if(tod&&tod.status!=='rest'){
-    const faseInfo=mt?FASE_LABELS[mt.fase]:null;
-    h+=`
-    <div style="background:${C.wh};border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid ${C.pr}">
-      <p style="font-size:11px;color:${C.g2};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>
-      <p style="font-weight:900;font-size:18px;color:${C.td};margin-bottom:12px">${esc(cleanType)}</p>
-      ${todFoundW>=0?`<button data-w="${todFoundW}" data-s="${todFoundS}" onclick="set({view:'sess',sessW:+this.dataset.w,sessI:+this.dataset.s,tab:'hoy'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ir a mi sesión de hoy</button>`:`<button onclick="set({tab:'rutinas'})" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ver rutinas</button>`}
-    </div>`;
-    if(isCompleted){
-      h+=`<div style="background:#f0fdf4;border-radius:12px;padding:13px;text-align:center;border:1px solid #bbf7d0;margin-bottom:12px"><p style="font-weight:700;color:#16a34a">✅ Sesión completada hoy — ¡Reina!</p></div>`;
+    // Badge check-in registrado
+    h+='<div style="background:'+C.wh+';border-radius:11px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 3px rgba(25,18,17,.07)">';
+    h+='<span style="font-size:20px">'+(SEMICON[semaforo]||'🟢')+'</span>';
+    h+='<p style="font-weight:700;font-size:13px;color:'+(SEMCOLOR[semaforo]||C.td)+'">Check-in de hoy registrado ✓</p>';
+    h+='<button onclick="borrarCheckin()" style="margin-left:auto;background:none;border:none;font-size:11px;color:'+C.g2+'">Cambiar</button>';
+    h+='</div>';
+    if(semaforo!=='verde'){
+      h+='<div style="display:flex;gap:6px;margin-bottom:10px">';
+      if(semaforo!=='verde')h+='<button onclick="ajustarSemaforo(1)" style="flex:1;padding:6px;background:#f0fdf4;border:1px solid #22c55e;border-radius:8px;font-size:11px;font-weight:600;color:#16a34a">Me siento mejor →</button>';
+      if(semaforo!=='rojo') h+='<button onclick="ajustarSemaforo(-1)" style="flex:1;padding:6px;background:#fef2f2;border:1px solid #ef4444;border-radius:8px;font-size:11px;font-weight:600;color:#dc2626">Me siento peor →</button>';
+      h+='</div>';
     }
+  }
+
+  // Selector escenario (solo si tiene ruta configurada)
+  if(perfilExt.ruta){
+    const ESC={A:'🏠 Casa',B:'💪 Mancuernas',C:'🏋️ Gimnasio'};
+    h+='<div style="display:flex;gap:6px;margin-bottom:12px">';
+    ['A','B','C'].forEach(function(e){
+      const sel=S.escenario===e;
+      h+='<button onclick="S.escenario=\''+e+'\';render()" style="flex:1;padding:8px 0;border-radius:9px;font-size:12px;font-weight:700;border:2px solid '+(sel?C.pr:C.g3)+';background:'+(sel?C.pr:C.wh)+';color:'+(sel?'#fff':C.tl)+'">'+ESC[e]+'</button>';
+    });
+    h+='</div>';
+  }
+
+  // Sesión de hoy
+  const todSessId=tod?tod.session_id:null;
+  let todW=-1,todS=-1,todType='';
+  if(todSessId)(S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===todSessId){todW=wi;todS=si;todType=sess.type;}});});
+  const cleanType=todType.replace(/[^\w\s\-\·]/g,'').trim()||'Sesión de hoy';
+
+  if(tod&&tod.status!=='rest'){
+    h+='<div style="background:'+C.wh+';border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid '+C.pr+'">';
+    h+='<p style="font-size:11px;color:'+C.g2+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>';
+    h+='<p style="font-weight:900;font-size:18px;color:'+C.td+';margin-bottom:12px">'+cleanType+'</p>';
+    if(todW>=0){
+      h+='<button onclick="goToTodaySess()" style="width:100%;padding:13px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ir a mi sesión de hoy</button>';
+    } else {
+      h+='<button onclick="set({tab:\'rutinas\'})" style="width:100%;padding:13px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ver rutinas</button>';
+    }
+    h+='</div>';
+    if(isCompleted)h+='<div style="background:#f0fdf4;border-radius:12px;padding:13px;text-align:center;border:1px solid #bbf7d0;margin-bottom:12px"><p style="font-weight:700;color:#16a34a">✅ Sesión completada hoy — ¡Reina!</p></div>';
   } else if(tod&&tod.status==='rest'){
-    h+=card(`<div style="text-align:center;padding:16px 0">
-      <p style="font-size:36px;margin-bottom:10px">🌿</p>
-      <p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">Recuperación Activa</p>
-      <p style="font-size:13px;color:${C.tl}">Hoy mueves el cuerpo suave — es parte del método.</p>
-    </div>`);
+    h+=card('<div style="text-align:center;padding:16px 0"><p style="font-size:36px;margin-bottom:10px">🌿</p><p style="font-weight:800;font-size:16px;color:'+C.td+';margin-bottom:4px">Recuperación Activa</p><p style="font-size:13px;color:'+C.tl+'">Hoy mueves el cuerpo suave — es parte del método.</p></div>');
   } else if(mt){
-    // Motor activo pero sin tarjetas cargadas aún
+    const FASE_LABELS={luna_nueva:{e:'🌑',l:'Luna Nueva',color:'#be185d'},creciente:{e:'🌓',l:'Creciente',color:'#1d4ed8'},llena:{e:'🌕',l:'Luna Llena',color:'#b45309'},menguante_a:{e:'🌗',l:'Menguante A',color:'#7c3aed'},menguante_b:{e:'🌘',l:'Menguante B',color:'#374151'},semana_1:{e:'💪',l:'Semana 1',color:'#059669'},semana_2:{e:'🔥',l:'Semana 2',color:'#dc2626'},semana_3:{e:'⚡',l:'Semana 3',color:'#7c3aed'},semana_4:{e:'🛡',l:'Semana 4',color:'#0891b2'}};
     const fi=FASE_LABELS[mt.fase]||{e:'📅',l:mt.fase,color:C.pr};
-    h+=`<div style="background:${C.wh};border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid ${fi.color}">
-      <p style="font-size:11px;color:${C.g2};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Motor de ciclo activo</p>
-      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
-        <span style="font-size:28px">${fi.e}</span>
-        <div>
-          <p style="font-weight:900;font-size:17px;color:${fi.color}">${fi.l}</p>
-          <p style="font-size:12px;color:${C.tl}">Orden ${mt.orden} · Ruta ${mt.ruta}</p>
-        </div>
-      </div>
-      <p style="font-size:13px;color:${C.tl};line-height:1.6">Las tarjetas de entrenamiento se cargarán pronto. Ve a Rutinas para ver tus sesiones disponibles.</p>
-      <button onclick="set({tab:'rutinas'})" style="width:100%;padding:11px;background:${C.bk};color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;margin-top:10px">💪 Ver mis rutinas</button>
-    </div>`;
+    h+='<div style="background:'+C.wh+';border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid '+fi.color+'">';
+    h+='<p style="font-size:11px;color:'+C.g2+';text-transform:uppercase;margin-bottom:4px">Motor de ciclo activo</p>';
+    h+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><span style="font-size:28px">'+fi.e+'</span><div><p style="font-weight:900;font-size:17px;color:'+fi.color+'">'+fi.l+'</p><p style="font-size:12px;color:'+C.tl+'">Orden '+mt.orden+'</p></div></div>';
+    h+='<button onclick="set({tab:\'rutinas\'})" style="width:100%;padding:11px;background:'+C.bk+';color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px">💪 Ver mis rutinas</button></div>';
   } else {
-    h+=card(`<div style="text-align:center;padding:16px 0">
-      <p style="font-size:36px;margin-bottom:10px">📋</p>
-      <p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">Sin sesión programada hoy</p>
-      <p style="font-size:13px;color:${C.tl};line-height:1.6">Tu entrenador aún no ha programado este día.<br>Puedes explorar tus rutinas mientras tanto.</p>
-    </div>`);
+    h+=card('<div style="text-align:center;padding:16px 0"><p style="font-size:36px;margin-bottom:10px">📋</p><p style="font-weight:800;font-size:16px;color:'+C.td+';margin-bottom:4px">Sin sesión programada hoy</p><p style="font-size:13px;color:'+C.tl+';line-height:1.6">Tu entrenador está preparando tu plan.</p></div>');
   }
 
-  // ── BOTÓN "ME LLEGÓ EL PERÍODO" ──────────────────────────────────
-  const mostrarBtnPeriodo=perfilExt.ruta==='lunar'||
-    ['irregular','perimenopausia'].includes(perfilExt.sub_perfil);
-  if(mostrarBtnPeriodo){
-    h+=`<button onclick="if(confirm('¿Confirmas que te llegó el período hoy?'))marcarPeriodo()" style="width:100%;padding:12px;background:${C.wh};color:${C.pr};border:2px solid ${C.pr};border-radius:11px;font-weight:700;font-size:13px;margin-bottom:14px">🌙 Me llegó el período</button>`;
-  }
+  // Botón período
+  const mostrarPeriodo=perfilExt.ruta==='lunar'||['irregular','perimenopausia'].includes(perfilExt.sub_perfil);
+  if(mostrarPeriodo)h+='<button onclick="if(confirm(\'¿Confirmas que te llegó el período hoy?\'))marcarPeriodo()" style="width:100%;padding:12px;background:'+C.wh+';color:'+C.pr+';border:2px solid '+C.pr+';border-radius:11px;font-weight:700;font-size:13px;margin-bottom:14px">🌙 Me llegó el período</button>';
 
-  // ── PRÓXIMOS DÍAS ────────────────────────────────────────────────
+  // Próximos días
   h+=secT('Próximos días');
   if(S.upcomingSchedule&&S.upcomingSchedule.length>0){
     let upHtml='<div style="display:flex;flex-direction:column;gap:7px">';
     S.upcomingSchedule.slice(0,5).forEach(function(u){
       const d=new Date(u.scheduled_date+'T12:00:00');
       const label=WEEK_ES[d.getDay()]+', '+d.getDate()+' '+MONTH_ES[d.getMonth()];
-      let fwu=-1,fsu=-1,stype='';
-      (S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){
-        if(sess.id===u.session_id){fwu=wi;fsu=si;stype=sess.type;}
-      });});
-      const clean=stype?stype.replace(/[\u{1F311}\u{1F313}\u{1F315}\u{1F317}\u26A0\uFE0F\u{1F4C5}\u26A1\u{1F319}]/gu,'').trim():'';
-      const isConBrayan=u.session_mode==='Con Brayan';
-      const modeColor=isConBrayan?C.pr:C.bk;
-      const modeLabel=isConBrayan?'Con Brayan':'Sesión Reina';
-      upHtml+='<div style="background:'+C.wh+';border-radius:11px;padding:11px 14px;box-shadow:0 1px 3px rgba(25,18,17,.07);display:flex;justify-content:space-between;align-items:center;cursor:'+(fwu>=0?'pointer':'default')+'" onclick="'+(fwu>=0?'set({view:\'sess\',sessW:'+fwu+',sessI:'+fsu+'})':'')+'">';
-      upHtml+='<div><p style="font-weight:700;font-size:13px;color:'+C.td+'">'+label+'</p>'+(clean?'<p style="font-size:11px;color:'+C.g2+';margin-top:2px">'+clean+'</p>':'')+'</div>';
-      upHtml+='<span style="font-size:11px;font-weight:700;background:'+modeColor+';color:#fff;border-radius:20px;padding:3px 10px">'+modeLabel+'</span>';
+      let fw=-1,fs=-1,st='';
+      (S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===u.session_id){fw=wi;fs=si;st=sess.type;}});});
+      const ct=st.replace(/[^\w\s\-\·]/g,'').trim();
+      const isCB=u.session_mode==='Con Brayan';
+      const mc=isCB?C.pr:C.bk;
+      const ml=isCB?'Con Brayan':'Sesión Reina';
+      upHtml+='<div onclick="goToSess('+fw+','+fs+')" style="background:'+C.wh+';border-radius:11px;padding:11px 14px;box-shadow:0 1px 3px rgba(25,18,17,.07);display:flex;justify-content:space-between;align-items:center;cursor:'+(fw>=0?'pointer':'default')+'">';
+      upHtml+='<div><p style="font-weight:700;font-size:13px;color:'+C.td+'">'+label+'</p>'+(ct?'<p style="font-size:11px;color:'+C.g2+';margin-top:2px">'+ct+'</p>':'')+'</div>';
+      upHtml+='<span style="font-size:11px;font-weight:700;background:'+mc+';color:#fff;border-radius:20px;padding:3px 10px">'+ml+'</span>';
       upHtml+='</div>';
     });
     upHtml+='</div>';
     h+=upHtml;
-  } else {
-    h+=card('<p style="text-align:center;font-size:13px;color:'+C.g2+';padding:8px 0">Los próximos días se cargarán pronto.</p>');
   }
-    return h;
+
+  return h;
+}
+
+function goToTodaySess(){
+  const tod=S.todaySchedule;
+  if(!tod||!tod.session_id)return;
+  let todW=-1,todS=-1;
+  (S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===tod.session_id){todW=wi;todS=si;}});});
+  if(todW>=0)set({view:'sess',sessW:todW,sessI:todS,tab:'hoy'});
+}
+
+function goToSess(w,s){
+  if(w>=0)set({view:'sess',sessW:w,sessI:s});
 }
 
 
@@ -839,7 +827,7 @@ async function markSessionDone(){
     render();
   }
 }
-window.set=set;window.doLogin=doLogin;window.guardarCheckin=guardarCheckin;window.marcarPeriodo=marcarPeriodo;window.borrarCheckin=borrarCheckin;window.seleccionarCheckin=seleccionarCheckin;window.ajustarSemaforo=ajustarSemaforo;window.doLogout=doLogout;window.goBack=goBack;
+window.set=set;window.doLogin=doLogin;window.guardarCheckin=guardarCheckin;window.marcarPeriodo=marcarPeriodo;window.borrarCheckin=borrarCheckin;window.seleccionarCheckin=seleccionarCheckin;window.ajustarSemaforo=ajustarSemaforo;window.goToTodaySess=goToTodaySess;window.goToSess=goToSess;window.doLogout=doLogout;window.goBack=goBack;
 window.saveBleeding=saveBleeding;window.tSym=tSym;window.saveSym=saveSym;
 window.saveMeno=saveMeno;window.tSet=tSet;window.tM=tM;window.saveMed=saveMed;window.today=today;window.markSessionDone=markSessionDone;
 
