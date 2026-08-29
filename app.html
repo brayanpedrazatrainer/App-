@@ -54,7 +54,7 @@ function ytId(url){if(!url)return null;const m=url.match(/(?:youtu\.be\/|youtube
 
 let S={
   view:'login',tab:'hoy',loading:false,error:'',
-  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],upcomingSchedule:[],allSchedule:[],perfilExt:{},checkin:null,motorTarjeta:null,escenario:'C',
+  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],upcomingSchedule:[],allSchedule:[],perfilExt:{},checkin:null,checkinDraft:{},motorTarjeta:null,escenario:'C',
   sessW:-1,sessI:-1,vidW:-1,vidS:-1,vidE:-1,completions:{},
   cycleLen:28,lastBleeding:null,cycleHistory:[],
   symLog:{},menoLog:{},selSym:[],symNote:'',
@@ -174,15 +174,27 @@ function rHoy(){
   </div>`;
 
   // ── CHECK-IN (si no se ha hecho hoy) ────────────────────────────
+  const draft=S.checkinDraft||{};
+  const PREGUNTAS=[
+    {campo:'energia', label:'Energía', ops:[{v:1,l:'En el piso'},{v:2,l:'Normal'},{v:3,l:'Encendida'}]},
+    {campo:'animo',   label:'Ánimo',   ops:[{v:1,l:'Plana'},{v:2,l:'Sensible'},{v:3,l:'Firme'}]},
+    {campo:'molestias',label:'Molestias',ops:[{v:1,l:'Ninguna'},{v:2,l:'Algo'},{v:3,l:'Fuertes'}]},
+    {campo:'sueno',   label:'Sueño',   ops:[{v:1,l:'Mal'},{v:2,l:'Regular'},{v:3,l:'Bien'}]},
+  ];
   if(!checkin){
+    let pregsHtml='';
+    PREGUNTAS.forEach(function(p){
+      pregsHtml+='<div style="margin-bottom:11px"><p style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+p.label+'</p><div style="display:flex;gap:6px">';
+      p.ops.forEach(function(o){
+        const sel=draft[p.campo]===o.v;
+        pregsHtml+='<button onclick="seleccionarCheckin('+JSON.stringify(p.campo)+','+o.v+')" style="flex:1;padding:9px 4px;border-radius:9px;font-size:12px;font-weight:'+(sel?700:400)+';border:2px solid '+(sel?C.pr:C.g3)+';background:'+(sel?'#fde8e8':C.wh)+';color:'+(sel?C.pr:C.tl)+'">'+o.l+'</button>';
+      });
+      pregsHtml+='</div></div>';
+    });
     h+=`<div style="background:${C.wh};border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(25,18,17,.09)">
-      <p style="font-weight:800;font-size:15px;color:${C.td};margin-bottom:4px">¿Cómo llegaste hoy?</p>
-      <p style="font-size:12px;color:${C.tl};margin-bottom:12px">Tu respuesta ajusta la sesión</p>
-      <div style="display:flex;gap:8px">
-        <button onclick="guardarCheckin('verde')" style="flex:1;padding:12px 0;background:#f0fdf4;border:2px solid #22c55e;border-radius:11px;font-weight:700;font-size:13px;color:#16a34a">🟢<br>Bien</button>
-        <button onclick="guardarCheckin('amarillo')" style="flex:1;padding:12px 0;background:#fefce8;border:2px solid #eab308;border-radius:11px;font-weight:700;font-size:13px;color:#ca8a04">🟡<br>Regular</button>
-        <button onclick="guardarCheckin('rojo')" style="flex:1;padding:12px 0;background:#fef2f2;border:2px solid #ef4444;border-radius:11px;font-weight:700;font-size:13px;color:#dc2626">🔴<br>Sin energía</button>
-      </div>
+      <p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:3px">¿Cómo amaneciste?</p>
+      <p style="font-size:12px;color:${C.tl};margin-bottom:14px">Tu respuesta ajusta la sesión de hoy</p>
+      ${pregsHtml}
     </div>`;
   } else {
     // Semáforo badge
@@ -193,7 +205,11 @@ function rHoy(){
         ${semaforo==='amarillo'?'<p style="font-size:11px;color:'+C.tl+'">Una serie menos en cada ejercicio</p>':''}
         ${semaforo==='rojo'?'<p style="font-size:11px;color:'+C.tl+'">Solo activación y cierre hoy — cuídate</p>':''}
       </div>
-      <button onclick="guardarCheckin(null);set({checkin:null})" style="margin-left:auto;background:none;border:none;font-size:11px;color:${C.g2}">Cambiar</button>
+      <button onclick="borrarCheckin()" style="margin-left:auto;background:none;border:none;font-size:11px;color:${C.g2}">Cambiar</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      ${semaforo!=='verde'?`<button onclick="ajustarSemaforo(1)" style="flex:1;padding:7px;background:#f0fdf4;border:1px solid #22c55e;border-radius:8px;font-size:11px;font-weight:600;color:#16a34a">Hoy estoy mejor ↑</button>`:''}
+      ${semaforo!=='rojo'?`<button onclick="ajustarSemaforo(-1)" style="flex:1;padding:7px;background:#fef2f2;border:1px solid #ef4444;border-radius:8px;font-size:11px;font-weight:600;color:#dc2626">Estoy peor ↓</button>`:''}
     </div>`;
   }
 
@@ -398,14 +414,26 @@ function sPct(sess){
 function rSess(){
   const weeks=S.PROG;if(!weeks||weeks.length===0)return '';
   const sess=weeks[S.sessW]&&weeks[S.sessW][S.sessI];if(!sess)return '';
-  const dc=(sess.ex||[]).filter(function(ex){return Array.from({length:ex.sets},function(_,i){return S.completions[ex.eid+'_'+i]}).every(Boolean)}).length;
+  const dc=(sess.ex||[]).filter(function(ex){const sH=seriesAjustadas(ex);return Array.from({length:sH},function(_,i){return S.completions[ex.eid+'_'+i]}).every(Boolean)}).length;
   let h=`<div style="background:${C.bk};border-radius:14px;padding:15px;margin-bottom:13px;color:#fff;border:1px solid #2a2523">
     <p style="font-weight:900;font-size:18px;margin-bottom:2px">${esc(sess.day)} · Semana ${S.sessW+1}</p>
     <p style="font-size:12px;color:${C.g2};margin-bottom:2px">${esc(sess.type)}</p>
     <p style="font-size:11px;color:${C.pr};font-weight:600">${dc}/${(sess.ex||[]).length} ejercicios completados</p>
   </div>`;
-  (sess.ex||[]).forEach(function(ex,idx){
-    const allD=Array.from({length:ex.sets},function(_,i){return S.completions[ex.eid+'_'+i]}).every(Boolean);
+  // Semáforo: ajuste según check-in diario
+  const sem=(S.checkin&&S.checkin.semaforo)||'verde';
+  const BLOQUES_ROJO=[1,2,5];
+  function seriesAjustadas(ex){
+    const base=ex.sets||1;
+    if(sem==='amarillo')return Math.max(1,base-1);
+    return base;
+  }
+  let listaEx=sess.ex||[];
+  if(sem==='rojo')listaEx=listaEx.filter(function(ex){return !ex.bloque||BLOQUES_ROJO.indexOf(ex.bloque)>=0;});
+  if(sem==='amarillo')h+='<div style="background:#fefce8;border:1px solid #eab308;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#ca8a04;font-weight:600">Hoy va una serie menos en cada ejercicio. Igual cuenta como sesión completa.</div>';
+  if(sem==='rojo')h+='<div style="background:#fef2f2;border:1px solid #ef4444;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#dc2626;font-weight:600">Hoy solo movilidad, activación y cierre. Descansar también es entrenar, reina.</div>';
+  listaEx.forEach(function(ex,idx){
+    const setsH=seriesAjustadas(ex);const allD=Array.from({length:setsH},function(_,i){return S.completions[ex.eid+'_'+i]}).every(Boolean);
     const isSub=ex.m&&ex.m.indexOf('tobillo')>=0;
     const isBlinHdr=ex.n==='Blindaje articular ligero';
     if(isSub){return;} // sub-exercises rendered inside blin block
@@ -417,7 +445,7 @@ function rSess(){
           <div style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:#fde8e8;color:${C.dk}">${idx+1}</div>
           <div style="flex:1">
             <p style="font-weight:700;font-size:14px;color:${C.td};margin-bottom:2px">${esc(ex.n)}</p>
-            <p style="font-size:11px;color:${C.tl}">${esc(ex.m)} · ${ex.sets}×${esc(ex.reps)} · 60s</p>
+            <p style="font-size:11px;color:${C.tl}">${esc(ex.m)} · ${setsH}×${esc(ex.reps)} · 60s</p>
           </div>
           <span style="font-size:18px;color:${C.g2}">▸</span>
         </div>
@@ -443,9 +471,9 @@ function rSess(){
           <div id="nb-${ex.eid}" style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:${allD?C.pr:'#fde8e8'};color:${allD?C.wh:C.dk}">${allD?'✓':idx+1}</div>
           <div style="flex:1">
             <p style="font-weight:700;font-size:14px;color:${allD?C.wh:C.td};margin-bottom:2px">${esc(ex.n)}</p>
-            <p style="font-size:11px;color:${allD?C.g2:C.tl};margin-bottom:9px">${esc(ex.m)} · ${ex.sets}×${esc(ex.reps)} reps · 60s</p>
+            <p style="font-size:11px;color:${allD?C.g2:C.tl};margin-bottom:9px">${esc(ex.m)} · ${setsH}×${esc(ex.reps)} reps · 60s</p>
             <div style="display:flex;gap:6px;margin-bottom:9px">
-              ${Array.from({length:ex.sets},function(_,i){const d=S.completions[ex.eid+'_'+i];return`<button id="sb-${ex.eid}-${i}" onclick="tSet('${ex.eid}',${i},${ex.sets})" style="width:37px;height:37px;border-radius:8px;font-weight:700;font-size:12px;border:2px solid ${d?C.pr:C.g3};background:${d?C.pr:C.wh};color:${d?C.wh:C.tl}">${d?'✓':'S'+(i+1)}</button>`}).join('')}
+              ${Array.from({length:setsH},function(_,i){const d=S.completions[ex.eid+'_'+i];return`<button id="sb-${ex.eid}-${i}" onclick="tSet('${ex.eid}',${i},${ex.sets})" style="width:37px;height:37px;border-radius:8px;font-weight:700;font-size:12px;border:2px solid ${d?C.pr:C.g3};background:${d?C.pr:C.wh};color:${d?C.wh:C.tl}">${d?'✓':'S'+(i+1)}</button>`}).join('')}
             </div>
             <button onclick="set({view:'vid',vidW:${S.sessW},vidS:${S.sessI},vidE:${idx}})" style="background:${C.bk};color:${C.g3};border:1px solid #3a3330;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600">▶ Ver demostración</button>
           </div>
@@ -592,11 +620,51 @@ async function marcarPeriodo(){
   set({motorTarjeta,lastBleeding:hoy,cycleHistory:ch});
 }
 
-async function guardarCheckin(semaforo){
+function calcularSemaforo(energia,animo,molestias,sueno){
+  const puntos=energia+animo+sueno+(4-molestias); // rango 4..12
+  if(puntos<=6)return 'rojo';
+  if(puntos<=9)return 'amarillo';
+  return 'verde';
+}
+
+async function guardarCheckin(energia,animo,molestias,sueno,semaforoManual){
+  const semaforo=semaforoManual||calcularSemaforo(energia,animo,molestias,sueno);
   const{data}=await sb.from('checkins')
-    .upsert({client_id:S.user.id,fecha:today(),semaforo},{onConflict:'client_id,fecha'})
+    .upsert({
+      client_id:S.user.id,fecha:today(),
+      energia,animo,molestias,sueno,semaforo,
+      updated_at:new Date().toISOString()
+    },{onConflict:'client_id,fecha'})
     .select().single();
-  set({checkin:data||{semaforo}});
+  set({checkin:data||{semaforo,energia,animo,molestias,sueno},checkinDraft:{}});
+}
+
+async function borrarCheckin(){
+  await sb.from('checkins')
+    .delete()
+    .eq('client_id',S.user.id)
+    .eq('fecha',today());
+  set({checkin:null,checkinDraft:{}});
+}
+
+function seleccionarCheckin(campo,valor){
+  const draft=Object.assign({},S.checkinDraft||{});
+  draft[campo]=valor;
+  S.checkinDraft=draft;
+  if(draft.energia&&draft.animo&&draft.molestias!==undefined&&draft.sueno){
+    guardarCheckin(draft.energia,draft.animo,draft.molestias,draft.sueno);
+  } else {
+    render();
+  }
+}
+
+async function ajustarSemaforo(dir){
+  const orden=['rojo','amarillo','verde'];
+  const actual=(S.checkin&&S.checkin.semaforo)||'amarillo';
+  const idx=orden.indexOf(actual);
+  const nuevo=orden[Math.max(0,Math.min(2,idx+dir))];
+  const c=S.checkin||{};
+  await guardarCheckin(c.energia,c.animo,c.molestias,c.sueno,nuevo);
 }
 
 async function loadClientData(){
@@ -771,7 +839,7 @@ async function markSessionDone(){
     render();
   }
 }
-window.set=set;window.doLogin=doLogin;window.guardarCheckin=guardarCheckin;window.marcarPeriodo=marcarPeriodo;window.doLogout=doLogout;window.goBack=goBack;
+window.set=set;window.doLogin=doLogin;window.guardarCheckin=guardarCheckin;window.marcarPeriodo=marcarPeriodo;window.borrarCheckin=borrarCheckin;window.seleccionarCheckin=seleccionarCheckin;window.ajustarSemaforo=ajustarSemaforo;window.doLogout=doLogout;window.goBack=goBack;
 window.saveBleeding=saveBleeding;window.tSym=tSym;window.saveSym=saveSym;
 window.saveMeno=saveMeno;window.tSet=tSet;window.tM=tM;window.saveMed=saveMed;window.today=today;window.markSessionDone=markSessionDone;
 
