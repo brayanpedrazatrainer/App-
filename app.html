@@ -54,7 +54,7 @@ function ytId(url){if(!url)return null;const m=url.match(/(?:youtu\.be\/|youtube
 
 let S={
   view:'login',tab:'hoy',loading:false,error:'',
-  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],upcomingSchedule:[],allSchedule:[],perfilExt:{},checkin:null,checkinDraft:{},motorTarjeta:null,escenario:'C',
+  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],upcomingSchedule:[],allSchedule:[],perfilExt:{},checkin:null,checkinDraft:{},motorTarjeta:null,escenario:'C',cargaLog:{},showBatchEsfuerzo:false,batchEsfuerzoExs:[],
   sessW:-1,sessI:-1,vidW:-1,vidS:-1,vidE:-1,completions:{},
   cycleLen:28,lastBleeding:null,cycleHistory:[],
   symLog:{},menoLog:{},selSym:[],symNote:'',
@@ -426,7 +426,7 @@ function rSess(){
   let h='<div style="background:'+C.bk+';border-radius:14px;padding:15px;margin-bottom:13px;color:#fff;border:1px solid #2a2523">';
   h+='<p style="font-weight:900;font-size:18px;margin-bottom:2px">'+esc(sess.day)+' · Semana '+(S.sessW+1)+'</p>';
   h+='<p style="font-size:12px;color:'+C.g2+';margin-bottom:2px">'+esc(sess.type)+'</p>';
-  h+='<p style="font-size:11px;color:'+C.pr+';font-weight:600">'+dc+'/'+exList.length+' ejercicios completados</p>';
+  h+=(isCompleted?'<p style="font-size:11px;color:#16a34a;font-weight:600">✅ Sesión completada</p>':'<p id="sess-dc" style="font-size:11px;color:'+C.pr+';font-weight:600">'+dc+'/'+exList.length+' ejercicios completados</p>');
   h+='</div>';
 
   let visN=0;
@@ -475,7 +475,9 @@ function rSess(){
       h+='<div id="nb-'+ex.eid+'" style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:'+(allD?C.pr:'#fde8e8')+';color:'+(allD?C.wh:C.dk)+'">'+(allD?'✓':visN)+'</div>';
       h+='<div style="flex:1">';
       h+='<p style="font-weight:700;font-size:14px;color:'+(allD?C.wh:C.td)+';margin-bottom:2px">'+esc(ex.n)+'</p>';
-      const kgText=ex.carga_kg?('<b style="font-size:16px;color:'+(allD?C.wh:C.pr)+';">'+ex.carga_kg+' kg</b> · '):'';
+      const lastLog=S.cargaLog?(S.cargaLog[ex.eid]||S.cargaLog['pat_'+(ex.patron||'')+'_'+S.escenario]||null):null;
+    const sugKg=sugerirKg(lastLog,ex.carga_kg);
+    const kgText=sugKg?('<b style="font-size:16px;color:'+(allD?C.wh:C.pr)+';">'+sugKg+' kg</b>'+(lastLog&&lastLog.kg!==ex.carga_kg?' <span style="font-size:10px;color:'+C.g2+'">sugerido</span>':'')+' · '):(ex.carga_kg?'anota el peso que uses · ':'');
     const cueText=ex.cue?('<p style="font-size:13px;color:'+(allD?'#fde8e8':'#710D0B')+';font-style:italic;margin-bottom:6px;line-height:1.5">'+esc(ex.cue)+'</p>'):'';
     const tempoMap={'3-1-1':'Baja contando tres','2-1-2':'Baja en dos, sube en dos','4-1-1':'Baja lento contando cuatro','1-0-1':'Explosivo'};
     const tempoText=ex.tempo?(tempoMap[ex.tempo]||ex.tempo):'';
@@ -488,8 +490,8 @@ function rSess(){
         h+='<button id="sb-'+ex.eid+'-'+k+'" onclick="tSet(\''+ex.eid+'\','+k+','+n+')" style="width:37px;height:37px;border-radius:8px;font-weight:700;font-size:12px;border:2px solid '+(d?C.pr:C.g3)+';background:'+(d?C.pr:C.wh)+';color:'+(d?C.wh:C.tl)+'">'+(d?'✓':'S'+(k+1))+'</button>';
       }
       h+='</div>';
-    if(allD){
-      const faseActual=(S.motorTarjeta&&S.motorTarjeta.fase)||'presencial';
+    if(allD&&ex.carga_kg){
+      const faseActual=getCurrentFase()||'presencial';
       h+='<div style="margin-bottom:9px">';
       h+='<p style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:6px">\xbfC\xf3mo se sinti\xf3?</p>';
       h+='<div style="display:flex;gap:6px">';
@@ -509,7 +511,25 @@ function rSess(){
     if(isCompleted){
       h+='<div style="background:#f0fdf4;border-radius:13px;padding:15px;text-align:center;border:2px solid #22c55e;margin-top:4px"><p style="font-size:24px;margin-bottom:6px">✅</p><p style="font-weight:800;font-size:15px;color:#16a34a">¡Sesión completada!</p></div>';
     } else {
-      h+='<button onclick="markSessionDone()" style="width:100%;padding:15px;background:#16a34a;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:15px;margin-top:4px">✅ Marcar sesión como completada</button>';
+      // Batch esfuerzo before marking done
+    if(S.showBatchEsfuerzo&&S.batchEsfuerzoExs&&S.batchEsfuerzoExs.length>0){
+      h+='<div style="background:'+C.wh+';border-radius:14px;padding:16px;margin-top:8px;box-shadow:0 1px 4px rgba(25,18,17,.08)">';
+      h+='<p style="font-weight:800;font-size:15px;color:'+C.td+';margin-bottom:3px">Antes de cerrar — ¿cómo estuvo la carga?</p>';
+      h+='<p style="font-size:12px;color:'+C.tl+';margin-bottom:14px">Solo los ejercicios con peso</p>';
+      const fBatch=getCurrentFase()||'presencial';
+      S.batchEsfuerzoExs.forEach(function(bex){
+        h+='<p style="font-size:13px;font-weight:700;color:'+C.td+';margin-bottom:6px">'+esc(bex.n)+'</p>';
+        h+='<div style="display:flex;gap:6px;margin-bottom:12px">';
+        [{v:1,l:'Sobrada'},{v:2,l:'Justa'},{v:3,l:'Al límite'}].forEach(function(op){
+          h+='<button data-eid="'+bex.eid+'" data-pat="'+(bex.patron||'')+'" data-esc="'+S.escenario+'" data-fase="'+fBatch+'" data-kg="'+(bex.carga_kg||'')+'" data-ef="'+op.v+'" onclick="registrarEsfuerzo(this.dataset.eid,this.dataset.pat,this.dataset.esc,this.dataset.fase,+this.dataset.kg||null,+this.dataset.ef);S.batchEsfuerzoExs=S.batchEsfuerzoExs.filter(x=>x.eid!==this.dataset.eid);if(!S.batchEsfuerzoExs.length)markSessionDone();else render()" style="flex:1;padding:8px 4px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid #7c3aed;background:#f5f3ff;color:#7c3aed">'+op.l+'</button>';
+        });
+        h+='</div>';
+      });
+      h+='<button onclick="markSessionDone()" style="width:100%;padding:10px;background:'+C.g2+';color:#fff;border:none;border-radius:9px;font-size:13px">Saltar y marcar completada</button>';
+      h+='</div>';
+    } else {
+      h+='<button onclick="initBatchEsfuerzo()" style="width:100%;padding:15px;background:#16a34a;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:15px;margin-top:4px">✅ Marcar sesión como completada</button>';
+    }
     }
   }
   return h;
@@ -598,6 +618,31 @@ const FASE_LABELS={
   semana_3:{e:'⚡',l:'Semana 3 · Conquistar',color:'#7c3aed'},
   semana_4:{e:'🛡',l:'Semana 4 · Blindar',color:'#0891b2'},
 };
+
+
+function getCurrentFase(){
+  if(S.motorTarjeta&&S.motorTarjeta.fase)return S.motorTarjeta.fase;
+  const p=S.perfilExt;
+  if(!p||!p.ancla)return null;
+  const ancla=new Date(p.ancla+'T00:00:00');
+  const hoy=new Date(today()+'T00:00:00');
+  const dias=Math.floor((hoy-ancla)/86400000);
+  if(dias<0)return null;
+  if(p.ruta==='energia')return 'semana_'+Math.ceil(((dias%28)+1)/7);
+  const dur=p.duracion_ciclo||28;
+  const dc=dias+1;
+  if(dc>dur)return 'menguante_b';
+  return mapearFaseLunar(dc,dur).fase;
+}
+
+function sugerirKg(lastLog, baseKg){
+  if(!lastLog||!lastLog.kg)return baseKg||null;
+  if(lastLog.esfuerzo===1){
+    const step=lastLog.kg<10?1.25:lastLog.kg<20?2.5:5;
+    return Math.round((lastLog.kg+step)*2)/2;
+  }
+  return lastLog.kg;
+}
 
 function mapearFaseLunar(dia,dur){
   if(dur<22||dur>40)return{fase:'menguante_b',orden:1};
@@ -760,6 +805,16 @@ async function loadClientData(){
     motorTarjeta=await calcularTarjetaMotor(perfilExt,userId,today());
   }
   const escenario=perfilExt.escenario_default||'C';
+  // Load carga history for current phase
+  const faseHoy=getCurrentFase?getCurrentFase():null;
+  let cargaLog={};
+  if(faseHoy&&userId){
+    const clR=await sb.from('carga_log').select('exercise_id,patron,escenario,kg,esfuerzo,fecha').eq('client_id',userId).eq('fase',faseHoy).order('fecha',{ascending:false}).limit(50);
+    (clR.data||[]).forEach(function(r){
+      if(!cargaLog[r.exercise_id])cargaLog[r.exercise_id]=r;
+      if(r.patron&&!cargaLog['pat_'+r.patron+'_'+r.escenario])cargaLog['pat_'+r.patron+'_'+r.escenario]=r;
+    });
+  }
   const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
   const nextWeek=new Date();nextWeek.setDate(nextWeek.getDate()+7);
   function localDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
@@ -768,7 +823,7 @@ async function loadClientData(){
   const allSchedR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',today()).lte('scheduled_date','2026-09-30').order('scheduled_date');
   const allSchedule=allSchedR.data||[];
   const defaultWeek=currentProgWeek(lastBleeding,cycleLen);
-  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario});
+  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog});
 }
 
 function buildProg(prog){
@@ -853,6 +908,10 @@ async function tSet(eid,i,sets){
   const allD=Array.from({length:sets},function(_,j){return comp[eid+'_'+j]}).every(Boolean);
   const ec=document.getElementById('ec-'+eid);if(ec){ec.style.background=allD?'#1a0a09':C.wh;ec.style.borderColor=allD?C.pr:'transparent'}
   const nb=document.getElementById('nb-'+eid);if(nb){nb.style.background=allD?C.pr:'#fde8e8';nb.style.color=allD?C.wh:C.dk;if(allD)nb.textContent='✓'}
+  // Update counter and reveal esfuerzo buttons
+  const hdr=document.getElementById('sess-dc');
+  if(hdr&&allD)render();
+  else if(hdr){const done2=Object.keys(S.completions).length;hdr.textContent=done2+' ejercicios con series completadas';}
 }
 
 function tM(id){set({expM:S.expM===id?null:id})}
@@ -870,6 +929,23 @@ async function saveMed(){
 async function doLogout(){await sb.auth.signOut();set({view:'login',user:null,profile:null,PROG:[],completions:{}})}
 
 
+
+async function initBatchEsfuerzo(){
+  const sess=S.PROG&&S.PROG[S.sessW]&&S.PROG[S.sessW][S.sessI];
+  if(!sess){markSessionDone();return;}
+  // Find exercises with carga_kg not yet marked today
+  const withCarga=(sess.ex||[]).filter(function(ex){return ex.carga_kg;});
+  const faseHoy=getCurrentFase();
+  let markedToday=new Set();
+  if(faseHoy){
+    const r=await sb.from('carga_log').select('exercise_id').eq('client_id',S.user.id).eq('fecha',today()).eq('fase',faseHoy);
+    (r.data||[]).forEach(function(row){markedToday.add(row.exercise_id);});
+  }
+  const needsBatch=withCarga.filter(function(ex){return !markedToday.has(ex.eid);});
+  if(needsBatch.length===0){markSessionDone();return;}
+  set({showBatchEsfuerzo:true,batchEsfuerzoExs:needsBatch});
+}
+
 async function markSessionDone(){
   if(!S.todaySchedule||!S.user)return;
   const {data}=await sb.from('scheduled_sessions')
@@ -881,7 +957,7 @@ async function markSessionDone(){
     render();
   }
 }
-window.set=set;window.doLogin=doLogin;window.guardarCheckin=guardarCheckin;window.marcarPeriodo=marcarPeriodo;window.borrarCheckin=borrarCheckin;window.registrarEsfuerzo=registrarEsfuerzo;window.seleccionarCheckin=seleccionarCheckin;window.ajustarSemaforo=ajustarSemaforo;window.goToTodaySess=goToTodaySess;window.goToSess=goToSess;window.doLogout=doLogout;window.goBack=goBack;
+window.set=set;window.doLogin=doLogin;window.guardarCheckin=guardarCheckin;window.marcarPeriodo=marcarPeriodo;window.borrarCheckin=borrarCheckin;window.registrarEsfuerzo=registrarEsfuerzo;window.seleccionarCheckin=seleccionarCheckin;window.ajustarSemaforo=ajustarSemaforo;window.goToTodaySess=goToTodaySess;window.initBatchEsfuerzo=initBatchEsfuerzo;window.goToSess=goToSess;window.doLogout=doLogout;window.goBack=goBack;
 window.saveBleeding=saveBleeding;window.tSym=tSym;window.saveSym=saveSym;
 window.saveMeno=saveMeno;window.tSet=tSet;window.tM=tM;window.saveMed=saveMed;window.today=today;window.markSessionDone=markSessionDone;
 
