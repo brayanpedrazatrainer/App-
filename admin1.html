@@ -28,7 +28,7 @@ let S={
   view:'login',tab:'clients',loading:false,error:'',
   user:null,clients:[],programs:[],
   selClient:null,selProgram:null,selSession:null,
-  clientMeas:[],clientCycle:[],clientSymptoms:[],clientMeno:[],clientSchedule:{},scheduleSessions:[],scheduleYear:new Date().getFullYear(),scheduleMonth:new Date().getMonth(),
+  clientMeas:[],clientCycle:[],clientSymptoms:[],clientMeno:[],motorClient:null,motorRows:[],motorLoading:false,clientSchedule:{},scheduleSessions:[],scheduleYear:new Date().getFullYear(),scheduleMonth:new Date().getMonth(),
   pForm:{show:false,name:'',desc:''},
   sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'},
   eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:''},
@@ -49,14 +49,14 @@ function render(){
       </div>
     </div>
     <div style="display:flex;background:${C.bk};border-top:1px solid #2a2523">
-      ${[{k:'clients',l:'👥 Clientas'},{k:'programs',l:'💪 Programas'},{k:'add',l:'➕ Nueva clienta'}].map(t=>`
+      ${[{k:'clients',l:'👥 Clientas'},{k:'programs',l:'💪 Programas'},{k:'motor',l:'🔬 Motor'},{k:'add',l:'➕ Nueva clienta'}].map(t=>`
         <button onclick="set({tab:'${t.k}',selClient:null,selProgram:null,selSession:null,pForm:{show:false,name:'',desc:''},sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'},eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:''}})"
           style="flex:1;padding:10px 0;font-weight:700;font-size:11px;border:none;background:none;color:${S.tab===t.k?C.pr:C.g2};border-bottom:3px solid ${S.tab===t.k?C.pr:'transparent'}">
           ${t.l}
         </button>`).join('')}
     </div>
     <div style="padding:14px;max-width:640px;margin:0 auto;padding-bottom:40px">
-      ${S.view==='schedule'?rSchedule():S.tab==='clients'?rClients():S.tab==='programs'?rPrograms():rAddClient()}
+      ${S.view==='schedule'?rSchedule():S.tab==='clients'?rClients():S.tab==='programs'?rPrograms():S.tab==='motor'?rMotor():rAddClient()}
     </div>`;
 }
 
@@ -256,6 +256,178 @@ function rSchedule(){
         </div>`;
       }).join('')}
     </div>`;
+}
+
+
+// ── MOTOR COMPARATIVO ─────────────────────────────────────────────
+const FASE_INFO={
+  luna_nueva: {color:'#be185d',label:'Luna Nueva',short:'LN',e:'🌑'},
+  creciente:  {color:'#1d4ed8',label:'Creciente', short:'CR',e:'🌓'},
+  llena:      {color:'#b45309',label:'Llena',     short:'LL',e:'🌕'},
+  menguante_a:{color:'#7c3aed',label:'Meng A',    short:'MA',e:'🌗'},
+  menguante_b:{color:'#374151',label:'Meng B',    short:'MB',e:'🌘'},
+  semana_1:   {color:'#059669',label:'Semana 1',  short:'S1',e:'1️⃣'},
+  semana_2:   {color:'#dc2626',label:'Semana 2',  short:'S2',e:'2️⃣'},
+  semana_3:   {color:'#7c3aed',label:'Semana 3',  short:'S3',e:'3️⃣'},
+  semana_4:   {color:'#0891b2',label:'Semana 4',  short:'S4',e:'4️⃣'},
+};
+
+function adminMapearFaseLunar(dia,dur){
+  if(dur<22||dur>40)return{fase:'menguante_b',orden:1};
+  const r={
+    luna_nueva:[1,5],creciente:[6,dur-15],llena:[dur-14,dur-12],
+    menguante_a:[dur-11,dur-5],menguante_b:[dur-4,dur]
+  };
+  const mx={luna_nueva:5,creciente:8,llena:3,menguante_a:7,menguante_b:5};
+  const fases=Object.keys(r);for(let fi=0;fi<fases.length;fi++){const f=fases[fi];const ini=r[f][0];const fin=r[f][1];
+    if(dia>=ini&&dia<=fin){return{fase:f,orden:((dia-ini)%mx[f])+1};}}
+  return{fase:'menguante_b',orden:1};
+}
+
+function calcMotorPhase(perfil,fecha){
+  if(!perfil||!perfil.ancla)return null;
+  const ancla=new Date(perfil.ancla+'T00:00:00');
+  const hoy=new Date(fecha+'T00:00:00');
+  const dias=Math.floor((hoy-ancla)/86400000);
+  if(dias<0)return null;
+  if(perfil.ruta==='energia'){
+    const db=(dias%28)+1;
+    const semana=Math.ceil(db/7);
+    return{fase:'semana_'+semana,dia:db,orden:((db-1)%7)+1};
+  }
+  const dur=perfil.duracion_ciclo||28;
+  let diaCiclo=dias+1;
+  if(diaCiclo>dur){
+    return{fase:'menguante_b',dia:dur,orden:(((diaCiclo-dur)-1)%5)+1};
+  }
+  const r=adminMapearFaseLunar(diaCiclo,dur);
+  return{fase:r.fase,dia:diaCiclo,orden:r.orden};
+}
+
+function buildStrip(perfil){
+  const strip=[];
+  for(let d=1;d<=30;d++){
+    const fecha='2026-09-'+String(d).padStart(2,'0');
+    const r=calcMotorPhase(perfil,fecha);
+    strip.push({d,fecha,motor:r});
+  }
+  return strip;
+}
+
+async function loadMotorClient(clientId){
+  set({motorLoading:true});
+  const c=S.clients.find(x=>x.id===clientId);
+  // Load extended profile (motor fields)
+  const[profR,schedR]=await Promise.all([
+    sb.from('profiles').select('ruta,sub_perfil,ancla,duracion_ciclo,nivel').eq('id',clientId).single(),
+    sb.from('scheduled_sessions').select('*,sessions(session_type)').eq('client_id',clientId)
+      .gte('scheduled_date','2026-09-01').lte('scheduled_date','2026-09-30').order('scheduled_date'),
+  ]);
+  const perfil=Object.assign({},c,profR.data||{});
+  const schedMap={};
+  (schedR.data||[]).forEach(function(r){schedMap[r.scheduled_date]=r;});
+  // Build 30 rows
+  const DIAS_ES=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const rows=[];
+  for(let d=1;d<=30;d++){
+    const fecha='2026-09-'+String(d).padStart(2,'0');
+    const dt=new Date(fecha+'T12:00:00');
+    const diaSem=DIAS_ES[dt.getDay()];
+    const sched=schedMap[fecha]||null;
+    const motor=calcMotorPhase(perfil,fecha);
+    rows.push({d,fecha,diaSem,sched,motor});
+  }
+  set({motorLoading:false,motorClient:{perfil,rows}});
+}
+
+function rMotor(){
+  if(S.motorLoading)return '<div style="text-align:center;padding:40px"><p style="font-size:32px">🔬</p><p>Calculando...</p></div>';
+  const mc=S.motorClient;
+  // Client selector
+  let h='<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:'+C.g2+';margin-bottom:10px">Seleccionar clienta</p>';
+  h+='<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">';
+  (S.clients||[]).forEach(function(c){
+    const isSel=mc&&mc.perfil&&mc.perfil.id===c.id;
+    h+='<button data-cid="'+c.id+'" onclick="loadMotorClient(this.dataset.cid)" style="text-align:left;padding:10px 14px;border-radius:10px;border:2px solid '+(isSel?C.pr:C.g3)+';background:'+(isSel?'#fde8e8':C.wh)+';color:'+(isSel?C.pr:C.td)+';font-weight:'+(isSel?700:400)+';font-size:13px">'+esc(c.name)+'</button>';
+  });
+  h+='</div>';
+  if(!mc)return h;
+  const p=mc.perfil;
+  const rows=mc.rows;
+  const strip=buildStrip(p);
+
+  // Client header
+  h+='<div style="background:'+C.bk+';border-radius:13px;padding:14px;margin-bottom:14px;color:#fff">';
+  h+='<p style="font-weight:900;font-size:17px;margin-bottom:4px">'+esc(p.name)+'</p>';
+  if(p.ancla){
+    h+='<p style="font-size:12px;color:'+C.g2+'">Ruta: <b style="color:#fff">'+(p.ruta||'—')+'</b> · Ancla: <b style="color:#fff">'+p.ancla+'</b> · Ciclo: <b style="color:#fff">'+(p.duracion_ciclo||28)+' días</b></p>';
+  } else {
+    h+='<p style="font-size:12px;color:#ef4444">⚠ Sin ancla configurada — el motor no puede calcular</p>';
+  }
+  h+='</div>';
+
+  if(!p.ancla){
+    h+='<div style="text-align:center;padding:20px;color:'+C.g2+'">Configure el ancla de esta clienta en sus datos de perfil.</div>';
+    return h;
+  }
+
+  // Phase strip (30 tiles)
+  h+='<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:'+C.g2+';margin-bottom:8px">Septiembre 2026 · Fase por día</p>';
+  h+='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px">';
+  strip.forEach(function(s){
+    const fi=s.motor?FASE_INFO[s.motor.fase]:null;
+    const bg=fi?fi.color:'#e5e7eb';
+    const title=fi?(fi.label+' · Día ciclo '+s.motor.dia+' · Orden '+s.motor.orden):'sin ancla';
+    h+='<div title="'+title+'" style="width:28px;height:36px;border-radius:5px;background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:default">';
+    h+='<span style="font-size:9px;color:#fff;font-weight:700">'+s.d+'</span>';
+    h+='<span style="font-size:9px;color:#fff;opacity:.85">'+(fi?fi.short:'—')+'</span>';
+    h+='</div>';
+  });
+  h+='</div>';
+
+  // Legend
+  h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+  Object.entries(FASE_INFO).slice(0,p.ruta==='energia'?4:5).forEach(function(entry){var k=entry[0];var v=entry[1];
+    h+='<div style="display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border-radius:3px;background:'+v.color+'"></div><span style="font-size:11px;color:'+C.tl+'">'+v.label+'</span></div>';
+  });
+  h+='</div>';
+
+  // Table
+  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+  h+='<thead><tr style="background:'+C.bk+';color:#fff">';
+  h+='<th style="padding:8px 10px;text-align:left;border-radius:8px 0 0 0">Fecha</th>';
+  h+='<th style="padding:8px 10px;text-align:left">Sesión manual</th>';
+  h+='<th style="padding:8px 10px;text-align:left">Motor (fase · día · orden)</th>';
+  h+='<th style="padding:8px 10px;text-align:left;border-radius:0 8px 0 0">Tarjeta</th>';
+  h+='</tr></thead><tbody>';
+  rows.forEach(function(row,ri){
+    const bg=ri%2===0?C.wh:'#f9f9f8';
+    h+='<tr style="background:'+bg+'">';
+    // Col 1: fecha
+    h+='<td style="padding:8px 10px;color:'+C.td+';font-weight:600">'+row.diaSem+' '+row.d+' sep</td>';
+    // Col 2: scheduled session
+    if(row.sched){
+      const st=row.sched.sessions?row.sched.sessions.session_type:'—';
+      h+='<td style="padding:8px 10px;color:'+C.td+'">'+esc(st.replace(/[^\w\s\-\·]/g,'').trim())+'</td>';
+    } else {
+      h+='<td style="padding:8px 10px;color:'+C.g2+'">sin sesión</td>';
+    }
+    // Col 3: motor
+    if(row.motor){
+      const fi=FASE_INFO[row.motor.fase]||{color:C.g2,short:'?',label:'?'};
+      h+='<td style="padding:8px 10px">';
+      h+='<span style="background:'+fi.color+';color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700">'+fi.short+'</span>';
+      h+=' <span style="color:'+C.tl+'">día '+row.motor.dia+' · orden '+row.motor.orden+'</span>';
+      h+='</td>';
+    } else {
+      h+='<td style="padding:8px 10px;color:'+C.g2+'">sin ancla</td>';
+    }
+    // Col 4: tarjeta (empty table = sin tarjeta)
+    h+='<td style="padding:8px 10px;color:'+C.g2+'"><em>sin tarjeta</em></td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
 }
 
 function rPrograms(){
@@ -636,7 +808,7 @@ async function saveSchedule(){
 }
 
 window.set=set;window.doLogin=doLogin;window.logout=logout;window.loadData=loadData;
-window.openClient=openClient;window.assignProg=assignProg;window.openSchedule=openSchedule;window.setScheduleDay=setScheduleDay;window.changeMonth=changeMonth;window.autoFill=autoFill;window.saveSchedule=saveSchedule;window.openProg=openProg;window.openSess=openSess;
+window.openClient=openClient;window.loadMotorClient=loadMotorClient;window.assignProg=assignProg;window.openSchedule=openSchedule;window.setScheduleDay=setScheduleDay;window.changeMonth=changeMonth;window.autoFill=autoFill;window.saveSchedule=saveSchedule;window.openProg=openProg;window.openSess=openSess;
 window.saveProgram=saveProgram;window.delProg=delProg;window.saveSession=saveSession;window.delSess=delSess;
 window.saveExercise=saveExercise;window.updateVideo=updateVideo;window.delEx=delEx;
 
