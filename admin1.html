@@ -28,7 +28,7 @@ let S={
   view:'login',tab:'clients',loading:false,error:'',
   user:null,clients:[],programs:[],
   selClient:null,selProgram:null,selSession:null,
-  clientMeas:[],clientCycle:[],clientSymptoms:[],clientMeno:[],motorClient:null,motorRows:[],motorLoading:false,clientSchedule:{},scheduleSessions:[],scheduleYear:new Date().getFullYear(),scheduleMonth:new Date().getMonth(),
+  clientMeas:[],clientCycle:[],clientSymptoms:[],clientMeno:[],motorClient:null,motorRows:[],motorLoading:false,pForm:{name:'',email:'',pass:'',ruta:'',plan:'presencial'},clientSchedule:{},scheduleSessions:[],scheduleYear:new Date().getFullYear(),scheduleMonth:new Date().getMonth(),
   pForm:{show:false,name:'',desc:''},
   sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'},
   eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:''},
@@ -586,158 +586,143 @@ function rSessionDetail(){
 }
 
 // ── ADD CLIENT ──────────────────────────────────────────────
-function rAddClient(){return`
-  <div style="background:${C.wh};border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
-    <p style="font-weight:900;font-size:17px;margin-bottom:4px">➕ Agregar clienta</p>
-    <p style="font-size:13px;color:${C.g2};margin-bottom:16px;line-height:1.6">Crea la cuenta desde el dashboard de Supabase y luego asígnale un programa aquí.</p>
-    <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:14px;margin-bottom:16px">
-      <p style="font-weight:700;font-size:13px;color:#b45309;margin-bottom:8px">📋 Cómo agregar una clienta:</p>
-      <ol style="font-size:13px;color:#78350f;line-height:2.2;padding-left:18px">
-        <li>Ve a <strong>supabase.com</strong> → tu proyecto</li>
-        <li>Clic en <strong>Authentication → Users</strong></li>
-        <li>Clic en <strong>"Add user" → "Create new user"</strong></li>
-        <li>Ingresa el correo y una contraseña temporal</li>
-        <li>En <em>User metadata</em> escribe: <code style="background:#fef3c7;padding:2px 6px;border-radius:4px;font-size:12px">{"name":"Nombre de la clienta"}</code></li>
-        <li>Guarda y vuelve aquí → pestaña 👥 Clientas</li>
-        <li>Asígnale el programa desde su perfil</li>
-      </ol>
-    </div>
-    <button onclick="loadData()" style="width:100%;padding:11px;background:${C.bk};color:${C.wh};border:none;border-radius:10px;font-weight:700;font-size:13px">
-      🔄 Actualizar lista
-    </button>
-  </div>`}
+function rAddClient(){
+  const pForm=S.pForm||{};
+  const err=pForm.error||'';
+  const ok=pForm.ok||'';
+  return '<div style="max-width:480px;margin:0 auto">'
+    +'<div style="background:'+C.wh+';border-radius:14px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)">'
+    +'<p style="font-weight:900;font-size:17px;margin-bottom:16px">➕ Nueva clienta</p>'
+    +(err?'<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:9px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#dc2626">'+esc(err)+'</div>':'')
+    +(ok?'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:9px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#16a34a">'+esc(ok)+'</div>':'')
+    +'<div style="display:flex;flex-direction:column;gap:11px">'
+    // Nombre
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Nombre</label>'
+    +'<input id="ac-name" type="text" placeholder="Nombre completo" value="'+(pForm.name||'')+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    // Email
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Correo</label>'
+    +'<input id="ac-email" type="email" placeholder="correo@ejemplo.com" value="'+(pForm.email||'')+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    // Contraseña temporal
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Contraseña temporal</label>'
+    +'<input id="ac-pass" type="text" placeholder="Mínimo 6 caracteres" value="'+(pForm.pass||'')+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    // Plan
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Plan</label>'
+    +'<select id="ac-plan" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box">'
+    +'<option value="presencial"'+(pForm.plan==='presencial'?' selected':'')+'>Presencial</option>'
+    +'<option value="corona"'+(pForm.plan==='corona'?' selected':'')+'>Corona</option>'
+    +'<option value="compania"'+(pForm.plan==='compania'?' selected':'')+'>Compañía</option>'
+    +'<option value="brujula"'+(pForm.plan==='brujula'?' selected':'')+'>Brújula</option>'
+    +'</select></div>'
+    // Ruta
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Ruta</label>'
+    +'<select id="ac-ruta" onchange="S.pForm=Object.assign({},S.pForm||{},{ruta:this.value});render()" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box">'
+    +'<option value="">— Seleccionar —</option>'
+    +'<option value="lunar"'+(pForm.ruta==='lunar'?' selected':'')+'>Lunar (ciclo regular)</option>'
+    +'<option value="energia"'+(pForm.ruta==='energia'?' selected':'')+'>Energía (anticonceptivos / irregular / perimenopausia / menopausia)</option>'
+    +'</select></div>'
+    // Sub-perfil (solo si ruta = energia)
+    +((pForm.ruta==='energia')?('<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Sub-perfil</label>'
+    +'<select id="ac-sub" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box">'
+    +'<option value="">— Seleccionar —</option>'
+    +'<option value="anticonceptivo_caja">Anticonceptivo con caja</option>'
+    +'<option value="anticonceptivo_sin_caja">Anticonceptivo sin caja (implante, DIU)</option>'
+    +'<option value="irregular">Ciclo irregular</option>'
+    +'<option value="perimenopausia">Perimenopausia</option>'
+    +'<option value="menopausia">Menopausia</option>'
+    +'</select></div>'):'')
+    // Nivel
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Nivel</label>'
+    +'<select id="ac-nivel" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box">'
+    +'<option value="1">1 — Principiante</option>'
+    +'<option value="2" selected>2 — Intermedio</option>'
+    +'<option value="3">3 — Avanzado</option>'
+    +'</select></div>'
+    // Duración del ciclo
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Duración del ciclo (días)</label>'
+    +'<input id="ac-dur" type="number" min="21" max="40" value="'+(pForm.dur||28)+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    // Ancla
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Ancla (último día 1 del ciclo)</label>'
+    +'<input id="ac-ancla" type="date" value="'+(pForm.ancla||'')+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    // Escenario por defecto
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Escenario por defecto</label>'
+    +'<select id="ac-esc" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box">'
+    +'<option value="A">A — Casa (peso corporal)</option>'
+    +'<option value="B">B — Mancuernas y bandas</option>'
+    +'<option value="C" selected>C — Gimnasio</option>'
+    +'</select></div>'
+    // Días presenciales
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Días presenciales (opcional, separados por coma)</label>'
+    +'<input id="ac-dias" type="text" placeholder="ej. lun,mie,vie" value="'+(pForm.dias||'')+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    +'</div>'
+    +'<button onclick="doAddClient()" style="width:100%;margin-top:16px;padding:13px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">'+(S.loading?'Creando...':'Crear clienta')+'</button>'
+    +'</div></div>';
+}
 
-// ── ACTIONS ─────────────────────────────────────────────────
-const ADMIN_EMAIL='brayanpedrazatrainer@gmail.com';
+async function doAddClient(){
+  const name  = document.getElementById('ac-name')?.value?.trim();
+  const email = document.getElementById('ac-email')?.value?.trim();
+  const pass  = document.getElementById('ac-pass')?.value?.trim();
+  const plan  = document.getElementById('ac-plan')?.value;
+  const ruta  = document.getElementById('ac-ruta')?.value;
+  const sub   = document.getElementById('ac-sub')?.value||null;
+  const nivel = parseInt(document.getElementById('ac-nivel')?.value)||2;
+  const dur   = parseInt(document.getElementById('ac-dur')?.value)||28;
+  const ancla = document.getElementById('ac-ancla')?.value||null;
+  const esc   = document.getElementById('ac-esc')?.value||'C';
+  const dias  = document.getElementById('ac-dias')?.value?.trim();
+  const diasArr = dias?dias.split(',').map(d=>d.trim()).filter(Boolean):null;
 
-async function doLogin(){
-  const email=document.getElementById('le')?.value?.trim();
-  const pass=document.getElementById('lp')?.value;
-  if(!email||!pass){set({error:'Completa todos los campos'});return}
-  set({loading:true,error:''});
-  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
-  if(error){set({loading:false,error:'Correo o contraseña incorrectos'});return}
-  if(data.user.email.toLowerCase()!==ADMIN_EMAIL.toLowerCase()){
-    await sb.auth.signOut();
-    set({loading:false,view:'no_admin'});
-    return;
+  if(!name||!email||!pass){
+    set({pForm:{...(S.pForm||{}),error:'Nombre, correo y contraseña son obligatorios.'}});return;
   }
-  S.user=data.user;
-  await loadData();
+  if(!ruta){
+    set({pForm:{...(S.pForm||{}),error:'Selecciona la ruta (lunar o energía).'}});return;
+  }
+  set({loading:true,pForm:{...(S.pForm||{}),error:'',ok:''}});
+
+  try {
+    // 1. Create auth user via admin API (uses service role or admin endpoint)
+    // Supabase JS client createUser is only in service role SDK
+    // We use signUp + immediate confirmation via update
+    const {data:authData, error:authErr} = await sb.auth.admin
+      ? await sb.auth.admin.createUser({email, password:pass, email_confirm:true})
+      : {data:null, error:{message:'Admin API no disponible en cliente anon'}};
+
+    if(authErr){
+      // Fallback: use signUp and confirm manually
+      const {data:signData, error:signErr} = await sb.auth.signUp({email,password:pass});
+      if(signErr) throw new Error(signErr.message);
+      const uid = signData?.user?.id;
+      if(!uid) throw new Error('No se obtuvo el ID del usuario');
+      // Confirm email via profiles update (anon key can't confirm, but profile insert works)
+      await sb.from('profiles').upsert({
+        id:uid, name, plan, ruta,
+        sub_perfil:sub||null, nivel, duracion_ciclo:dur,
+        ancla:ancla||null, escenario_default:esc,
+        dias_presenciales:diasArr||null
+      });
+      set({loading:false,pForm:{name:'',email:'',pass:'',ruta:'',plan:'presencial',error:'',
+        ok:'✅ Cuenta creada. Pídele a '+name+' que confirme su correo antes de entrar, o confirma el email manualmente en Supabase > Authentication > Users.'}});
+    } else {
+      const uid = authData?.user?.id;
+      if(uid){
+        await sb.from('profiles').upsert({
+          id:uid, name, plan, ruta,
+          sub_perfil:sub||null, nivel, duracion_ciclo:dur,
+          ancla:ancla||null, escenario_default:esc,
+          dias_presenciales:diasArr||null
+        });
+      }
+      set({loading:false,pForm:{name:'',email:'',pass:'',ruta:'',plan:'presencial',error:'',
+        ok:'✅ Clienta creada y correo confirmado automáticamente. Ya puede entrar a la app.'}});
+    }
+    // Reload client list
+    await loadData();
+  } catch(e){
+    set({loading:false,pForm:{...(S.pForm||{}),error:'Error: '+e.message}});
+  }
 }
 
-async function loadData(){
-  set({loading:true});
-  const [cr,pr,cpr]=await Promise.all([
-    sb.from('profiles').select('*').neq('is_admin',true),
-    sb.from('programs').select('*, sessions(*, exercises(*))').order('created_at'),
-    sb.from('client_programs').select('*'),
-  ]);
-  const assignments=cpr.data||[];
-  const clients=(cr.data||[]).map(c=>{
-    const cp=assignments.find(a=>a.client_id===c.id);
-    return {...c,prog_id:cp?.program_id||null};
-  });
-  set({loading:false,view:'main',clients,programs:pr.data||[]});
-}
-
-async function openClient(id){
-  const c=S.clients.find(x=>x.id===id);
-  set({loading:true});
-  const [mr,cyc,sym,meno]=await Promise.all([
-    sb.from('measurements').select('*').eq('client_id',id).order('measurement_date',{ascending:false}).limit(5),
-    sb.from('cycle_logs').select('*').eq('client_id',id).order('created_at',{ascending:false}).limit(5),
-    sb.from('symptom_logs').select('*').eq('client_id',id).order('log_date',{ascending:false}).limit(10),
-    sb.from('meno_logs').select('*').eq('client_id',id).order('log_date',{ascending:false}).limit(10),
-  ]);
-  set({loading:false,selClient:c,clientMeas:mr.data||[],clientCycle:cyc.data||[],clientSymptoms:sym.data||[],clientMeno:meno.data||[]});
-}
-
-async function assignProg(clientId,progId){
-  if(!progId){await sb.from('client_programs').delete().eq('client_id',clientId);}
-  else{await sb.from('client_programs').upsert({client_id:clientId,program_id:progId},{onConflict:'client_id,program_id'});}
-  S.selClient={...S.selClient,prog_id:progId};
-  await loadData();
-  set({selClient:{...S.selClient,prog_id:progId}});
-}
-
-function openProg(id){const p=S.programs.find(x=>x.id===id);if(p)set({selProgram:p})}
-
-function openSess(id){
-  for(const p of S.programs){const s=(p.sessions||[]).find(x=>x.id===id);if(s){set({selSession:s});return}}
-}
-
-async function saveProgram(){
-  const name=document.getElementById('pf-name')?.value?.trim();
-  const desc=document.getElementById('pf-desc')?.value?.trim()||'';
-  if(!name)return;
-  set({loading:true});
-  await sb.from('programs').insert({name,description:desc});
-  await loadData();
-  set({pForm:{show:false,name:'',desc:''}});
-}
-
-async function delProg(id){
-  if(!confirm('¿Eliminar este programa y todas sus sesiones?'))return;
-  set({loading:true});
-  await sb.from('programs').delete().eq('id',id);
-  await loadData();
-}
-
-async function saveSession(progId){
-  const week=parseInt(document.getElementById('sf-week')?.value||1);
-  const day=parseInt(document.getElementById('sf-day')?.value||1);
-  const type=document.getElementById('sf-type')?.value?.trim()||'Cuerpo Completo';
-  set({loading:true});
-  await sb.from('sessions').insert({program_id:progId,week_number:week,day_number:day,session_type:type});
-  await loadData();
-  const updProg=S.programs.find(p=>p.id===progId);
-  set({selProgram:updProg,sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'}});
-}
-
-async function delSess(id){
-  if(!confirm('¿Eliminar esta sesión y sus ejercicios?'))return;
-  const progId=S.selProgram?.id;
-  set({loading:true});
-  await sb.from('sessions').delete().eq('id',id);
-  await loadData();
-  const updProg=S.programs.find(p=>p.id===progId);
-  set({selProgram:updProg,selSession:null});
-}
-
-async function saveExercise(sessId){
-  const name=document.getElementById('ef-name')?.value?.trim();
-  const muscle=document.getElementById('ef-muscle')?.value?.trim()||'';
-  const sets=parseInt(document.getElementById('ef-sets')?.value||3);
-  const reps=document.getElementById('ef-reps')?.value?.trim()||'8-10';
-  const video=document.getElementById('ef-video')?.value?.trim()||'';
-  if(!name)return;
-  set({loading:true});
-  await sb.from('exercises').insert({session_id:sessId,name,muscle_group:muscle,sets_count:sets,reps_range:reps,video_url:video,order_index:Date.now()});
-  await loadData();
-  for(const p of S.programs){const s=(p.sessions||[]).find(x=>x.id===sessId);if(s){set({selSession:s,eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:''}});return}}
-}
-
-async function updateVideo(exId,sessId,url){
-  await sb.from('exercises').update({video_url:url}).eq('id',exId);
-  await loadData();
-  for(const p of S.programs){const s=(p.sessions||[]).find(x=>x.id===sessId);if(s){S.selSession=s;render();return}}
-}
-
-async function delEx(exId,sessId){
-  if(!confirm('¿Eliminar este ejercicio?'))return;
-  set({loading:true});
-  await sb.from('exercises').delete().eq('id',exId);
-  await loadData();
-  for(const p of S.programs){const s=(p.sessions||[]).find(x=>x.id===sessId);if(s){set({selSession:s});return}}
-}
-
-async function logout(){
-  await sb.auth.signOut();
-  set({view:'login',user:null,clients:[],programs:[],selClient:null,selProgram:null,selSession:null,error:''});
-}
-
-// Globals
 
 // ── SCHEDULE ACTIONS ─────────────────────────────────────────
 async function openSchedule(clientId){
@@ -807,8 +792,146 @@ async function saveSchedule(){
   alert('✅ Mes guardado correctamente');
 }
 
+
+
+async function loadData(){
+  set({loading:true});
+  const[clientsR,progsR]=await Promise.all([
+    sb.from('profiles').select('*').neq('name',null).order('name'),
+    sb.from('programs').select('*').order('name'),
+  ]);
+  const clients=(clientsR.data||[]).map(function(p){
+    const cp=null; // will load per client
+    return Object.assign({},p,{prog_id:null,prog_name:null});
+  });
+  // Load client_programs for all clients
+  const cpR=await sb.from('client_programs').select('client_id,program_id,programs(name)');
+  const cpMap={};
+  (cpR.data||[]).forEach(function(r){
+    cpMap[r.client_id]={prog_id:r.program_id,prog_name:r.programs?r.programs.name:''};
+  });
+  const clientsWithProg=clients.map(function(c){
+    return Object.assign({},c,cpMap[c.id]||{});
+  });
+  set({loading:false,clients:clientsWithProg,programs:progsR.data||[]});
+}
+
+async function openClient(id){
+  const c=S.clients.find(function(x){return x.id===id;});
+  set({loading:true});
+  const[mr,cyc,sym,meno]=await Promise.all([
+    sb.from('measurements').select('*').eq('client_id',id).order('measurement_date',{ascending:false}).limit(5),
+    sb.from('cycle_logs').select('*').eq('client_id',id).order('created_at',{ascending:false}).limit(5),
+    sb.from('symptom_logs').select('*').eq('client_id',id).order('log_date',{ascending:false}).limit(10),
+    sb.from('meno_logs').select('*').eq('client_id',id).order('log_date',{ascending:false}).limit(10),
+  ]);
+  set({loading:false,selClient:c,clientMeas:mr.data||[],clientCycle:cyc.data||[],clientSymptoms:sym.data||[],clientMeno:meno.data||[]});
+}
+
+async function assignProg(clientId,progId){
+  set({loading:true});
+  await sb.from('client_programs').upsert({client_id:clientId,program_id:progId},{onConflict:'client_id'});
+  await loadData();
+  set({loading:false});
+}
+
+async function openProg(id){
+  set({loading:true});
+  const p=S.programs.find(function(x){return x.id===id;});
+  const sessR=await sb.from('sessions').select('*').eq('program_id',id).order('week_number').order('day_number');
+  set({loading:false,selProgram:Object.assign({},p,{sessions:sessR.data||[]}),selSession:null,view:'prog'});
+}
+
+async function openSess(id){
+  set({loading:true});
+  const sessR=await sb.from('sessions').select('*').eq('id',id).single();
+  const exR=await sb.from('exercises').select('*').eq('session_id',id).order('order_index');
+  set({loading:false,selSession:Object.assign({},sessR.data,{exercises:exR.data||[]}),view:'sess_detail'});
+}
+
+async function saveProgram(name,desc){
+  if(!name)return;
+  set({loading:true});
+  if(S.selProgram&&S.selProgram.id){
+    await sb.from('programs').update({name,description:desc}).eq('id',S.selProgram.id);
+  } else {
+    await sb.from('programs').insert({name,description:desc});
+  }
+  await loadData();
+  set({loading:false,view:'main',selProgram:null});
+}
+
+async function delProg(id){
+  if(!confirm('¿Eliminar este programa? Esta acción no se puede deshacer.'))return;
+  set({loading:true});
+  await sb.from('programs').delete().eq('id',id);
+  await loadData();
+  set({loading:false,selProgram:null,view:'main'});
+}
+
+async function saveSession(progId,week,day,type){
+  set({loading:true});
+  if(S.selSession&&S.selSession.id){
+    await sb.from('sessions').update({week_number:week,day_number:day,session_type:type}).eq('id',S.selSession.id);
+  } else {
+    await sb.from('sessions').insert({program_id:progId,week_number:week,day_number:day,session_type:type});
+  }
+  await openProg(progId);
+}
+
+async function delSess(id,progId){
+  if(!confirm('¿Eliminar esta sesión?'))return;
+  set({loading:true});
+  await sb.from('sessions').delete().eq('id',id);
+  await openProg(progId);
+}
+
+async function saveExercise(sessId,name,muscle,sets,reps,video,order,bloque){
+  set({loading:true});
+  const data={session_id:sessId,name,muscle_group:muscle,sets_count:sets,reps_range:reps,video_url:video||'',order_index:order||1,bloque:bloque||null};
+  if(S.selExercise&&S.selExercise.id){
+    await sb.from('exercises').update(data).eq('id',S.selExercise.id);
+  } else {
+    await sb.from('exercises').insert(data);
+  }
+  await openSess(sessId);
+}
+
+async function updateVideo(exId,url,sessId){
+  await sb.from('exercises').update({video_url:url}).eq('id',exId);
+  if(sessId)await openSess(sessId);
+}
+
+async function delEx(id,sessId){
+  if(!confirm('¿Eliminar este ejercicio?'))return;
+  await sb.from('exercises').delete().eq('id',id);
+  if(sessId)await openSess(sessId);
+}
+
+async function doLogin(){
+  const email=(document.getElementById('le')||{}).value||'';
+  const pass=(document.getElementById('lp')||{}).value||'';
+  if(!email||!pass){set({error:'Ingresa correo y contraseña.'});return;}
+  set({loading:true,error:''});
+  const{error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){set({loading:false,error:error.message});return;}
+  const{data:{user}}=await sb.auth.getUser();
+  if(!user||user.email!=='brayanpedrazatrainer@gmail.com'){
+    await sb.auth.signOut();
+    set({loading:false,error:'No tienes acceso de administrador.'});
+    return;
+  }
+  set({loading:false,user,view:'main',error:''});
+  await loadData();
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  set({view:'login',user:null,clients:[],programs:[],error:''});
+}
+
 window.set=set;window.doLogin=doLogin;window.logout=logout;window.loadData=loadData;
-window.openClient=openClient;window.loadMotorClient=loadMotorClient;window.assignProg=assignProg;window.openSchedule=openSchedule;window.setScheduleDay=setScheduleDay;window.changeMonth=changeMonth;window.autoFill=autoFill;window.saveSchedule=saveSchedule;window.openProg=openProg;window.openSess=openSess;
+window.openClient=openClient;window.loadMotorClient=loadMotorClient;window.doAddClient=doAddClient;window.assignProg=assignProg;window.openSchedule=openSchedule;window.setScheduleDay=setScheduleDay;window.changeMonth=changeMonth;window.autoFill=autoFill;window.saveSchedule=saveSchedule;window.openProg=openProg;window.openSess=openSess;
 window.saveProgram=saveProgram;window.delProg=delProg;window.saveSession=saveSession;window.delSess=delSess;
 window.saveExercise=saveExercise;window.updateVideo=updateVideo;window.delEx=delEx;
 
