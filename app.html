@@ -475,13 +475,29 @@ function rSess(){
       h+='<div id="nb-'+ex.eid+'" style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:'+(allD?C.pr:'#fde8e8')+';color:'+(allD?C.wh:C.dk)+'">'+(allD?'✓':visN)+'</div>';
       h+='<div style="flex:1">';
       h+='<p style="font-weight:700;font-size:14px;color:'+(allD?C.wh:C.td)+';margin-bottom:2px">'+esc(ex.n)+'</p>';
-      h+='<p style="font-size:11px;color:'+(allD?C.g2:C.tl)+';margin-bottom:9px">'+esc(ex.m)+' · '+n+'×'+esc(ex.reps)+' reps · 60s</p>';
+      const kgText=ex.carga_kg?('<b style="font-size:16px;color:'+(allD?C.wh:C.pr)+';">'+ex.carga_kg+' kg</b> · '):'';
+    const cueText=ex.cue?('<p style="font-size:13px;color:'+(allD?'#fde8e8':'#710D0B')+';font-style:italic;margin-bottom:6px;line-height:1.5">'+esc(ex.cue)+'</p>'):'';
+    const tempoMap={'3-1-1':'Baja contando tres','2-1-2':'Baja en dos, sube en dos','4-1-1':'Baja lento contando cuatro','1-0-1':'Explosivo'};
+    const tempoText=ex.tempo?(tempoMap[ex.tempo]||ex.tempo):'';
+    h+='<p style="font-size:12px;color:'+(allD?C.g2:C.tl)+';margin-bottom:6px">'+kgText+n+'\xd7'+esc(ex.reps)+' reps</p>';
+    if(tempoText)h+='<p style="font-size:11px;color:'+(allD?C.g2:'#7c3aed')+';margin-bottom:6px">'+tempoText+'</p>';
+    if(cueText)h+=cueText;
       h+='<div style="display:flex;gap:6px;margin-bottom:9px">';
       for(let k=0;k<n;k++){
         const d=S.completions[ex.eid+'_'+k];
         h+='<button id="sb-'+ex.eid+'-'+k+'" onclick="tSet(\''+ex.eid+'\','+k+','+n+')" style="width:37px;height:37px;border-radius:8px;font-weight:700;font-size:12px;border:2px solid '+(d?C.pr:C.g3)+';background:'+(d?C.pr:C.wh)+';color:'+(d?C.wh:C.tl)+'">'+(d?'✓':'S'+(k+1))+'</button>';
       }
       h+='</div>';
+    if(allD){
+      const faseActual=(S.motorTarjeta&&S.motorTarjeta.fase)||'presencial';
+      h+='<div style="margin-bottom:9px">';
+      h+='<p style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:6px">\xbfC\xf3mo se sinti\xf3?</p>';
+      h+='<div style="display:flex;gap:6px">';
+      [{v:1,l:'Sobrada'},{v:2,l:'Justa'},{v:3,l:'Al l\xedmite'}].forEach(function(op){
+        h+='<button data-eid="'+ex.eid+'" data-pat="'+(ex.patron||'')+'" data-esc="'+S.escenario+'" data-fase="'+faseActual+'" data-kg="'+(ex.carga_kg||'')+'" data-ef="'+op.v+'" onclick="registrarEsfuerzo(this.dataset.eid,this.dataset.pat,this.dataset.esc,this.dataset.fase,+this.dataset.kg||null,+this.dataset.ef)" style="flex:1;padding:7px 4px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid #7c3aed;background:#f5f3ff;color:#7c3aed">'+op.l+'</button>';
+      });
+      h+='</div></div>';
+    }
       h+='<button onclick="set({view:\'vid\',vidW:'+S.sessW+',vidS:'+S.sessI+',vidE:'+i+'})" style="background:'+C.bk+';color:'+C.g3+';border:1px solid #3a3330;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600">▶ Ver demostración</button>';
       h+='</div></div></div>';
       i++;
@@ -555,6 +571,17 @@ async function doLogin(){
   await loadClientData();
 }
 
+
+
+// ── CARGA Y ESFUERZO ─────────────────────────────────────────────
+async function registrarEsfuerzo(exerciseId, patron, escenario, fase, kg, esfuerzo){
+  await sb.from('carga_log').insert({
+    client_id:S.user.id, exercise_id:exerciseId,
+    patron:patron||null, escenario:escenario||S.escenario||'C',
+    fase:fase, fecha:today(), kg:kg||null, esfuerzo:esfuerzo
+  });
+  render();
+}
 
 // ── MOTOR DE CICLO ───────────────────────────────────────────────
 // Regla de oro: si existe fila en scheduled_sessions → usarla siempre
@@ -854,7 +881,7 @@ async function markSessionDone(){
     render();
   }
 }
-window.set=set;window.doLogin=doLogin;window.guardarCheckin=guardarCheckin;window.marcarPeriodo=marcarPeriodo;window.borrarCheckin=borrarCheckin;window.seleccionarCheckin=seleccionarCheckin;window.ajustarSemaforo=ajustarSemaforo;window.goToTodaySess=goToTodaySess;window.goToSess=goToSess;window.doLogout=doLogout;window.goBack=goBack;
+window.set=set;window.doLogin=doLogin;window.guardarCheckin=guardarCheckin;window.marcarPeriodo=marcarPeriodo;window.borrarCheckin=borrarCheckin;window.registrarEsfuerzo=registrarEsfuerzo;window.seleccionarCheckin=seleccionarCheckin;window.ajustarSemaforo=ajustarSemaforo;window.goToTodaySess=goToTodaySess;window.goToSess=goToSess;window.doLogout=doLogout;window.goBack=goBack;
 window.saveBleeding=saveBleeding;window.tSym=tSym;window.saveSym=saveSym;
 window.saveMeno=saveMeno;window.tSet=tSet;window.tM=tM;window.saveMed=saveMed;window.today=today;window.markSessionDone=markSessionDone;
 
