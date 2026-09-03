@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Panel Admin — Brayan Pedraza Trainer</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f0f0ee;color:#191211}
+button{cursor:pointer;font-family:inherit}
+input,textarea,select{font-family:inherit}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const {createClient}=supabase;
+const sb=createClient(
+  'https://brqojlcdtzmqfurztbnm.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
+);
+const C={pr:'#c7372c',dk:'#710D0B',bk:'#191211',g2:'#94938f',g3:'#d6d7d2',wh:'#fff'};
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function today(){return new Date().toISOString().split('T')[0]}
+
+let S={
+  view:'login',tab:'clients',loading:false,error:'',
+  user:null,clients:[],programs:[],
+  selClient:null,selProgram:null,selSession:null,
+  clientMeas:[],clientCycle:[],clientSymptoms:[],clientMeno:[],clientCarga:[],motorClient:null,motorRows:[],motorLoading:false,pForm:{name:'',email:'',pass:'',ruta:'',plan:'presencial'},clientSchedule:{},scheduleSessions:[],scheduleYear:new Date().getFullYear(),scheduleMonth:new Date().getMonth(),
+  pForm:{show:false,name:'',desc:''},
+  sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'},
+  eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:'',bloque:'',carga_pct:'',carga_kg:'',tempo:'',cue:''},
+};
+function set(u){Object.assign(S,u);render()}
+
+// ── RENDER ──────────────────────────────────────────────────
+function render(){
+  const app=document.getElementById('app');if(!app)return;
+  if(S.loading){app.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:${C.bk}"><div style="text-align:center"><p style="font-size:40px;margin-bottom:10px">👑</p><p style="color:${C.g2};font-size:14px">Cargando...</p></div></div>`;return}
+  if(S.view==='login'){app.innerHTML=rLogin();return}
+  if(S.view==='no_admin'){app.innerHTML=rNoAdmin();return}
+  app.innerHTML=`
+    <div style="background:${C.bk};padding:14px 18px;position:sticky;top:0;z-index:20">
+      <div style="display:flex;justify-content:space-between;align-items:center;max-width:640px;margin:0 auto">
+        <p style="color:${C.wh};font-weight:900;font-size:16px">👑 Panel Admin</p>
+        <button onclick="logout()" style="background:rgba(255,255,255,.1);border:none;color:${C.g3};padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600">Salir</button>
+      </div>
+    </div>
+    <div style="display:flex;background:${C.bk};border-top:1px solid #2a2523">
+      ${[{k:'clients',l:'👥 Clientas'},{k:'programs',l:'💪 Programas'},{k:'motor',l:'🔬 Motor'},{k:'add',l:'➕ Nueva clienta'}].map(t=>`
+        <button onclick="set({tab:'${t.k}',selClient:null,selProgram:null,selSession:null,pForm:{show:false,name:'',desc:''},sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'},eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:''}})"
+          style="flex:1;padding:10px 0;font-weight:700;font-size:11px;border:none;background:none;color:${S.tab===t.k?C.pr:C.g2};border-bottom:3px solid ${S.tab===t.k?C.pr:'transparent'}">
+          ${t.l}
+        </button>`).join('')}
+    </div>
+    <div style="padding:14px;max-width:640px;margin:0 auto;padding-bottom:40px">
+      ${S.view==='schedule'?rSchedule():S.tab==='clients'?rClients():S.tab==='programs'?rPrograms():S.tab==='motor'?rMotor():rAddClient()}
+    </div>`;
+}
+
+function rLogin(){return`
+<div style="min-height:100vh;background:${C.bk};display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#231d1c;border-radius:18px;padding:28px 20px;width:100%;max-width:380px;border:1px solid #3a3330">
+    <p style="font-size:40px;text-align:center;margin-bottom:12px">👑</p>
+    <p style="font-weight:900;font-size:20px;color:${C.wh};text-align:center;margin-bottom:4px">Panel del Entrenador</p>
+    <p style="font-size:13px;color:${C.g2};text-align:center;margin-bottom:22px">Brayan Pedraza Trainer</p>
+    ${S.error?`<p style="background:#fde8e8;color:${C.pr};border-radius:8px;padding:10px;font-size:13px;margin-bottom:14px;text-align:center">${esc(S.error)}</p>`:''}
+    <p style="font-size:12px;color:${C.g2};margin-bottom:5px">Correo</p>
+    <input id="le" type="email" placeholder="tu@correo.com"
+      style="width:100%;padding:11px 13px;border:2px solid #3a3330;border-radius:10px;font-size:15px;outline:none;margin-bottom:10px;background:#191211;color:${C.wh}"/>
+    <p style="font-size:12px;color:${C.g2};margin-bottom:5px">Contraseña</p>
+    <input id="lp" type="password" placeholder="••••••••"
+      style="width:100%;padding:11px 13px;border:2px solid #3a3330;border-radius:10px;font-size:15px;outline:none;margin-bottom:18px;background:#191211;color:${C.wh}"/>
+    <button onclick="doLogin()" style="width:100%;padding:13px;background:${C.pr};color:${C.wh};border:none;border-radius:11px;font-weight:700;font-size:15px">Ingresar</button>
+  </div>
+</div>`}
+
+function rNoAdmin(){return`
+<div style="min-height:100vh;background:${C.bk};display:flex;align-items:center;justify-content:center;padding:20px;text-align:center">
+  <div>
+    <p style="font-size:40px;margin-bottom:12px">🚫</p>
+    <p style="color:${C.wh};font-size:16px;font-weight:700;margin-bottom:8px">Sin acceso de administrador</p>
+    <p style="color:${C.g2};font-size:13px;margin-bottom:20px">Esta cuenta no tiene permisos de admin.</p>
+    <button onclick="logout()" style="background:${C.pr};color:${C.wh};border:none;border-radius:10px;padding:10px 20px;font-weight:700">Salir</button>
+  </div>
+</div>`}
+
+// ── CLIENTAS ────────────────────────────────────────────────
+function rClients(){
+  if(S.selClient)return rClientDetail();
+  if(S.clients.length===0)return`<div style="background:${C.wh};border-radius:14px;padding:40px 20px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+    <p style="font-size:36px;margin-bottom:10px">👥</p>
+    <p style="font-weight:700;font-size:16px;margin-bottom:4px">Sin clientas aún</p>
+    <p style="font-size:13px;color:${C.g2}">Ve a ➕ Nueva clienta para comenzar.</p>
+  </div>`;
+  return`
+    <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin-bottom:10px">${S.clients.length} clienta${S.clients.length!==1?'s':''}</p>
+    ${S.clients.map(c=>{
+      const prog=S.programs.find(p=>p.id===c.prog_id);
+      return`<div onclick="openClient('${c.id}')" style="background:${C.wh};border-radius:13px;padding:14px 16px;margin-bottom:10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <p style="font-weight:700;font-size:15px">${esc(c.name)}</p>
+            <p style="font-size:12px;color:${C.g2};margin-top:2px">${prog?'💪 '+esc(prog.name):'Sin programa asignado'}</p>
+          </div>
+          <span style="color:${C.g3};font-size:20px">›</span>
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+function rClientDetail(){
+  const c=S.selClient;
+  return`
+    <button onclick="set({selClient:null,clientMeas:[],clientCycle:[]})" style="background:#f3f4f6;border:none;padding:8px 16px;border-radius:9px;font-weight:700;font-size:13px;margin-bottom:14px">← Volver</button>
+    <div style="background:${C.wh};border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+      <p style="font-weight:900;font-size:18px;margin-bottom:12px">👤 ${esc(c.name)}</p>
+      <p style="font-size:12px;color:${C.g2};font-weight:600;margin-bottom:6px">Programa asignado</p>
+      <select id="prog-sel" onchange="assignProg('${c.id}',this.value)"
+        style="width:100%;padding:10px 12px;border:2px solid ${C.g3};border-radius:10px;font-size:14px;background:${C.wh}">
+        <option value="">— Sin programa —</option>
+        ${S.programs.map(p=>`<option value="${p.id}" ${p.id===c.prog_id?'selected':''}>${esc(p.name)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="margin-top:10px">
+      <button onclick="openSchedule('${c.id}')" style="width:100%;padding:11px;background:${C.bk};color:${C.wh};border:none;border-radius:10px;font-weight:700;font-size:13px">📅 Programar mes</button>
+    </div>
+    ${S.clientMeas.length>0?`
+      <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:14px 0 8px">Últimas medidas</p>
+      ${S.clientMeas.slice(0,3).map(m=>`
+        <div style="background:${C.wh};border-radius:12px;padding:13px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+          <p style="font-weight:700;font-size:13px;margin-bottom:8px">📅 ${m.measurement_date}</p>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            ${m.pecho?`<div><p style="font-size:10px;color:${C.g2}">Pecho</p><p style="font-weight:700;font-size:14px">${m.pecho}cm</p></div>`:''}
+            ${m.cintura?`<div><p style="font-size:10px;color:${C.g2}">Cintura</p><p style="font-weight:700;font-size:14px">${m.cintura}cm</p></div>`:''}
+            ${m.gluteo?`<div><p style="font-size:10px;color:${C.g2}">Glúteo</p><p style="font-weight:700;font-size:14px">${m.gluteo}cm</p></div>`:''}
+            ${m.fat_pct?`<div><p style="font-size:10px;color:${C.g2}">% Fat</p><p style="font-weight:700;font-size:14px">${m.fat_pct}%</p></div>`:''}
+            ${m.muscle_pct?`<div><p style="font-size:10px;color:${C.g2}">% Muscle</p><p style="font-weight:700;font-size:14px">${m.muscle_pct}%</p></div>`:''}
+            ${m.body_age?`<div><p style="font-size:10px;color:${C.g2}">Body Age</p><p style="font-weight:700;font-size:14px">${m.body_age}</p></div>`:''}
+            ${m.imc?`<div><p style="font-size:10px;color:${C.g2}">IMC</p><p style="font-weight:700;font-size:14px">${m.imc}</p></div>`:''}
+            ${m.visceral_fat?`<div><p style="font-size:10px;color:${C.g2}">Visceral Fat</p><p style="font-weight:700;font-size:14px">${m.visceral_fat}</p></div>`:''}
+          </div>
+          ${m.notes?`<p style="margin-top:8px;font-size:12px;color:${C.g2};font-style:italic">"${esc(m.notes)}"</p>`:''}
+        </div>`).join('')}
+    `:''}
+    ${S.clientCycle.length>0?`
+      <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:14px 0 8px">Últimos registros de ciclo</p>
+      ${S.clientCycle.slice(0,5).map(cy=>`
+        <div style="background:${C.wh};border-radius:12px;padding:12px 14px;margin-bottom:7px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+          <p style="font-size:13px">🌙 Último sangrado: <strong>${cy.last_bleeding_date}</strong></p>
+        </div>`).join('')}
+    `:''}
+    ${S.clientSymptoms.length>0?`
+      <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:14px 0 8px">📋 Síntomas recientes</p>
+      ${S.clientSymptoms.slice(0,5).map(s=>`
+        <div style="background:${C.wh};border-radius:12px;padding:12px 14px;margin-bottom:7px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+          <p style="font-weight:700;font-size:13px;margin-bottom:5px">📅 ${s.log_date}</p>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px">
+            ${(s.symptoms||[]).map(k=>`<span style="background:#f5f0fd;color:#7c3aed;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600">${k}</span>`).join('')}
+          </div>
+          ${s.notes?`<p style="font-size:12px;color:${C.g2};font-style:italic">"${esc(s.notes)}"</p>`:''}
+        </div>`).join('')}
+    `:''}
+    ${S.clientCarga&&S.clientCarga.length>0?`
+      <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:14px 0 8px">📊 Historial de carga</p>
+      ${S.clientCarga.slice(0,10).map(r=>`
+        <div style="background:${C.wh};border-radius:10px;padding:10px 14px;margin-bottom:6px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <p style="font-weight:700;font-size:12px;color:${C.td}">${r.fecha} · Fase: ${r.fase||'—'}</p>
+            <p style="font-size:11px;color:${C.g2}">${r.kg?r.kg+' kg':'sin kg'} · ${r.escenario||'—'}</p>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${r.esfuerzo===1?'#16a34a':r.esfuerzo===3?'#dc2626':'#ca8a04'}">${r.esfuerzo===1?'Sobrada 💪':r.esfuerzo===2?'Justa ✅':'Al límite ⚠️'}</span>
+        </div>`).join('')}
+    `:''}
+    ${S.clientMeno.length>0?`
+      <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:14px 0 8px">👑 Bienestar — Perimenopausia</p>
+      ${S.clientMeno.slice(0,5).map(m=>`
+        <div style="background:${C.wh};border-radius:12px;padding:13px;margin-bottom:7px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+          <p style="font-weight:700;font-size:13px;margin-bottom:8px">📅 ${m.log_date}</p>
+          ${m.energia?`<p style="font-size:11px;color:${C.g2};margin-bottom:2px">⚡ Energía</p><p style="font-size:13px;margin-bottom:8px">${esc(m.energia)}</p>`:''}
+          ${m.sueno?`<p style="font-size:11px;color:${C.g2};margin-bottom:2px">😴 Sueño</p><p style="font-size:13px;margin-bottom:8px">${esc(m.sueno)}</p>`:''}
+          ${m.emocional?`<p style="font-size:11px;color:${C.g2};margin-bottom:2px">💭 Emocional</p><p style="font-size:13px;margin-bottom:8px">${esc(m.emocional)}</p>`:''}
+          ${m.tratamiento?`<p style="font-size:11px;color:${C.g2};margin-bottom:2px">💊 Tratamiento</p><p style="font-size:13px">${esc(m.tratamiento)}</p>`:''}
+        </div>`).join('')}
+    `:''}`;
+}
+
+// ── PROGRAMAS ───────────────────────────────────────────────
+
+// ── SCHEDULE VIEW ────────────────────────────────────────────
+const PHASES_SC=[
+  {k:'menstrual',r:[1,5],e:'🌑',c:'#be185d',label:'Menstrual'},
+  {k:'folicular',r:[6,13],e:'🌓',c:'#1d4ed8',label:'Folicular'},
+  {k:'ovulatoria',r:[14,16],e:'🌕',c:'#b45309',label:'Ovulatoria'},
+  {k:'lutea',r:[17,28],e:'🌗',c:'#7c3aed',label:'Lútea'},
+];
+function getCycleDayForDate(date,lastBleed,len){
+  if(!lastBleed)return null;
+  const diff=Math.floor((new Date(date)-new Date(lastBleed))/86400000)+5;
+  if(diff<1)return null;
+  return((diff-1)%(len||28))+1;
+}
+function getPhaseForDate(date,lastBleed,len){
+  const d=getCycleDayForDate(date,lastBleed,len);
+  if(!d)return null;
+  return PHASES_SC.find(p=>d>=p.r[0]&&d<=p.r[1])||PHASES_SC[3];
+}
+function suggestSession(sessions,phase){
+  if(!phase||!sessions||!sessions.length)return '';
+  const k=phase.k;
+  if(k==='menstrual'){const s=sessions.find(x=>/suave/i.test(x.session_type)&&!/abdomen/i.test(x.session_type));return s?s.id:'';}
+  if(k==='folicular'){const s=sessions.find(x=>/principal.*tren inf/i.test(x.session_type));return s?s.id:'';}
+  if(k==='ovulatoria'){const s=sessions.find(x=>/cuerpo completo|integrad/i.test(x.session_type));return s?s.id:'';}
+  if(k==='lutea'){const s=sessions.find(x=>/suave/i.test(x.session_type)&&!/abdomen/i.test(x.session_type));return s?s.id:'';}
+  return '';
+}
+function getDaysInMonth(year,month){
+  const days=[];const d=new Date(year,month,1);
+  while(d.getMonth()===month){days.push(new Date(d));d.setDate(d.getDate()+1);}
+  return days;
+}
+const MONTHS_ES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DAYS_ES=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+function rSchedule(){
+  const c=S.selClient;
+  const lastBleed=S.clientCycle[0]?.last_bleeding_date||null;
+  const cycleLen=S.clientCycle[0]?.cycle_length||28;
+  const days=getDaysInMonth(S.scheduleYear,S.scheduleMonth);
+  const monthLabel=MONTHS_ES[S.scheduleMonth]+' '+S.scheduleYear;
+  const sessions=S.scheduleSessions.filter(s=>!/abdomen/i.test(s.session_type));
+  
+  return `
+    <button onclick="set({view:'main',selClient:S.selClient})" style="background:#f3f4f6;border:none;padding:8px 16px;border-radius:9px;font-weight:700;font-size:13px;margin-bottom:14px">← Volver</button>
+    <div style="background:${C.wh};border-radius:14px;padding:15px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+      <p style="font-weight:900;font-size:17px;margin-bottom:12px">📅 Programar mes · ${esc(c.name)}</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <button onclick="changeMonth(-1)" style="background:#f3f4f6;border:none;padding:8px 14px;border-radius:9px;font-weight:700">←</button>
+        <span style="font-weight:700;font-size:15px">${monthLabel}</span>
+        <button onclick="changeMonth(1)" style="background:#f3f4f6;border:none;padding:8px 14px;border-radius:9px;font-weight:700">→</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button onclick="autoFill()" style="flex:1;padding:10px;background:${C.pr};color:#fff;border:none;border-radius:9px;font-weight:700;font-size:13px">✨ Auto-rellenar ciclo</button>
+        <button onclick="saveSchedule()" style="flex:1;padding:10px;background:${C.bk};color:#fff;border:none;border-radius:9px;font-weight:700;font-size:13px">💾 Guardar mes</button>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${days.map(day=>{
+        const dateStr=day.toISOString().split('T')[0];
+        const phase=getPhaseForDate(dateStr,lastBleed,cycleLen);
+        const dayName=DAYS_ES[day.getDay()];
+        const dayNum=day.getDate();
+        const assigned=S.clientSchedule[dateStr]||'';
+        const assignedSess=sessions.find(s=>s.id===assigned);
+        return `<div style="background:${C.wh};border-radius:11px;padding:11px 13px;box-shadow:0 1px 3px rgba(0,0,0,.07);display:flex;gap:10px;align-items:center">
+          <div style="min-width:60px">
+            <p style="font-weight:700;font-size:13px;color:${C.td}">${dayName} ${dayNum}</p>
+            ${phase?`<p style="font-size:11px;color:${phase.c}">${phase.e} ${phase.label}</p>`:`<p style="font-size:11px;color:${C.g2}">—</p>`}
+          </div>
+          <select onchange="setScheduleDay('${dateStr}',this.value)"
+            style="flex:1;padding:7px 10px;border:1.5px solid ${C.g3};border-radius:8px;font-size:12px;color:${C.td};background:#fff">
+            <option value="">— Descanso —</option>
+            ${sessions.map(s=>`<option value="${s.id}" ${assigned===s.id?'selected':''}>${esc(s.session_type.replace(/[🌑🌓🌕🌗⚠]/g,'').trim())}</option>`).join('')}
+          </select>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+
+// ── MOTOR COMPARATIVO ─────────────────────────────────────────────
+const FASE_INFO={
+  luna_nueva: {color:'#be185d',label:'Luna Nueva',short:'LN',e:'🌑'},
+  creciente:  {color:'#1d4ed8',label:'Creciente', short:'CR',e:'🌓'},
+  llena:      {color:'#b45309',label:'Llena',     short:'LL',e:'🌕'},
+  menguante_a:{color:'#7c3aed',label:'Meng A',    short:'MA',e:'🌗'},
+  menguante_b:{color:'#374151',label:'Meng B',    short:'MB',e:'🌘'},
+  semana_1:   {color:'#059669',label:'Semana 1',  short:'S1',e:'1️⃣'},
+  semana_2:   {color:'#dc2626',label:'Semana 2',  short:'S2',e:'2️⃣'},
+  semana_3:   {color:'#7c3aed',label:'Semana 3',  short:'S3',e:'3️⃣'},
+  semana_4:   {color:'#0891b2',label:'Semana 4',  short:'S4',e:'4️⃣'},
+};
+
+function adminMapearFaseLunar(dia,dur){
+  if(dur<22||dur>40)return{fase:'menguante_b',orden:1};
+  const r={
+    luna_nueva:[1,5],creciente:[6,dur-15],llena:[dur-14,dur-12],
+    menguante_a:[dur-11,dur-5],menguante_b:[dur-4,dur]
+  };
+  const mx={luna_nueva:5,creciente:8,llena:3,menguante_a:7,menguante_b:5};
+  const fases=Object.keys(r);for(let fi=0;fi<fases.length;fi++){const f=fases[fi];const ini=r[f][0];const fin=r[f][1];
+    if(dia>=ini&&dia<=fin){return{fase:f,orden:((dia-ini)%mx[f])+1};}}
+  return{fase:'menguante_b',orden:1};
+}
+
+function calcMotorPhase(perfil,fecha){
+  if(!perfil||!perfil.ancla)return null;
+  const ancla=new Date(perfil.ancla+'T00:00:00');
+  const hoy=new Date(fecha+'T00:00:00');
+  const dias=Math.floor((hoy-ancla)/86400000);
+  if(dias<0)return null;
+  if(perfil.ruta==='energia'){
+    const db=(dias%28)+1;
+    const semana=Math.ceil(db/7);
+    return{fase:'semana_'+semana,dia:db,orden:((db-1)%7)+1};
+  }
+  const dur=perfil.duracion_ciclo||28;
+  let diaCiclo=dias+1;
+  if(diaCiclo>dur){
+    return{fase:'menguante_b',dia:dur,orden:(((diaCiclo-dur)-1)%5)+1};
+  }
+  const r=adminMapearFaseLunar(diaCiclo,dur);
+  return{fase:r.fase,dia:diaCiclo,orden:r.orden};
+}
+
+function buildStrip(perfil){
+  const strip=[];
+  for(let d=1;d<=30;d++){
+    const fecha='2026-09-'+String(d).padStart(2,'0');
+    const r=calcMotorPhase(perfil,fecha);
+    strip.push({d,fecha,motor:r});
+  }
+  return strip;
+}
+
+async function loadMotorClient(clientId){
+  set({motorLoading:true});
+  const c=S.clients.find(x=>x.id===clientId);
+  // Load extended profile (motor fields)
+  const[profR,schedR]=await Promise.all([
+    sb.from('profiles').select('ruta,sub_perfil,ancla,duracion_ciclo,nivel').eq('id',clientId).single(),
+    sb.from('scheduled_sessions').select('*,sessions(session_type)').eq('client_id',clientId)
+      .gte('scheduled_date','2026-09-01').lte('scheduled_date','2026-09-30').order('scheduled_date'),
+  ]);
+  const perfil=Object.assign({},c,profR.data||{});
+  const schedMap={};
+  (schedR.data||[]).forEach(function(r){schedMap[r.scheduled_date]=r;});
+  // Build 30 rows
+  const DIAS_ES=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const rows=[];
+  for(let d=1;d<=30;d++){
+    const fecha='2026-09-'+String(d).padStart(2,'0');
+    const dt=new Date(fecha+'T12:00:00');
+    const diaSem=DIAS_ES[dt.getDay()];
+    const sched=schedMap[fecha]||null;
+    const motor=calcMotorPhase(perfil,fecha);
+    rows.push({d,fecha,diaSem,sched,motor});
+  }
+  set({motorLoading:false,motorClient:{perfil,rows}});
+}
+
+function rMotor(){
+  if(S.motorLoading)return '<div style="text-align:center;padding:40px"><p style="font-size:32px">🔬</p><p>Calculando...</p></div>';
+  const mc=S.motorClient;
+  // Client selector
+  let h='<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:'+C.g2+';margin-bottom:10px">Seleccionar clienta</p>';
+  h+='<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">';
+  (S.clients||[]).forEach(function(c){
+    const isSel=mc&&mc.perfil&&mc.perfil.id===c.id;
+    h+='<button data-cid="'+c.id+'" onclick="loadMotorClient(this.dataset.cid)" style="text-align:left;padding:10px 14px;border-radius:10px;border:2px solid '+(isSel?C.pr:C.g3)+';background:'+(isSel?'#fde8e8':C.wh)+';color:'+(isSel?C.pr:C.td)+';font-weight:'+(isSel?700:400)+';font-size:13px">'+esc(c.name)+'</button>';
+  });
+  h+='</div>';
+  if(!mc)return h;
+  const p=mc.perfil;
+  const rows=mc.rows;
+  const strip=buildStrip(p);
+
+  // Client header
+  h+='<div style="background:'+C.bk+';border-radius:13px;padding:14px;margin-bottom:14px;color:#fff">';
+  h+='<p style="font-weight:900;font-size:17px;margin-bottom:4px">'+esc(p.name)+'</p>';
+  if(p.ancla){
+    h+='<p style="font-size:12px;color:'+C.g2+'">Ruta: <b style="color:#fff">'+(p.ruta||'—')+'</b> · Ancla: <b style="color:#fff">'+p.ancla+'</b> · Ciclo: <b style="color:#fff">'+(p.duracion_ciclo||28)+' días</b></p>';
+  } else {
+    h+='<p style="font-size:12px;color:#ef4444">⚠ Sin ancla configurada — el motor no puede calcular</p>';
+  }
+  h+='</div>';
+
+  if(!p.ancla){
+    h+='<div style="text-align:center;padding:20px;color:'+C.g2+'">Configure el ancla de esta clienta en sus datos de perfil.</div>';
+    return h;
+  }
+
+  // Phase strip (30 tiles)
+  h+='<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:'+C.g2+';margin-bottom:8px">Septiembre 2026 · Fase por día</p>';
+  h+='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px">';
+  strip.forEach(function(s){
+    const fi=s.motor?FASE_INFO[s.motor.fase]:null;
+    const bg=fi?fi.color:'#e5e7eb';
+    const title=fi?(fi.label+' · Día ciclo '+s.motor.dia+' · Orden '+s.motor.orden):'sin ancla';
+    h+='<div title="'+title+'" style="width:28px;height:36px;border-radius:5px;background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:default">';
+    h+='<span style="font-size:9px;color:#fff;font-weight:700">'+s.d+'</span>';
+    h+='<span style="font-size:9px;color:#fff;opacity:.85">'+(fi?fi.short:'—')+'</span>';
+    h+='</div>';
+  });
+  h+='</div>';
+
+  // Legend
+  h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+  Object.entries(FASE_INFO).slice(0,p.ruta==='energia'?4:5).forEach(function(entry){var k=entry[0];var v=entry[1];
+    h+='<div style="display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border-radius:3px;background:'+v.color+'"></div><span style="font-size:11px;color:'+C.tl+'">'+v.label+'</span></div>';
+  });
+  h+='</div>';
+
+  // Table
+  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+  h+='<thead><tr style="background:'+C.bk+';color:#fff">';
+  h+='<th style="padding:8px 10px;text-align:left;border-radius:8px 0 0 0">Fecha</th>';
+  h+='<th style="padding:8px 10px;text-align:left">Sesión manual</th>';
+  h+='<th style="padding:8px 10px;text-align:left">Motor (fase · día · orden)</th>';
+  h+='<th style="padding:8px 10px;text-align:left;border-radius:0 8px 0 0">Tarjeta</th>';
+  h+='</tr></thead><tbody>';
+  rows.forEach(function(row,ri){
+    const bg=ri%2===0?C.wh:'#f9f9f8';
+    h+='<tr style="background:'+bg+'">';
+    // Col 1: fecha
+    h+='<td style="padding:8px 10px;color:'+C.td+';font-weight:600">'+row.diaSem+' '+row.d+' sep</td>';
+    // Col 2: scheduled session
+    if(row.sched){
+      const st=row.sched.sessions?row.sched.sessions.session_type:'—';
+      h+='<td style="padding:8px 10px;color:'+C.td+'">'+limpiarNombre(st)+'</td>';
+    } else {
+      h+='<td style="padding:8px 10px;color:'+C.g2+'">sin sesión</td>';
+    }
+    // Col 3: motor
+    if(row.motor){
+      const fi=FASE_INFO[row.motor.fase]||{color:C.g2,short:'?',label:'?'};
+      h+='<td style="padding:8px 10px">';
+      h+='<span style="background:'+fi.color+';color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700">'+fi.short+'</span>';
+      h+=' <span style="color:'+C.tl+'">día '+row.motor.dia+' · orden '+row.motor.orden+'</span>';
+      h+='</td>';
+    } else {
+      h+='<td style="padding:8px 10px;color:'+C.g2+'">sin ancla</td>';
+    }
+    // Col 4: tarjeta (empty table = sin tarjeta)
+    h+='<td style="padding:8px 10px;color:'+C.g2+'"><em>sin tarjeta</em></td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+
+function rPrograms(){
+  if(S.selSession)return rSessionDetail();
+  if(S.selProgram)return rProgramDetail();
+  return`
+    <button onclick="set({pForm:{show:true,name:'',desc:''}})"
+      style="width:100%;padding:12px;background:${C.pr};color:${C.wh};border:none;border-radius:11px;font-weight:700;font-size:14px;margin-bottom:14px">
+      + Crear nuevo programa
+    </button>
+    ${S.pForm.show?`
+      <div style="background:${C.wh};border-radius:14px;padding:16px;margin-bottom:14px;border:2px solid ${C.pr};box-shadow:0 2px 8px rgba(0,0,0,.1)">
+        <p style="font-weight:700;font-size:15px;margin-bottom:12px">Nuevo programa</p>
+        <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Nombre del programa</p>
+        <input id="pf-name" type="text" placeholder="Ej: Programa Claudia — Mes 1" value="${esc(S.pForm.name)}"
+          style="width:100%;padding:10px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none;margin-bottom:10px"/>
+        <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Descripción (opcional)</p>
+        <input id="pf-desc" type="text" placeholder="Ej: Programa de fuerza 4 semanas" value="${esc(S.pForm.desc)}"
+          style="width:100%;padding:10px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none;margin-bottom:12px"/>
+        <div style="display:flex;gap:8px">
+          <button onclick="saveProgram()" style="flex:1;padding:11px;background:${C.pr};color:${C.wh};border:none;border-radius:10px;font-weight:700;font-size:14px">Guardar</button>
+          <button onclick="set({pForm:{show:false,name:'',desc:''}})" style="padding:11px 16px;background:#f3f4f6;color:#374151;border:none;border-radius:10px;font-weight:600;font-size:14px">Cancelar</button>
+        </div>
+      </div>`:''}
+    ${S.programs.length===0?`<div style="background:${C.wh};border-radius:14px;padding:40px 20px;text-align:center"><p style="font-size:36px;margin-bottom:10px">💪</p><p style="font-weight:700;font-size:16px">Sin programas aún</p></div>`:''}
+    ${S.programs.map(p=>`
+      <div style="background:${C.wh};border-radius:13px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div onclick="openProg('${p.id}')" style="flex:1;cursor:pointer">
+            <p style="font-weight:700;font-size:15px">${esc(p.name)}</p>
+            ${p.description?`<p style="font-size:12px;color:${C.g2};margin-top:2px">${esc(p.description)}</p>`:''}
+            <p style="font-size:11px;color:${C.g2};margin-top:3px">${(p.sessions||[]).length} sesiones</p>
+          </div>
+          <button onclick="delProg('${p.id}')" style="background:#fde8e8;border:none;color:${C.pr};border-radius:8px;padding:7px 10px;font-size:13px;margin-left:10px">🗑</button>
+        </div>
+      </div>`).join('')}`;
+}
+
+function rProgramDetail(){
+  const p=S.selProgram;
+  const sessions=(p.sessions||[]).sort((a,b)=>a.week_number-b.week_number||a.day_number-b.day_number);
+  return`
+    <button onclick="set({selProgram:null,sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'}})" style="background:#f3f4f6;border:none;padding:8px 16px;border-radius:9px;font-weight:700;font-size:13px;margin-bottom:14px">← Volver</button>
+    <div style="background:${C.wh};border-radius:14px;padding:15px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+      <p style="font-weight:900;font-size:18px">${esc(p.name)}</p>
+      ${p.description?`<p style="font-size:13px;color:${C.g2};margin-top:3px">${esc(p.description)}</p>`:''}
+    </div>
+    <button onclick="set({sForm:{show:true,week:1,day:1,type:'Cuerpo Completo'}})"
+      style="width:100%;padding:11px;background:${C.bk};color:${C.wh};border:none;border-radius:10px;font-weight:700;font-size:13px;margin-bottom:12px">
+      + Agregar sesión
+    </button>
+    ${S.sForm.show?`
+      <div style="background:${C.wh};border-radius:14px;padding:16px;margin-bottom:12px;border:2px solid ${C.bk}">
+        <p style="font-weight:700;font-size:14px;margin-bottom:12px">Nueva sesión</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Semana</p>
+            <select id="sf-week" style="width:100%;padding:9px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;background:${C.wh}">
+              ${[1,2,3,4].map(n=>`<option value="${n}" ${S.sForm.week===n?'selected':''}>Semana ${n}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Día</p>
+            <select id="sf-day" style="width:100%;padding:9px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;background:${C.wh}">
+              ${[1,2,3].map(n=>`<option value="${n}" ${S.sForm.day===n?'selected':''}>Día ${n}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Tipo de sesión</p>
+        <input id="sf-type" type="text" value="${esc(S.sForm.type)}" placeholder="Ej: Tren Inferior + Core"
+          style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none;margin-bottom:12px"/>
+        <div style="display:flex;gap:8px">
+          <button onclick="saveSession('${p.id}')" style="flex:1;padding:10px;background:${C.pr};color:${C.wh};border:none;border-radius:9px;font-weight:700;font-size:13px">Guardar sesión</button>
+          <button onclick="set({sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'}})" style="padding:10px 14px;background:#f3f4f6;border:none;border-radius:9px;font-weight:600;font-size:13px">Cancelar</button>
+        </div>
+      </div>`:''}
+    ${sessions.length===0?`<p style="text-align:center;color:${C.g2};padding:20px;font-size:14px">Sin sesiones — agrega la primera</p>`:''}
+    ${sessions.map(s=>`
+      <div style="background:${C.wh};border-radius:13px;padding:13px 15px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div onclick="openSess('${s.id}')" style="flex:1;cursor:pointer">
+            <p style="font-weight:700;font-size:14px">Semana ${s.week_number} · Día ${s.day_number}</p>
+            <p style="font-size:12px;color:${C.g2}">${esc(s.session_type)} · ${s.ex_count!==undefined?s.ex_count:(s.exercises||[]).length} ejercicios</p>
+          </div>
+          <button onclick="delSess('${s.id}')" style="background:#fde8e8;border:none;color:${C.pr};border-radius:8px;padding:6px 9px;font-size:12px;margin-left:8px">🗑</button>
+        </div>
+      </div>`).join('')}`;
+}
+
+function rSessionDetail(){
+  const s=S.selSession;
+  const exs=(s.exercises||[]).sort((a,b)=>a.order_index-b.order_index);
+  return`
+    <button onclick="set({selSession:null,eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:'',bloque:'',carga_pct:'',carga_kg:'',tempo:'',cue:''}})" style="background:#f3f4f6;border:none;padding:8px 16px;border-radius:9px;font-weight:700;font-size:13px;margin-bottom:14px">← Volver</button>
+    <div style="background:${C.bk};border-radius:14px;padding:14px;margin-bottom:12px;color:${C.wh}">
+      <p style="font-weight:900;font-size:17px">Semana ${s.week_number} · Día ${s.day_number}</p>
+      <p style="font-size:13px;color:${C.g2};margin-top:2px">${esc(s.session_type)}</p>
+    </div>
+    <button onclick="set({eForm:{show:true,name:'',muscle:'',sets:3,reps:'8-10',video:'',bloque:'',carga_pct:'',carga_kg:'',tempo:'',cue:''}})"
+      style="width:100%;padding:11px;background:${C.pr};color:${C.wh};border:none;border-radius:10px;font-weight:700;font-size:13px;margin-bottom:12px">
+      + Agregar ejercicio
+    </button>
+    ${S.eForm.show?`
+      <div style="background:${C.wh};border-radius:14px;padding:16px;margin-bottom:12px;border:2px solid ${C.pr}">
+        <p style="font-weight:700;font-size:14px;margin-bottom:12px">Nuevo ejercicio</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div style="grid-column:1/-1">
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Nombre del ejercicio</p>
+            <input id="ef-name" type="text" placeholder="Ej: Hip Thrust" value="${esc(S.eForm.name)}"
+              style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
+          </div>
+          <div style="grid-column:1/-1">
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Grupo muscular</p>
+            <input id="ef-muscle" type="text" placeholder="Ej: Glúteos" value="${esc(S.eForm.muscle)}"
+              style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
+          </div>
+          <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Series</p>
+            <input id="ef-sets" type="number" value="${S.eForm.sets}" min="1" max="10"
+              style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
+          </div>
+          <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Bloque (1-5)</p>
+            <select id="ef-bloque" style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none">
+              <option value="">— Sin bloque —</option>
+              <option value="1" ${S.eForm.bloque==1?'selected':''}>1 · Activación Articular</option>
+              <option value="2" ${S.eForm.bloque==2?'selected':''}>2 · Activación Neuromuscular</option>
+              <option value="3" ${S.eForm.bloque==3?'selected':''}>3 · Trabajo Principal</option>
+              <option value="4" ${S.eForm.bloque==4?'selected':''}>4 · Cardio Metabólico</option>
+              <option value="5" ${S.eForm.bloque==5?'selected':''}>5 · Cierre y Recuperación</option>
+            </select>
+          </div>
+          <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Repeticiones</p>
+            <input id="ef-reps" type="text" placeholder="Ej: 10-12" value="${esc(S.eForm.reps)}"
+              style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
+          </div>
+          <div style="grid-column:1/-1">
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">URL video YouTube (opcional)</p>
+            <input id="ef-video" type="url" placeholder="https://youtube.com/watch?v=..." value="${esc(S.eForm.video)}"
+              style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
+          </div>
+          <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Carga % (solo admin)</p>
+            <input id="ef-carga-pct" type="text" placeholder="Ej: 70-80%" value="${esc(S.eForm.carga_pct)}"
+              style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none;background:#fffbeb"/>
+          </div>
+          <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Peso kg (ve la clienta)</p>
+            <input id="ef-carga-kg" type="number" min="0" step="0.5" placeholder="Ej: 20" value="${S.eForm.carga_kg||''}"
+              style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
+          </div>
+          <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Tempo</p>
+            <select id="ef-tempo" style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none">
+              <option value="">— Sin tempo —</option>
+              <option value="3-1-1" ${S.eForm.tempo==='3-1-1'?'selected':''}>3-1-1 Baja contando tres</option>
+              <option value="2-1-2" ${S.eForm.tempo==='2-1-2'?'selected':''}>2-1-2 Baja en dos, sube en dos</option>
+              <option value="4-1-1" ${S.eForm.tempo==='4-1-1'?'selected':''}>4-1-1 Baja lento contando cuatro</option>
+              <option value="1-0-1" ${S.eForm.tempo==='1-0-1'?'selected':''}>1-0-1 Explosivo</option>
+            </select>
+          </div>
+          <div style="grid-column:1/-1">
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Cue — frase de intención (ve la clienta)</p>
+            <input id="ef-cue" type="text" placeholder='Ej: "Empuja el suelo, no el peso"' value="${esc(S.eForm.cue)}"
+              style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="saveExercise('${s.id}')" style="flex:1;padding:10px;background:${C.pr};color:${C.wh};border:none;border-radius:9px;font-weight:700;font-size:13px">Guardar ejercicio</button>
+          <button onclick="set({eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:''}})" style="padding:10px 14px;background:#f3f4f6;border:none;border-radius:9px;font-weight:600;font-size:13px">Cancelar</button>
+        </div>
+      </div>`:''}
+    ${exs.length===0?`<p style="text-align:center;color:${C.g2};padding:20px;font-size:14px">Sin ejercicios — agrega el primero</p>`:''}
+    ${exs.map((ex,i)=>`
+      <div style="background:${C.wh};border-radius:13px;padding:13px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+        <div style="display:flex;gap:10px">
+          <div style="width:30px;height:30px;border-radius:8px;background:#fde8e8;color:${C.dk};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0">${i+1}</div>
+          <div style="flex:1">
+            <p style="font-weight:700;font-size:14px;margin-bottom:2px">${esc(ex.name)}</p>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">${esc(ex.muscle_group)} · ${ex.sets_count}×${esc(ex.reps_range)}</p>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+              ${ex.carga_kg?`<span style="background:#fde8e8;color:${C.pr};border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">${ex.carga_kg} kg</span>`:''}
+              ${ex.carga_pct?`<span style="background:#fffbeb;color:#92400e;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">${ex.carga_pct}</span>`:''}
+              ${ex.tempo?`<span style="background:#f5f3ff;color:#7c3aed;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">${ex.tempo}</span>`:''}
+              ${ex.cue?`<span style="background:#f0fdf4;color:#16a34a;border-radius:4px;padding:1px 7px;font-size:10px">"${esc(ex.cue)}"</span>`:''}
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="url" value="${esc(ex.video_url||'')}" placeholder="URL video YouTube..."
+                onchange="updateVideo('${ex.id}','${s.id}',this.value)"
+                style="flex:1;padding:7px 10px;border:1.5px solid ${C.g3};border-radius:8px;font-size:12px;outline:none;color:#191211"/>
+              ${ex.video_url?`<a href="${esc(ex.video_url)}" target="_blank" style="color:${C.pr};font-size:12px;text-decoration:none;font-weight:700;background:#fde8e8;padding:6px 10px;border-radius:7px">▶</a>`:''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-self:flex-start">
+          <button onclick="editExById('${ex.id}')" style="background:#f3f4f6;border:none;color:#374151;border-radius:8px;padding:6px 8px;font-size:11px">✏️</button>
+          <button onclick="delEx('${ex.id}','${s.id}')" style="background:#fde8e8;border:none;color:${C.pr};border-radius:8px;padding:6px 8px;font-size:11px">🗑</button>
+        </div>
+        </div>
+      </div>`).join('')}`;
+}
+
+// ── ADD CLIENT ──────────────────────────────────────────────
+function rAddClient(){
+  const pForm=S.pForm||{};
+  const err=pForm.error||'';
+  const ok=pForm.ok||'';
+  return '<div style="max-width:480px;margin:0 auto">'
+    +'<div style="background:'+C.wh+';border-radius:14px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)">'
+    +'<p style="font-weight:900;font-size:17px;margin-bottom:16px">➕ Nueva clienta</p>'
+    +(err?'<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:9px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#dc2626">'+esc(err)+'</div>':'')
+    +(ok?'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:9px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#16a34a">'+esc(ok)+'</div>':'')
+    +'<div style="display:flex;flex-direction:column;gap:11px">'
+    // Nombre
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Nombre</label>'
+    +'<input id="ac-name" type="text" placeholder="Nombre completo" value="'+(pForm.name||'')+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    // Email
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Correo</label>'
+    +'<input id="ac-email" type="email" placeholder="correo@ejemplo.com" value="'+(pForm.email||'')+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    // Contraseña temporal
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Contraseña temporal</label>'
+    +'<input id="ac-pass" type="text" placeholder="Mínimo 6 caracteres" value="'+(pForm.pass||'')+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    // Plan
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Plan</label>'
+    +'<select id="ac-plan" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box">'
+    +'<option value="presencial"'+(pForm.plan==='presencial'?' selected':'')+'>Presencial</option>'
+    +'<option value="corona"'+(pForm.plan==='corona'?' selected':'')+'>Corona</option>'
+    +'<option value="compania"'+(pForm.plan==='compania'?' selected':'')+'>Compañía</option>'
+    +'<option value="brujula"'+(pForm.plan==='brujula'?' selected':'')+'>Brújula</option>'
+    +'</select></div>'
+    // Ruta
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Ruta</label>'
+    +'<select id="ac-ruta" onchange="S.pForm=Object.assign({},S.pForm||{},{ruta:this.value});render()" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box">'
+    +'<option value="">— Seleccionar —</option>'
+    +'<option value="lunar"'+(pForm.ruta==='lunar'?' selected':'')+'>Lunar (ciclo regular)</option>'
+    +'<option value="energia"'+(pForm.ruta==='energia'?' selected':'')+'>Energía (anticonceptivos / irregular / perimenopausia / menopausia)</option>'
+    +'</select></div>'
+    // Sub-perfil (solo si ruta = energia)
+    +((pForm.ruta==='energia')?('<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Sub-perfil</label>'
+    +'<select id="ac-sub" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box">'
+    +'<option value="">— Seleccionar —</option>'
+    +'<option value="anticonceptivo_caja">Anticonceptivo con caja</option>'
+    +'<option value="anticonceptivo_sin_caja">Anticonceptivo sin caja (implante, DIU)</option>'
+    +'<option value="irregular">Ciclo irregular</option>'
+    +'<option value="perimenopausia">Perimenopausia</option>'
+    +'<option value="menopausia">Menopausia</option>'
+    +'</select></div>'):'')
+    // Nivel
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Nivel</label>'
+    +'<select id="ac-nivel" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box">'
+    +'<option value="1">1 — Principiante</option>'
+    +'<option value="2" selected>2 — Intermedio</option>'
+    +'<option value="3">3 — Avanzado</option>'
+    +'</select></div>'
+    // Duración del ciclo
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Duración del ciclo (días)</label>'
+    +'<input id="ac-dur" type="number" min="21" max="40" value="'+(pForm.dur||28)+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    // Ancla
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Ancla (último día 1 del ciclo)</label>'
+    +'<input id="ac-ancla" type="date" value="'+(pForm.ancla||'')+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    // Escenario por defecto
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Escenario por defecto</label>'
+    +'<select id="ac-esc" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box">'
+    +'<option value="A">A — Casa (peso corporal)</option>'
+    +'<option value="B">B — Mancuernas y bandas</option>'
+    +'<option value="C" selected>C — Gimnasio</option>'
+    +'</select></div>'
+    // Días presenciales
+    +'<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em">Días presenciales (opcional, separados por coma)</label>'
+    +'<input id="ac-dias" type="text" placeholder="ej. lun,mie,vie" value="'+(pForm.dias||'')+'" style="width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>'
+    +'</div>'
+    +'<button onclick="doAddClient()" style="width:100%;margin-top:16px;padding:13px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">'+(S.loading?'Creando...':'Crear clienta')+'</button>'
+    +'</div></div>';
+}
+
+async function doAddClient(){
+  const name  = document.getElementById('ac-name')?.value?.trim();
+  const email = document.getElementById('ac-email')?.value?.trim();
+  const pass  = document.getElementById('ac-pass')?.value?.trim();
+  const plan  = document.getElementById('ac-plan')?.value;
+  const ruta  = document.getElementById('ac-ruta')?.value;
+  const sub   = document.getElementById('ac-sub')?.value||null;
+  const nivel = parseInt(document.getElementById('ac-nivel')?.value)||2;
+  const dur   = parseInt(document.getElementById('ac-dur')?.value)||28;
+  const ancla = document.getElementById('ac-ancla')?.value||null;
+  const esc   = document.getElementById('ac-esc')?.value||'C';
+  const dias  = document.getElementById('ac-dias')?.value?.trim();
+  const diasArr = dias?dias.split(',').map(d=>d.trim()).filter(Boolean):null;
+
+  if(!name||!email||!pass){
+    set({pForm:{...(S.pForm||{}),error:'Nombre, correo y contraseña son obligatorios.'}});return;
+  }
+  if(!ruta){
+    set({pForm:{...(S.pForm||{}),error:'Selecciona la ruta (lunar o energía).'}});return;
+  }
+  set({loading:true,pForm:{...(S.pForm||{}),error:'',ok:''}});
+
+  try {
+    // 1. Create auth user via admin API (uses service role or admin endpoint)
+    // Supabase JS client createUser is only in service role SDK
+    // We use signUp + immediate confirmation via update
+    const {data:authData, error:authErr} = await sb.auth.admin
+      ? await sb.auth.admin.createUser({email, password:pass, email_confirm:true})
+      : {data:null, error:{message:'Admin API no disponible en cliente anon'}};
+
+    if(authErr){
+      // Fallback: use signUp and confirm manually
+      const {data:signData, error:signErr} = await sb.auth.signUp({email,password:pass});
+      if(signErr) throw new Error(signErr.message);
+      const uid = signData?.user?.id;
+      if(!uid) throw new Error('No se obtuvo el ID del usuario');
+      // Confirm email via profiles update (anon key can't confirm, but profile insert works)
+      await sb.from('profiles').upsert({
+        id:uid, name, plan, ruta,
+        sub_perfil:sub||null, nivel, duracion_ciclo:dur,
+        ancla:ancla||null, escenario_default:esc,
+        dias_presenciales:diasArr||null
+      });
+      set({loading:false,pForm:{name:'',email:'',pass:'',ruta:'',plan:'presencial',error:'',
+        ok:'✅ Cuenta creada. Pídele a '+name+' que confirme su correo antes de entrar, o confirma el email manualmente en Supabase > Authentication > Users.'}});
+    } else {
+      const uid = authData?.user?.id;
+      if(uid){
+        await sb.from('profiles').upsert({
+          id:uid, name, plan, ruta,
+          sub_perfil:sub||null, nivel, duracion_ciclo:dur,
+          ancla:ancla||null, escenario_default:esc,
+          dias_presenciales:diasArr||null
+        });
+      }
+      set({loading:false,pForm:{name:'',email:'',pass:'',ruta:'',plan:'presencial',error:'',
+        ok:'✅ Clienta creada y correo confirmado automáticamente. Ya puede entrar a la app.'}});
+    }
+    // Reload client list
+    await loadData();
+  } catch(e){
+    set({loading:false,pForm:{...(S.pForm||{}),error:'Error: '+e.message}});
+  }
+}
+
+
+// ── SCHEDULE ACTIONS ─────────────────────────────────────────
+async function openSchedule(clientId){
+  const c=S.clients.find(x=>x.id===clientId)||S.selClient;
+  set({loading:true});
+  const [schedR,cycR,progR]=await Promise.all([
+    sb.from('scheduled_sessions').select('*').eq('client_id',clientId).gte('scheduled_date',new Date(S.scheduleYear,S.scheduleMonth,1).toISOString().split('T')[0]).lte('scheduled_date',new Date(S.scheduleYear,S.scheduleMonth+1,0).toISOString().split('T')[0]),
+    sb.from('cycle_logs').select('*').eq('client_id',clientId).order('created_at',{ascending:false}).limit(3),
+    sb.from('client_programs').select('program_id').eq('client_id',clientId).maybeSingle(),
+  ]);
+  let sessions=[];
+  if(progR.data?.program_id){
+    const sessR=await sb.from('sessions').select('id,session_type').eq('program_id',progR.data.program_id).order('week_number').order('day_number');
+    sessions=[...new Map((sessR.data||[]).map(s=>[s.session_type,s])).values()];
+  }
+  const schedule={};
+  (schedR.data||[]).forEach(r=>{if(r.session_id)schedule[r.scheduled_date]=r.session_id;else schedule[r.scheduled_date]='rest';});
+  set({loading:false,view:'schedule',selClient:c,clientCycle:cycR.data||[],scheduleSessions:sessions,clientSchedule:schedule});
+}
+function setScheduleDay(date,sessionId){
+  const sch={...S.clientSchedule};
+  if(sessionId===''||sessionId===undefined)delete sch[date];
+  else sch[date]=sessionId;
+  S.clientSchedule=sch;
+}
+function changeMonth(dir){
+  let m=S.scheduleMonth+dir,y=S.scheduleYear;
+  if(m>11){m=0;y++;}if(m<0){m=11;y--;}
+  S.scheduleMonth=m;S.scheduleYear=y;
+  if(S.selClient)openSchedule(S.selClient.id);
+}
+function autoFill(){
+  const lastBleed=S.clientCycle[0]?.last_bleeding_date||null;
+  const cycleLen=S.clientCycle[0]?.cycle_length||28;
+  const days=getDaysInMonth(S.scheduleYear,S.scheduleMonth);
+  const sessions=S.scheduleSessions.filter(s=>!/abdomen/i.test(s.session_type));
+  const sch={...S.clientSchedule};
+  let dayCount=0;
+  days.forEach(day=>{
+    const dateStr=day.toISOString().split('T')[0];
+    const dayOfWeek=day.getDay();
+    // Skip if already assigned
+    if(sch[dateStr])return;
+    // Only assign Mon, Wed, Fri (1,3,5) as default training days
+    if(dayOfWeek===1||dayOfWeek===3||dayOfWeek===5){
+      const phase=getPhaseForDate(dateStr,lastBleed,cycleLen);
+      const suggested=suggestSession(sessions,phase);
+      if(suggested)sch[dateStr]=suggested;
+    }
+  });
+  S.clientSchedule=sch;
+  render();
+}
+async function saveSchedule(){
+  if(!S.selClient)return;
+  const clientId=S.selClient.id;
+  const upserts=Object.entries(S.clientSchedule).map(([date,sessId])=>({
+    client_id:clientId,
+    scheduled_date:date,
+    session_id:sessId==='rest'?null:sessId,
+    status:sessId==='rest'?'rest':'pending',
+  }));
+  if(upserts.length===0){alert('No hay cambios que guardar.');return;}
+  set({loading:true});
+  await sb.from('scheduled_sessions').upsert(upserts,{onConflict:'client_id,scheduled_date'});
+  set({loading:false});
+  alert('✅ Mes guardado correctamente');
+}
+
+
+
+async function loadData(){
+  set({loading:true});
+  const[clientsR,progsR]=await Promise.all([
+    sb.from('profiles').select('*').neq('name',null).order('name'),
+    sb.from('programs').select('*').order('name'),
+  ]);
+  const clients=(clientsR.data||[]).map(function(p){
+    const cp=null; // will load per client
+    return Object.assign({},p,{prog_id:null,prog_name:null});
+  });
+  // Load client_programs for all clients
+  const cpR=await sb.from('client_programs').select('client_id,program_id,programs(name)');
+  const cpMap={};
+  (cpR.data||[]).forEach(function(r){
+    cpMap[r.client_id]={prog_id:r.program_id,prog_name:r.programs?r.programs.name:''};
+  });
+  const clientsWithProg=clients.map(function(c){
+    return Object.assign({},c,cpMap[c.id]||{});
+  });
+  set({loading:false,clients:clientsWithProg,programs:progsR.data||[]});
+}
+
+async function openClient(id){
+  const c=S.clients.find(function(x){return x.id===id;});
+  set({loading:true});
+  const[mr,cyc,sym,meno,cargaR]=await Promise.all([
+    sb.from('measurements').select('*').eq('client_id',id).order('measurement_date',{ascending:false}).limit(5),
+    sb.from('cycle_logs').select('*').eq('client_id',id).order('created_at',{ascending:false}).limit(5),
+    sb.from('symptom_logs').select('*').eq('client_id',id).order('log_date',{ascending:false}).limit(10),
+    sb.from('meno_logs').select('*').eq('client_id',id).order('log_date',{ascending:false}).limit(10),
+    sb.from('carga_log').select('*').eq('client_id',id).order('fecha',{ascending:false}).limit(20),
+  ]);
+  set({loading:false,selClient:c,clientMeas:mr.data||[],clientCycle:cyc.data||[],clientSymptoms:sym.data||[],clientMeno:meno.data||[],clientCarga:cargaR.data||[]});
+}
+
+async function assignProg(clientId,progId){
+  set({loading:true});
+  await sb.from('client_programs').upsert({client_id:clientId,program_id:progId},{onConflict:'client_id'});
+  await loadData();
+  set({loading:false});
+}
+
+async function openProg(id){
+  set({loading:true,eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:'',bloque:'',carga_pct:'',carga_kg:'',tempo:'',cue:''}});
+  const p=S.programs.find(function(x){return x.id===id;});
+  const sessR=await sb.from('sessions').select('*,exercises(id)').eq('program_id',id).order('week_number').order('day_number');
+  const sessions=(sessR.data||[]).map(function(s){return Object.assign({},s,{ex_count:(s.exercises||[]).length});});
+  set({loading:false,selProgram:Object.assign({},p,{sessions:sessions}),selSession:null,view:'prog'});
+}
+
+async function openSess(id){
+  set({loading:true,eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:'',bloque:'',carga_pct:'',carga_kg:'',tempo:'',cue:''}});
+  const sessR=await sb.from('sessions').select('*').eq('id',id).single();
+  const exR=await sb.from('exercises').select('*').eq('session_id',id).order('order_index');
+  set({loading:false,selSession:Object.assign({},sessR.data,{exercises:exR.data||[]}),view:'sess_detail'});
+}
+
+async function saveProgram(name,desc){
+  if(!name)return;
+  set({loading:true});
+  if(S.selProgram&&S.selProgram.id){
+    await sb.from('programs').update({name,description:desc}).eq('id',S.selProgram.id);
+  } else {
+    await sb.from('programs').insert({name,description:desc});
+  }
+  await loadData();
+  set({loading:false,view:'main',selProgram:null});
+}
+
+async function delProg(id){
+  if(!confirm('¿Eliminar este programa? Esta acción no se puede deshacer.'))return;
+  set({loading:true});
+  await sb.from('programs').delete().eq('id',id);
+  await loadData();
+  set({loading:false,selProgram:null,view:'main'});
+}
+
+async function saveSession(progId,week,day,type){
+  set({loading:true});
+  if(S.selSession&&S.selSession.id){
+    await sb.from('sessions').update({week_number:week,day_number:day,session_type:type}).eq('id',S.selSession.id);
+  } else {
+    await sb.from('sessions').insert({program_id:progId,week_number:week,day_number:day,session_type:type});
+  }
+  await openProg(progId);
+}
+
+async function delSess(id,progId){
+  if(!confirm('¿Eliminar esta sesión?'))return;
+  set({loading:true});
+  await sb.from('sessions').delete().eq('id',id);
+  await openProg(progId);
+}
+
+
+function editExById(id){
+  const exs=(S.selSession&&S.selSession.exercises)||[];
+  const ex=exs.find(function(e){return e.id===id;});
+  if(!ex)return;
+  editEx(ex);
+}
+
+function editEx(ex){
+  set({eForm:{
+    show:true,
+    id:ex.id,
+    name:ex.name||'',
+    muscle:ex.muscle_group||'',
+    sets:ex.sets_count||3,
+    reps:ex.reps_range||'',
+    video:ex.video_url||'',
+    order:ex.order_index||1,
+    bloque:ex.bloque||'',
+    carga_pct:ex.carga_pct||'',
+    carga_kg:ex.carga_kg||'',
+    tempo:ex.tempo||'',
+    cue:ex.cue||''
+  }});
+  // Scroll to form
+  setTimeout(function(){const f=document.querySelector('[id="ef-name"]');if(f)f.scrollIntoView({behavior:'smooth'});},100);
+}
+
+async function saveExercise(sessId){
+  const name=(document.getElementById('ef-name')||{}).value||'';
+  const muscle=(document.getElementById('ef-muscle')||{}).value||'';
+  const sets=parseInt((document.getElementById('ef-sets')||{}).value)||3;
+  const reps=(document.getElementById('ef-reps')||{}).value||'';
+  const video=(document.getElementById('ef-video')||{}).value||'';
+  const bloque=parseInt((document.getElementById('ef-bloque')||{}).value)||null;
+  const carga_pct=(document.getElementById('ef-carga-pct')||{}).value||null;
+  const carga_kg=parseFloat((document.getElementById('ef-carga-kg')||{}).value)||null;
+  const tempo=(document.getElementById('ef-tempo')||{}).value||null;
+  const cue=(document.getElementById('ef-cue')||{}).value||null;
+  if(!name.trim()){alert('El nombre es obligatorio.');return;}
+  set({loading:true});
+  const ord=S.eForm.order||(S.selSession&&S.selSession.exercises?S.selSession.exercises.length+1:1);
+  const data={session_id:sessId,name:name.trim(),muscle_group:muscle,sets_count:sets,reps_range:reps,video_url:video,order_index:ord,bloque:bloque||null,carga_pct:carga_pct||null,carga_kg:carga_kg||null,tempo:tempo||null,cue:cue||null};
+  if(S.eForm.id){
+    await sb.from('exercises').update(data).eq('id',S.eForm.id);
+  } else {
+    await sb.from('exercises').insert(data);
+  }
+  set({eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:'',bloque:'',carga_pct:'',carga_kg:'',tempo:'',cue:''}});
+  await openSess(sessId);
+}
+
+async function updateVideo(exId,url,sessId){
+  await sb.from('exercises').update({video_url:url}).eq('id',exId);
+  if(sessId)await openSess(sessId);
+}
+
+async function delEx(id,sessId){
+  if(!confirm('¿Eliminar este ejercicio?'))return;
+  await sb.from('exercises').delete().eq('id',id);
+  if(sessId)await openSess(sessId);
+}
+
+async function doLogin(){
+  const email=(document.getElementById('le')||{}).value||'';
+  const pass=(document.getElementById('lp')||{}).value||'';
+  if(!email||!pass){set({error:'Ingresa correo y contraseña.'});return;}
+  set({loading:true,error:''});
+  const{error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){set({loading:false,error:error.message});return;}
+  const{data:{user}}=await sb.auth.getUser();
+  if(!user||user.email!=='brayanpedrazatrainer@gmail.com'){
+    await sb.auth.signOut();
+    set({loading:false,error:'No tienes acceso de administrador.'});
+    return;
+  }
+  set({loading:false,user,view:'main',error:''});
+  await loadData();
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  set({view:'login',user:null,clients:[],programs:[],error:''});
+}
+
+
+function limpiarNombre(s){
+  return (s||'').replace(/[\u{1F300}-\u{1FFFF}\u{2600}-\u{27BF}]/gu,'').replace(/[⚡⚠📅🌑🌓🌕🌗🌘💪🔥🛡]/g,'').trim();
+}
+window.set=set;window.doLogin=doLogin;window.logout=logout;window.loadData=loadData;
+window.openClient=openClient;window.loadMotorClient=loadMotorClient;window.doAddClient=doAddClient;window.editEx=editEx;window.editExById=editExById;window.assignProg=assignProg;window.openSchedule=openSchedule;window.setScheduleDay=setScheduleDay;window.changeMonth=changeMonth;window.autoFill=autoFill;window.saveSchedule=saveSchedule;window.openProg=openProg;window.openSess=openSess;
+window.saveProgram=saveProgram;window.delProg=delProg;window.saveSession=saveSession;window.delSess=delSess;
+window.saveExercise=saveExercise;window.updateVideo=updateVideo;window.delEx=delEx;
+
+async function init(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){S.user=session.user;await loadData();}
+  else render();
+}
+init();
+</script>
+</body>
+</html>
