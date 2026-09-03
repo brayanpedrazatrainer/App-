@@ -31,7 +31,7 @@ let S={
   clientMeas:[],clientCycle:[],clientSymptoms:[],clientMeno:[],motorClient:null,motorRows:[],motorLoading:false,pForm:{name:'',email:'',pass:'',ruta:'',plan:'presencial'},clientSchedule:{},scheduleSessions:[],scheduleYear:new Date().getFullYear(),scheduleMonth:new Date().getMonth(),
   pForm:{show:false,name:'',desc:''},
   sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'},
-  eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:''},
+  eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:'',bloque:'',carga_pct:'',carga_kg:'',tempo:'',cue:''},
 };
 function set(u){Object.assign(S,u);render()}
 
@@ -526,7 +526,7 @@ function rSessionDetail(){
       <p style="font-weight:900;font-size:17px">Semana ${s.week_number} · Día ${s.day_number}</p>
       <p style="font-size:13px;color:${C.g2};margin-top:2px">${esc(s.session_type)}</p>
     </div>
-    <button onclick="set({eForm:{show:true,name:'',muscle:'',sets:3,reps:'8-10',video:''}})"
+    <button onclick="set({eForm:{show:true,name:'',muscle:'',sets:3,reps:'8-10',video:'',bloque:'',carga_pct:'',carga_kg:'',tempo:'',cue:''}})"
       style="width:100%;padding:11px;background:${C.pr};color:${C.wh};border:none;border-radius:10px;font-weight:700;font-size:13px;margin-bottom:12px">
       + Agregar ejercicio
     </button>
@@ -550,6 +550,17 @@ function rSessionDetail(){
               style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
           </div>
           <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Bloque (1-5)</p>
+            <select id="ef-bloque" style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none">
+              <option value="">— Sin bloque —</option>
+              <option value="1" ${S.eForm.bloque==1?'selected':''}>1 · Activación Articular</option>
+              <option value="2" ${S.eForm.bloque==2?'selected':''}>2 · Activación Neuromuscular</option>
+              <option value="3" ${S.eForm.bloque==3?'selected':''}>3 · Trabajo Principal</option>
+              <option value="4" ${S.eForm.bloque==4?'selected':''}>4 · Cardio Metabólico</option>
+              <option value="5" ${S.eForm.bloque==5?'selected':''}>5 · Cierre y Recuperación</option>
+            </select>
+          </div>
+          <div>
             <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Repeticiones</p>
             <input id="ef-reps" type="text" placeholder="Ej: 10-12" value="${esc(S.eForm.reps)}"
               style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
@@ -557,6 +568,31 @@ function rSessionDetail(){
           <div style="grid-column:1/-1">
             <p style="font-size:12px;color:${C.g2};margin-bottom:4px">URL video YouTube (opcional)</p>
             <input id="ef-video" type="url" placeholder="https://youtube.com/watch?v=..." value="${esc(S.eForm.video)}"
+              style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
+          </div>
+          <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Carga % (solo admin)</p>
+            <input id="ef-carga-pct" type="text" placeholder="Ej: 70-80%" value="${esc(S.eForm.carga_pct)}"
+              style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none;background:#fffbeb"/>
+          </div>
+          <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Peso kg (ve la clienta)</p>
+            <input id="ef-carga-kg" type="number" min="0" step="0.5" placeholder="Ej: 20" value="${S.eForm.carga_kg||''}"
+              style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
+          </div>
+          <div>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Tempo</p>
+            <select id="ef-tempo" style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none">
+              <option value="">— Sin tempo —</option>
+              <option value="3-1-1" ${S.eForm.tempo==='3-1-1'?'selected':''}>3-1-1 Baja contando tres</option>
+              <option value="2-1-2" ${S.eForm.tempo==='2-1-2'?'selected':''}>2-1-2 Baja en dos, sube en dos</option>
+              <option value="4-1-1" ${S.eForm.tempo==='4-1-1'?'selected':''}>4-1-1 Baja lento contando cuatro</option>
+              <option value="1-0-1" ${S.eForm.tempo==='1-0-1'?'selected':''}>1-0-1 Explosivo</option>
+            </select>
+          </div>
+          <div style="grid-column:1/-1">
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">Cue — frase de intención (ve la clienta)</p>
+            <input id="ef-cue" type="text" placeholder='Ej: "Empuja el suelo, no el peso"' value="${esc(S.eForm.cue)}"
               style="width:100%;padding:9px 12px;border:2px solid ${C.g3};border-radius:9px;font-size:14px;outline:none"/>
           </div>
         </div>
@@ -572,7 +608,13 @@ function rSessionDetail(){
           <div style="width:30px;height:30px;border-radius:8px;background:#fde8e8;color:${C.dk};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0">${i+1}</div>
           <div style="flex:1">
             <p style="font-weight:700;font-size:14px;margin-bottom:2px">${esc(ex.name)}</p>
-            <p style="font-size:12px;color:${C.g2};margin-bottom:8px">${esc(ex.muscle_group)} · ${ex.sets_count}×${esc(ex.reps_range)}</p>
+            <p style="font-size:12px;color:${C.g2};margin-bottom:4px">${esc(ex.muscle_group)} · ${ex.sets_count}×${esc(ex.reps_range)}</p>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+              ${ex.carga_kg?`<span style="background:#fde8e8;color:${C.pr};border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">${ex.carga_kg} kg</span>`:''}
+              ${ex.carga_pct?`<span style="background:#fffbeb;color:#92400e;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">${ex.carga_pct}</span>`:''}
+              ${ex.tempo?`<span style="background:#f5f3ff;color:#7c3aed;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">${ex.tempo}</span>`:''}
+              ${ex.cue?`<span style="background:#f0fdf4;color:#16a34a;border-radius:4px;padding:1px 7px;font-size:10px">"${esc(ex.cue)}"</span>`:''}
+            </div>
             <div style="display:flex;gap:6px;align-items:center">
               <input type="url" value="${esc(ex.video_url||'')}" placeholder="URL video YouTube..."
                 onchange="updateVideo('${ex.id}','${s.id}',this.value)"
@@ -580,7 +622,10 @@ function rSessionDetail(){
               ${ex.video_url?`<a href="${esc(ex.video_url)}" target="_blank" style="color:${C.pr};font-size:12px;text-decoration:none;font-weight:700;background:#fde8e8;padding:6px 10px;border-radius:7px">▶</a>`:''}
             </div>
           </div>
-          <button onclick="delEx('${ex.id}','${s.id}')" style="background:#fde8e8;border:none;color:${C.pr};border-radius:8px;padding:6px 8px;font-size:11px;align-self:flex-start">🗑</button>
+          <div style="display:flex;flex-direction:column;gap:4px;align-self:flex-start">
+          <button onclick="editEx(${JSON.stringify(ex)})" style="background:#f3f4f6;border:none;color:#374151;border-radius:8px;padding:6px 8px;font-size:11px">✏️</button>
+          <button onclick="delEx('${ex.id}','${s.id}')" style="background:#fde8e8;border:none;color:${C.pr};border-radius:8px;padding:6px 8px;font-size:11px">🗑</button>
+        </div>
         </div>
       </div>`).join('')}`;
 }
@@ -886,14 +931,48 @@ async function delSess(id,progId){
   await openProg(progId);
 }
 
-async function saveExercise(sessId,name,muscle,sets,reps,video,order,bloque){
+
+function editEx(ex){
+  set({eForm:{
+    show:true,
+    id:ex.id,
+    name:ex.name||'',
+    muscle:ex.muscle_group||'',
+    sets:ex.sets_count||3,
+    reps:ex.reps_range||'',
+    video:ex.video_url||'',
+    order:ex.order_index||1,
+    bloque:ex.bloque||'',
+    carga_pct:ex.carga_pct||'',
+    carga_kg:ex.carga_kg||'',
+    tempo:ex.tempo||'',
+    cue:ex.cue||''
+  }});
+  // Scroll to form
+  setTimeout(function(){const f=document.querySelector('[id="ef-name"]');if(f)f.scrollIntoView({behavior:'smooth'});},100);
+}
+
+async function saveExercise(sessId){
+  const name=(document.getElementById('ef-name')||{}).value||'';
+  const muscle=(document.getElementById('ef-muscle')||{}).value||'';
+  const sets=parseInt((document.getElementById('ef-sets')||{}).value)||3;
+  const reps=(document.getElementById('ef-reps')||{}).value||'';
+  const video=(document.getElementById('ef-video')||{}).value||'';
+  const bloque=parseInt((document.getElementById('ef-bloque')||{}).value)||null;
+  const carga_pct=(document.getElementById('ef-carga-pct')||{}).value||null;
+  const carga_kg=parseFloat((document.getElementById('ef-carga-kg')||{}).value)||null;
+  const tempo=(document.getElementById('ef-tempo')||{}).value||null;
+  const cue=(document.getElementById('ef-cue')||{}).value||null;
+  if(!name.trim()){alert('El nombre es obligatorio.');return;}
   set({loading:true});
-  const data={session_id:sessId,name,muscle_group:muscle,sets_count:sets,reps_range:reps,video_url:video||'',order_index:order||1,bloque:bloque||null};
-  if(S.selExercise&&S.selExercise.id){
-    await sb.from('exercises').update(data).eq('id',S.selExercise.id);
+  const ord=S.eForm.order||(S.selSession&&S.selSession.exercises?S.selSession.exercises.length+1:1);
+  const data={session_id:sessId,name:name.trim(),muscle_group:muscle,sets_count:sets,reps_range:reps,video_url:video,order_index:ord,bloque:bloque||null,carga_pct:carga_pct||null,carga_kg:carga_kg||null,tempo:tempo||null,cue:cue||null};
+  if(S.eForm.id){
+    await sb.from('exercises').update(data).eq('id',S.eForm.id);
   } else {
     await sb.from('exercises').insert(data);
   }
+  set({eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:'',bloque:'',carga_pct:'',carga_kg:'',tempo:'',cue:''}});
   await openSess(sessId);
 }
 
@@ -931,7 +1010,7 @@ async function logout(){
 }
 
 window.set=set;window.doLogin=doLogin;window.logout=logout;window.loadData=loadData;
-window.openClient=openClient;window.loadMotorClient=loadMotorClient;window.doAddClient=doAddClient;window.assignProg=assignProg;window.openSchedule=openSchedule;window.setScheduleDay=setScheduleDay;window.changeMonth=changeMonth;window.autoFill=autoFill;window.saveSchedule=saveSchedule;window.openProg=openProg;window.openSess=openSess;
+window.openClient=openClient;window.loadMotorClient=loadMotorClient;window.doAddClient=doAddClient;window.editEx=editEx;window.assignProg=assignProg;window.openSchedule=openSchedule;window.setScheduleDay=setScheduleDay;window.changeMonth=changeMonth;window.autoFill=autoFill;window.saveSchedule=saveSchedule;window.openProg=openProg;window.openSess=openSess;
 window.saveProgram=saveProgram;window.delProg=delProg;window.saveSession=saveSession;window.delSess=delSess;
 window.saveExercise=saveExercise;window.updateVideo=updateVideo;window.delEx=delEx;
 
