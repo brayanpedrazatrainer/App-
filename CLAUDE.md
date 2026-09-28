@@ -23,8 +23,15 @@ Funciones clave `admin1.html`: `calcMotorPhase` (copia del motor), `generarMes`,
 - Tablas del motor: plantillas (lunar, energia), plantilla_tarjetas (28 por plantilla: fase+orden → session_id, tipo, arquetipo, carga alta|media|tecnica), equivalencias (patron + escenario A/B/C → exercise_id), checkins (energia, animo, molestias, sueno 1–3, semaforo; único client_id+fecha), carga_log (exercise_id uuid; único client_id+exercise_id+fecha+fase para UPSERT), grupos.
 - profiles: plan (presencial|corona|compania), ruta (lunar|energia), sub_perfil, nivel 1–3 (def 2), duracion_ciclo (def 28), ancla, escenario_default (def C), dias_presenciales text[], grupo_id, dias_clase.
 - exercises: bloque 1–5, patron, carga_pct (solo admin), carga_kg, tempo, cue. `order_index` es BIGINT: no volver a smallint.
-- RLS apagado en tablas estructurales (decisión deliberada por recursión/403). Activo en checkins y carga_log; usar `auth.jwt() ->> 'email'` (mejor que `auth.email()`).
-- Admin = comparación de email en el código (brayanpedrazatrainer@gmail.com), sin tabla de roles. Alta de clientas con `sb.auth.signUp()`; luego confirmar el correo en Supabase → Authentication → Users.
+- Seguridad (migración `supabase/migracion_seguridad_2026-09-27.sql`, rollback al lado): RLS activo en TODAS las tablas de `public`.
+  - Datos de clienta (checkins, carga_log, cycle_logs, symptom_logs, meno_logs, measurements, exercise_completions, scheduled_sessions): cada clienta gestiona los suyos; el admin lee todo.
+  - profiles: clienta lee y actualiza solo el suyo, y el trigger `proteger_perfil` solo le deja cambiar `ancla`. Admin todo. Insert/delete solo admin.
+  - programs, sessions, exercises, plantillas, plantilla_tarjetas, equivalencias, grupos: lectura para cualquier autenticada; escritura solo admin.
+  - Admin real = `profiles.is_admin` vía la función `is_admin()` (SECURITY DEFINER). `handle_new_user` siempre crea `is_admin=false`.
+  - Si una función nueva de la app escribe en otra tabla o columna, hay que añadir la política correspondiente.
+  - Plan gratuito de Supabase: "Leaked password protection" no disponible.
+- En carga_log se usa `auth.jwt() ->> 'email'` (mejor que `auth.email()`).
+- El panel admin también compara el email en el código (brayanpedrazatrainer@gmail.com). Alta de clientas con `sb.auth.signUp()`; luego confirmar el correo en Supabase → Authentication → Users.
 
 ## Reglas de producto (no romper)
 - **Regla de oro:** `scheduled_sessions` es la tabla de EXCEPCIONES, no el calendario. Nunca borrar ni modificar filas existentes.
