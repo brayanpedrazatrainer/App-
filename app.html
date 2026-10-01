@@ -910,6 +910,28 @@ async function loadClientData(){
       }
     }catch(e){}
   }
+  // Sesiones agendadas (motor) que no están en el programa asignado: se agregan para poder abrirlas
+  try{
+    const enProg={};
+    PROG.forEach(function(wk){wk.forEach(function(s){enProg[s.id]=true;});});
+    const futR=await sb.from('scheduled_sessions').select('session_id').eq('client_id',userId).gte('scheduled_date',today()).not('session_id','is',null);
+    const faltan=Array.from(new Set(((futR&&futR.data)||[]).map(function(r){return r.session_id;}))).filter(function(id){return !enProg[id];});
+    if(faltan.length){
+      const sR=await sb.from('sessions').select('*').in('id',faltan).order('week_number').order('day_number');
+      const exR=await sb.from('exercises').select('*').in('session_id',faltan).order('order_index');
+      const exs=(exR&&exR.data)||[];
+      const byS={};
+      exs.forEach(function(e){(byS[e.session_id]=byS[e.session_id]||[]).push(e);});
+      const extra=((sR&&sR.data)||[]).map(function(s){
+        return {id:s.id,week:s.week_number||1,day:'Día '+(s.day_number||1),type:s.session_type||'Sesión',
+          ex:(byS[s.id]||[]).map(function(e){return {eid:e.id,n:e.name,m:e.muscle_group,sets:e.sets_count,reps:e.reps_range,v:e.video_url||'',bloque:e.bloque||null,patron:e.patron||null,carga_pct:e.carga_pct||null,carga_kg:e.carga_kg||null,tempo:e.tempo||null,cue:e.cue||null};})};
+      });
+      if(extra.length){
+        PROG=PROG.concat([extra]);
+        if(!prog)prog={name:'Plan Gym Cíclico'};
+      }
+    }
+  }catch(e){}
   const escenario=perfilExt.escenario_default||'C';
   // Cargar equivalencias por escenario
   let equivs={};
@@ -947,7 +969,7 @@ async function loadClientData(){
   function localDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
   const upcomingR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',localDate(tomorrow)).lte('scheduled_date',localDate(nextWeek)).order('scheduled_date').limit(6);
   const upcomingSchedule=upcomingR.data||[];
-  const allSchedR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',today()).lte('scheduled_date','2026-09-30').order('scheduled_date');
+  const allSchedR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',today()).order('scheduled_date').limit(62);
   const allSchedule=allSchedR.data||[];
   const defaultWeek=currentProgWeek(lastBleeding,cycleLen);
   set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,equivs:equivs});
