@@ -776,14 +776,21 @@ async function calcularTarjetaMotor(perfil,userId,fecha){
 async function marcarPeriodo(){
   const userId=S.user.id;
   const hoy=today();
-  await Promise.all([
-    sb.from('profiles').update({ancla:hoy}).eq('id',userId),
-    sb.from('cycle_logs').insert({client_id:userId,last_bleeding_date:hoy,cycle_length:S.perfilExt.duracion_ciclo||28})
-  ]);
-  S.perfilExt={...S.perfilExt,ancla:hoy};
-  const motorTarjeta=await calcularTarjetaMotor(S.perfilExt,userId,hoy);
-  const ch=[{last_bleeding_date:hoy,cycle_length:S.perfilExt.duracion_ciclo||28},...(S.cycleHistory||[])].slice(0,12);
-  set({motorTarjeta,lastBleeding:hoy,cycleHistory:ch});
+  set({loading:true});
+  try{
+    const pR=await sb.from('profiles').update({ancla:hoy}).eq('id',userId);
+    if(pR.error)throw pR.error;
+    await sb.from('cycle_logs').insert({client_id:userId,last_bleeding_date:hoy,cycle_length:S.perfilExt.duracion_ciclo||28});
+    // Recalcula las sesiones pendientes del motor desde hoy (las manuales y completadas no se tocan)
+    const rg=await sb.rpc('regenerar_motor',{p_client:userId,p_desde:hoy});
+    if(rg.error)console.error(rg.error);
+  }catch(e){
+    console.error(e);
+    set({loading:false});
+    alert('No se pudo registrar el período. Intenta de nuevo.');
+    return;
+  }
+  await loadClientData();
 }
 
 function calcularSemaforo(energia,animo,molestias,sueno){

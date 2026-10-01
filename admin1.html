@@ -273,7 +273,8 @@ async function saveGeneratedRows(){
       const exists=existing.find(function(e){return e.scheduled_date===r.fecha;});
       if(exists)return null;
     }
-    return{client_id:clientId,scheduled_date:r.fecha,session_id:r.editedSesId,status:'pending',session_mode:r.modo};
+    // Si Brayan cambió la sesión a mano, la fila queda 'manual' y el período no la recalcula
+    return{client_id:clientId,scheduled_date:r.fecha,session_id:r.editedSesId,status:'pending',session_mode:r.modo,origen:r.editedSesId===r.sesId?'motor':'manual'};
   }).filter(Boolean);
   if(toInsert.length>0)await sb.from('scheduled_sessions').insert(toInsert);
   set({loading:false,genState:'saved',genConflictCount:0});
@@ -781,8 +782,8 @@ function calcMotorPhase(perfil,fecha){
     return{fase:'semana_'+Math.ceil(db/7),dia:db,orden:((db-1)%7)+1};
   }
   const dur=perfil.duracion_ciclo||28;
-  const dc=dias+1;
-  if(dc>dur)return{fase:'menguante_b',dia:dur,orden:(((dc-dur)-1)%5)+1};
+  // Proyecta ciclos de 'dur' días, igual que generar_motor() en Supabase
+  const dc=(dias%dur)+1;
   const r=adminMapearFaseLunar(dc,dur);
   return{fase:r.fase,dia:dc,orden:r.orden};
 }

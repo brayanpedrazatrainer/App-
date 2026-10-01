@@ -34,7 +34,11 @@ Funciones clave `admin1.html`: `calcMotorPhase` (copia del motor), `generarMes`,
 - El panel admin también compara el email en el código (brayanpedrazatrainer@gmail.com). Alta de clientas con `sb.auth.signUp()`; luego confirmar el correo en Supabase → Authentication → Users.
 
 ## Reglas de producto (no romper)
-- **Regla de oro:** `scheduled_sessions` es la tabla de EXCEPCIONES, no el calendario. Nunca borrar ni modificar filas existentes.
+- **Regla de oro:** nunca borrar ni modificar filas de `scheduled_sessions` puestas a mano. Desde octubre 2026 el motor sí escribe el calendario mensual, y cada fila lleva `origen`:
+  - `manual` (default; todo lo anterior a oct 2026 y lo que Brayan cambie en el generador): intocable.
+  - `motor`: generada por `generar_motor(client, desde, hasta)` en Supabase. "Me llegó el período" llama `regenerar_motor(client, hoy)`, que borra y recalcula solo las filas `motor` + `pending` desde hoy hasta la última fecha generada.
+  - La lógica de fases vive duplicada en `generar_motor` (SQL), `calcMotorPhase` (admin) y `calcularTarjetaMotor` (app). En ruta lunar, SQL y admin proyectan ciclos (`dc = dias % dur + 1`); la app sin fila sigue en menguante_b si el período se atrasa. Si se cambia una, cambiar las demás.
+  - La app agrega a `PROG` las sesiones agendadas que no están en el programa asignado (las del motor vienen de los programas plantilla de Gina y Camila).
 - Dos rutas: lunar (ciclo regular sin anticonceptivos, 5 fases sobre la duración real) y energia (anticonceptivos, irregular, peri/menopausia: bloque fijo de 4 semanas). 56 tarjetas en total.
 - Ciclos ≠ 28: luna_nueva anclada al inicio (días 1–5); llena, menguante_a y menguante_b ancladas al final; creciente absorbe la diferencia; si faltan tarjetas, el orden rota con módulo.
 - Nivel: 1 = una serie menos, 2 = igual, 3 = una más; mínimo 1; no aplica en recuperación activa. Se acumula con el semáforo.
