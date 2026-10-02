@@ -54,7 +54,7 @@ function ytId(url){if(!url)return null;const m=url.match(/(?:youtu\.be\/|youtube
 
 let S={
   view:'login',tab:'hoy',loading:false,error:'',
-  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],upcomingSchedule:[],allSchedule:[],perfilExt:{},checkin:null,checkinDraft:{},motorTarjeta:null,escenario:'C',cargaLog:{},esfuerzoHecho:{},grupoData:null,equivs:{},sesionLibre:false,showBatchEsfuerzo:false,batchEsfuerzoExs:[],
+  user:null,profile:null,prog:null,PROG:[],week:0,todaySchedule:null,todayExercises:[],upcomingSchedule:[],allSchedule:[],perfilExt:{},checkin:null,checkinDraft:{},motorTarjeta:null,escenario:'C',cargaLog:{},esfuerzoHecho:{},grupoData:null,variantes:{},sesionLibre:false,showBatchEsfuerzo:false,batchEsfuerzoExs:[],
   sessW:-1,sessI:-1,vidW:-1,vidS:-1,vidE:-1,completions:{},
   cycleLen:28,lastBleeding:null,cycleHistory:[],
   symLog:{},menoLog:{},selSym:[],symNote:'',
@@ -456,13 +456,18 @@ function textoSeries(n,reps){
 function exListSesion(sess){
   const sem=(S.checkin&&S.checkin.semaforo)||'verde';
   const BLOQUES_ROJO=[1,2,5];
+  // Gimnasio (C): lo programado tal cual, ahí hay de todo.
+  // Mancuernas (B): cambia lo de máquina/barra. Solo cuerpo (A): cambia mancuernas y máquina/barra; la banda se queda.
+  // Se conservan series, reps, tempo e indicaciones; el peso programado no aplica al ejercicio nuevo.
   function resolverEx(ex){
-    // Las sesiones están programadas para gimnasio: en C se muestra exactamente lo programado
-    if((S.escenario||'C')==='C')return ex;
-    if(!ex.patron||!S.equivs)return ex;
-    const eq=S.equivs[ex.patron+'_'+(S.escenario||'C')];
-    if(!eq)return ex;
-    return Object.assign({},ex,{n:eq.n,v:eq.v,m:eq.m||ex.m});
+    const esc2=S.escenario||'C';
+    if(esc2==='C'||!ex.familia||!ex.equipo)return ex;
+    const cambia=esc2==='B'?ex.equipo==='gimnasio':(ex.equipo==='gimnasio'||ex.equipo==='mancuernas');
+    if(!cambia)return ex;
+    const va=S.variantes&&S.variantes[ex.familia+'_'+esc2];
+    if(!va)return ex;
+    const nota=(ex.n.match(/\(([^)]*)\)\s*$/)||[])[1];
+    return Object.assign({},ex,{n:va.n+(nota?' ('+nota+')':''),v:va.v||ex.v,desc:va.d||null,carga_kg:null,sustituido:true});
   }
   let exList=(sess.ex||[]).map(resolverEx);
   if(sem==='rojo')exList=exList.filter(function(ex){return !ex.bloque||BLOQUES_ROJO.indexOf(ex.bloque)>=0;});
@@ -553,7 +558,10 @@ function rSess(){
       h+='<div id="nb-'+ex.eid+'" style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:'+(allD?C.pr:'#fde8e8')+';color:'+(allD?C.wh:C.dk)+'">'+(allD?'✓':visN)+'</div>';
       h+='<div style="flex:1">';
       h+='<p style="font-weight:700;font-size:14px;color:'+(allD?C.wh:C.td)+';margin-bottom:2px">'+esc(ex.n)+'</p>';
-      const lastLog=S.cargaLog?(S.cargaLog[ex.eid]||S.cargaLog['pat_'+(ex.patron||'')+'_'+S.escenario]||null):null;
+      if(ex.desc)h+='<p style="font-size:12px;color:'+(allD?C.g3:C.tm)+';margin-bottom:4px">'+esc(ex.desc)+'</p>';
+      // Ejercicio reemplazado por escenario: solo vale el historial de ese patrón en ese escenario
+      const patKey='pat_'+(ex.patron||'')+'_'+S.escenario;
+      const lastLog=S.cargaLog?((ex.sustituido?S.cargaLog[patKey]:(S.cargaLog[ex.eid]||S.cargaLog[patKey]))||null):null;
     const sugKg=sugerirKg(lastLog,ex.carga_kg);
     const kgText=sugKg?('<b style="font-size:14px;color:'+(allD?C.wh:C.pr)+';">'+sugKg+' kg</b>'+(lastLog&&lastLog.kg!==ex.carga_kg?' sugerido':'')):(ex.carga_kg?'Anota el peso que uses':'');
     const cueText=ex.cue?('<p style="font-size:13px;color:'+(allD?'#fde8e8':'#710D0B')+';font-style:italic;margin-bottom:6px;line-height:1.5">'+esc(ex.cue)+'</p>'):'';
@@ -584,7 +592,7 @@ function rSess(){
       if(!efYa){
         h+='<div style="margin-bottom:9px"><p style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:6px">\xbfC\xf3mo se sinti\xf3?</p><div style="display:flex;gap:6px">';
         [{v:1,l:'Sobrada'},{v:2,l:'Justa'},{v:3,l:'Al l\xedmite'}].forEach(function(op){
-          h+='<button data-eid="'+ex.eid+'" data-fase="'+faseActual+'" data-kg="'+(ex.carga_kg||'')+'" data-ef="'+op.v+'" onclick="efClick(this)" style="flex:1;padding:8px 4px;border-radius:8px;font-size:12px;font-weight:600;border:2px solid #7c3aed;background:#f5f3ff;color:#7c3aed">'+op.l+'</button>';
+          h+='<button data-eid="'+ex.eid+'" data-pat="'+esc(ex.patron||'')+'" data-fase="'+faseActual+'" data-kg="'+(ex.carga_kg||'')+'" data-ef="'+op.v+'" onclick="efClick(this)" style="flex:1;padding:8px 4px;border-radius:8px;font-size:12px;font-weight:600;border:2px solid #7c3aed;background:#f5f3ff;color:#7c3aed">'+op.l+'</button>';
         });
         h+='</div></div>';
       } else {
@@ -634,7 +642,8 @@ function rVid(){
   const id=ytId(ex.v);
   return `<div style="background:${C.wh};border-radius:18px;padding:18px;box-shadow:0 2px 10px rgba(25,18,17,.1)">
     <p style="font-weight:900;font-size:17px;color:${C.td};margin-bottom:3px">${esc(ex.n)}</p>
-    <p style="font-size:12px;color:${C.tl};margin-bottom:14px">${esc(ex.m)}</p>
+    <p style="font-size:12px;color:${C.tl};margin-bottom:${ex.desc?4:14}px">${esc(ex.m)}</p>
+    ${ex.desc?`<p style="font-size:13px;font-weight:600;color:${C.tm};margin-bottom:14px">${esc(ex.desc)}</p>`:''}
     ${id?`<div style="border-radius:11px;overflow:hidden;margin-bottom:14px;aspect-ratio:16/9"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}?end=20" frameBorder="0" allowFullscreen></iframe></div>`
     :`<div style="background:${C.bk};border-radius:13px;padding:34px 16px;text-align:center;margin-bottom:14px;border:1px solid #2a2523"><p style="font-size:36px;margin-bottom:10px">🎬</p><p style="font-weight:800;color:#fff;margin-bottom:5px">Video próximamente</p><p style="font-size:12px;color:${C.g2}">Tu entrenador agregará el video de demostración.</p></div>`}
     <div style="background:#fde8e8;border-radius:11px;padding:13px;border:1px solid #fecaca">
@@ -702,6 +711,7 @@ async function efClick(btn){
   const{error}=await sb.from('carga_log').upsert({
     client_id:S.user.id,
     exercise_id:eid,
+    patron:btn.dataset.pat||null,
     escenario:S.escenario||'C',
     fase:fase,
     fecha:today(),
@@ -957,7 +967,7 @@ async function loadClientData(){
             const w=(s.week_number||1)-1;
             (wk[w]=wk[w]||[]).push({
               id:s.id,day:'Día '+(s.day_number||1),type:s.session_type||'Sesión',
-              ex:(byS[s.id]||[]).map(function(e){return {eid:e.id,n:e.name,m:e.muscle_group,sets:e.sets_count,reps:e.reps_range,v:e.video_url||'',bloque:e.bloque||null,patron:e.patron||null,carga_pct:e.carga_pct||null,carga_kg:e.carga_kg||null,tempo:e.tempo||null,cue:e.cue||null};})
+              ex:(byS[s.id]||[]).map(function(e){return {eid:e.id,n:e.name,m:e.muscle_group,sets:e.sets_count,reps:e.reps_range,v:e.video_url||'',bloque:e.bloque||null,patron:e.patron||null,carga_pct:e.carga_pct||null,carga_kg:e.carga_kg||null,tempo:e.tempo||null,cue:e.cue||null,familia:e.familia||null,equipo:e.equipo||null};})
             });
           });
           PROG=Object.keys(wk).sort(function(a,b){return a-b;}).map(function(k){return wk[k];});
@@ -980,7 +990,7 @@ async function loadClientData(){
       exs.forEach(function(e){(byS[e.session_id]=byS[e.session_id]||[]).push(e);});
       const extra=((sR&&sR.data)||[]).map(function(s){
         return {id:s.id,week:s.week_number||1,day:'Día '+(s.day_number||1),type:s.session_type||'Sesión',
-          ex:(byS[s.id]||[]).map(function(e){return {eid:e.id,n:e.name,m:e.muscle_group,sets:e.sets_count,reps:e.reps_range,v:e.video_url||'',bloque:e.bloque||null,patron:e.patron||null,carga_pct:e.carga_pct||null,carga_kg:e.carga_kg||null,tempo:e.tempo||null,cue:e.cue||null};})};
+          ex:(byS[s.id]||[]).map(function(e){return {eid:e.id,n:e.name,m:e.muscle_group,sets:e.sets_count,reps:e.reps_range,v:e.video_url||'',bloque:e.bloque||null,patron:e.patron||null,carga_pct:e.carga_pct||null,carga_kg:e.carga_kg||null,tempo:e.tempo||null,cue:e.cue||null,familia:e.familia||null,equipo:e.equipo||null};})};
       });
       if(extra.length){
         PROG=PROG.concat([extra]);
@@ -989,20 +999,13 @@ async function loadClientData(){
     }
   }catch(e){}
   const escenario=perfilExt.escenario_default||'C';
-  // Cargar equivalencias por escenario
-  let equivs={};
+  // Versiones de cada movimiento por escenario (tabla variantes)
+  let variantes={};
   try{
-    const eqR=await sb.from('equivalencias').select('patron,escenario,exercise_id');
-    const eids=Array.from(new Set(((eqR&&eqR.data)||[]).map(function(r){return r.exercise_id;})));
-    if(eids.length){
-      const exR2=await sb.from('exercises').select('id,name,video_url,muscle_group').in('id',eids);
-      const byId={};
-      ((exR2&&exR2.data)||[]).forEach(function(e){byId[e.id]=e;});
-      ((eqR&&eqR.data)||[]).forEach(function(r){
-        const e=byId[r.exercise_id];
-        if(e)equivs[r.patron+'_'+r.escenario]={n:e.name,v:e.video_url||'',m:e.muscle_group};
-      });
-    }
+    const vaR=await sb.from('variantes').select('familia,escenario,nombre,video_url,descripcion');
+    ((vaR&&vaR.data)||[]).forEach(function(r){
+      variantes[r.familia+'_'+r.escenario]={n:r.nombre,v:r.video_url||'',d:r.descripcion||null};
+    });
   }catch(e){}
   // Load grupo if client has one (Compañía / Corona)
   let grupoData=null;
@@ -1028,7 +1031,7 @@ async function loadClientData(){
   const allSchedR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',today()).order('scheduled_date').limit(62);
   const allSchedule=allSchedR.data||[];
   const defaultWeek=currentProgWeek(lastBleeding,cycleLen);
-  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,equivs:equivs});
+  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,variantes:variantes});
 }
 
 function buildProg(prog){
@@ -1041,7 +1044,7 @@ function buildProg(prog){
       return {
         id:sess.id,week:wn,day:'Día '+sess.day_number,type:sess.session_type,
         ex:(sess.exercises||[]).sort(function(a,b){return a.order_index-b.order_index}).map(function(ex){
-          return {eid:ex.id,n:ex.name,m:ex.muscle_group,sets:ex.sets_count,reps:ex.reps_range,v:ex.video_url||'',bloque:ex.bloque||null,patron:ex.patron||null,carga_pct:ex.carga_pct||null,carga_kg:ex.carga_kg||null,tempo:ex.tempo||null,cue:ex.cue||null}
+          return {eid:ex.id,n:ex.name,m:ex.muscle_group,sets:ex.sets_count,reps:ex.reps_range,v:ex.video_url||'',bloque:ex.bloque||null,patron:ex.patron||null,carga_pct:ex.carga_pct||null,carga_kg:ex.carga_kg||null,tempo:ex.tempo||null,cue:ex.cue||null,familia:ex.familia||null,equipo:ex.equipo||null}
         })
       }
     });
