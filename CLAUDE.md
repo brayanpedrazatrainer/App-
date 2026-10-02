@@ -68,6 +68,6 @@ Funciones clave `admin1.html`: `calcMotorPhase` (copia del motor), `generarMes`,
 
 ## Pendientes
 - Datos (Brayan): rellenar `bloque` 1–5 en ejercicios (sin eso el semáforo rojo no filtra); falta `patron` en algunos ejercicios; anclas de Lorena y Nubia; días/hora del grupo "Clase prueba" de Yeraldine; generar octubre para las 8 presenciales; verificar a Yeraldine con escenario B.
-- Octubre 2026 generado (origen motor) para Claudia, Gina, Sara, Laura y Lorena. Falta: Camila, Carolina y Yeraldine (Brayan confirma su último período) y Nubia (en espera). Generar con `select generar_motor('<id>', '2026-10-01', '2026-10-31')`.
+- Octubre 2026 generado (origen motor) para Claudia, Gina, Sara, Laura, Lorena y Camila (período 25 sep). Falta: Carolina y Yeraldine (Brayan confirma su último período) y Nubia (último período 10 sep; faltan ruta y días presenciales). Generar con `select generar_motor('<id>', '2026-10-01', '2026-10-31')`.
 - Videos: prensa horizontal, press en suelo, pullover en suelo, blindaje articular (bloque 1), recuperación muscular (bloque 5), y sobre todo escenario A (casa).
 - Producto: alertas en admin (duracion_ciclo fuera de 24–35 en 3 ciclos, 3 semáforos rojos en una semana, 40 días sin período en ruta lunar); registro "Asistí a la clase".
