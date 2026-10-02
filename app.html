@@ -424,6 +424,33 @@ function sPct(sess){
   return t===0?0:Math.round((d/t)*100);
 }
 
+// Convierte reps_range ("12–15 reps · Ligera / RPE 6 · 75s desc") en texto claro para la clienta.
+// Devuelve {principal: "<b>3 series</b> de <b>12 a 15 repeticiones</b>", extras: ["Ligera","Descansa 75 segundos"], avisos: [...]}
+function textoSeries(n,reps){
+  const partes=String(reps||'').split('·').map(function(p){return p.trim();}).filter(Boolean);
+  const primera=partes.shift()||'';
+  const rango=function(a,b){return b?a+' a '+b:a;};
+  const series='<b>'+n+(n===1?' serie':' series')+'</b>';
+  let m,principal;
+  if((m=primera.match(/^(\d+)\s*(?:[–-]\s*(\d+))?\s*min/i))){
+    const t=rango(m[1],m[2])+' minutos';
+    principal=n>1?'<b>'+n+' veces</b> de <b>'+t+'</b>':'<b>'+t+'</b>';
+  }else if((m=primera.match(/^(\d+)\s*(?:[–-]\s*(\d+))?\s*(x\s*lado|reps?)?/i))){
+    principal=series+' de <b>'+rango(m[1],m[2])+' repeticiones</b>'+(m[3]&&/lado/i.test(m[3])?' por lado':'');
+  }else{
+    principal=series+(primera?' · '+esc(primera):'');
+  }
+  const extras=[],avisos=[];
+  partes.forEach(function(p){
+    let d;
+    if(p.indexOf('⚠')===0){avisos.push(p.replace('⚠','').trim());return;}
+    if((d=p.match(/^(\d+)\s*s\s*desc/i))){extras.push('Descansa '+d[1]+' segundos');return;}
+    const t=p.replace(/\/?\s*RPE\s*[\d–-]+/i,'').replace(/\bFC\b/,'pulsaciones').trim();
+    if(t)extras.push(t.charAt(0).toUpperCase()+t.slice(1));
+  });
+  return {principal:principal,extras:extras,avisos:avisos};
+}
+
 // Lista de ejercicios tal como se muestra en la sesión: resuelta por escenario y filtrada por semáforo.
 // rSess y rVid la usan igual para que el índice y el nombre del video coincidan con la lista.
 function exListSesion(sess){
@@ -504,7 +531,7 @@ function rSess(){
           const aD=Array.from({length:n},function(_,k){return S.completions[se.eid+'_'+k];}).every(Boolean);
           h+='<div style="background:'+(aD?'#1a0a09':C.bg)+';border-radius:10px;padding:10px 12px;border:2px solid '+(aD?C.pr:C.g3)+'">';
           h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">';
-          h+='<p style="font-weight:700;font-size:13px;color:'+(aD?C.wh:C.td)+'">'+esc(se.n)+'</p>';
+          h+='<div><p style="font-weight:700;font-size:13px;color:'+(aD?C.wh:C.td)+'">'+esc(se.n)+'</p><p style="font-size:13px;color:'+(aD?C.g3:C.tm)+';margin-top:2px">'+textoSeries(n,se.reps).principal+'</p></div>';
           if(se.v)h+='<button onclick="set({view:\'vid\',vidW:'+S.sessW+',vidS:'+S.sessI+',vidE:'+si+'})" style="background:'+C.pr+';color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600">▶ Ver</button>';
           h+='</div><div style="display:flex;gap:5px">';
           for(let k=0;k<n;k++){
@@ -528,11 +555,19 @@ function rSess(){
       h+='<p style="font-weight:700;font-size:14px;color:'+(allD?C.wh:C.td)+';margin-bottom:2px">'+esc(ex.n)+'</p>';
       const lastLog=S.cargaLog?(S.cargaLog[ex.eid]||S.cargaLog['pat_'+(ex.patron||'')+'_'+S.escenario]||null):null;
     const sugKg=sugerirKg(lastLog,ex.carga_kg);
-    const kgText=sugKg?('<b style="font-size:16px;color:'+(allD?C.wh:C.pr)+';">'+sugKg+' kg</b>'+(lastLog&&lastLog.kg!==ex.carga_kg?' <span style="font-size:10px;color:'+C.g2+'">sugerido</span>':'')+' · '):(ex.carga_kg?'anota el peso que uses · ':'');
+    const kgText=sugKg?('<b style="font-size:14px;color:'+(allD?C.wh:C.pr)+';">'+sugKg+' kg</b>'+(lastLog&&lastLog.kg!==ex.carga_kg?' sugerido':'')):(ex.carga_kg?'Anota el peso que uses':'');
     const cueText=ex.cue?('<p style="font-size:13px;color:'+(allD?'#fde8e8':'#710D0B')+';font-style:italic;margin-bottom:6px;line-height:1.5">'+esc(ex.cue)+'</p>'):'';
     const tempoMap={'3-1-1':'Baja contando tres','2-1-2':'Baja en dos, sube en dos','4-1-1':'Baja lento contando cuatro','1-0-1':'Explosivo'};
     const tempoText=ex.tempo?(tempoMap[ex.tempo]||ex.tempo):'';
-    h+='<p style="font-size:12px;color:'+(allD?C.g2:C.tl)+';margin-bottom:6px">'+kgText+n+'\xd7'+(function(r){var p=r.indexOf(' ·');var q=r.indexOf('·');var s=p>0?r.slice(0,p):q>0?r.slice(0,q):r;return s.replace(/ reps$/,'').replace(/ reps /g,' ').trim();})(ex.reps||'')+'</p>';
+    const ts=textoSeries(n,ex.reps);
+    h+='<p style="font-size:15px;color:'+(allD?C.wh:C.td)+';margin-bottom:6px;line-height:1.4">'+ts.principal+'</p>';
+    const chips=(kgText?[kgText]:[]).concat(ts.extras.map(esc));
+    if(chips.length){
+      h+='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px">';
+      chips.forEach(function(c){h+='<span style="font-size:12px;padding:3px 9px;border-radius:20px;background:'+(allD?'#2a2523':'#f3f1ef')+';color:'+(allD?C.g3:C.tm)+'">'+c+'</span>';});
+      h+='</div>';
+    }
+    ts.avisos.forEach(function(a){h+='<p style="font-size:12px;font-weight:700;color:'+(allD?'#fcd34d':'#b45309')+';margin-bottom:6px">⚠ '+esc(a)+'</p>';});
     if(tempoText)h+='<p style="font-size:11px;color:'+(allD?C.g2:'#7c3aed')+';margin-bottom:6px">'+tempoText+'</p>';
     if(cueText)h+=cueText;
       h+='<div style="display:flex;gap:6px;margin-bottom:9px">';
