@@ -453,6 +453,8 @@ function rSess(){
   const nivel=(S.perfilExt&&S.perfilExt.nivel)||2;
   function sH(ex){
     let n=ex.sets||1;
+    // Calentamiento y cierre: siempre las series escritas (sin nivel ni semáforo)
+    if([1,2,5].indexOf(ex.bloque)>=0)return Math.max(1,n);
     // Semáforo amarillo: -1 serie
     if(sem==='amarillo')n=Math.max(1,n-1);
     // Nivel (excepto sesiones de recuperación activa)
@@ -539,7 +541,8 @@ function rSess(){
         h+='<button id="sb-'+ex.eid+'-'+k+'" onclick="tSet(\''+ex.eid+'\','+k+','+n+')" style="width:37px;height:37px;border-radius:8px;font-weight:700;font-size:12px;border:2px solid '+(d?C.pr:C.g3)+';background:'+(d?C.pr:C.wh)+';color:'+(d?C.wh:C.tl)+'">'+(d?'✓':'S'+(k+1))+'</button>';
       }
       h+='</div>';
-    const esMovilidad=/movilidad|blindaje|activaci|respiraci|estiramiento/i.test((ex.n||'')+' '+(ex.m||''));
+    // Calentamiento (bloques 1-2) y cierre (bloque 5) no piden esfuerzo
+    const esMovilidad=[1,2,5].indexOf(ex.bloque)>=0||/movilidad|blindaje|activaci|respiraci|estiramiento|recuperaci/i.test((ex.n||'')+' '+(ex.m||''));
     if(allD&&!isRecovSess&&!esMovilidad){
       const faseActual=getCurrentFase()||'presencial';
       const efYa=S.esfuerzoHecho&&S.esfuerzoHecho[ex.eid];
