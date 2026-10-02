@@ -1,3 +1,7 @@
+-- CORRECCIÓN aplicada después: Brayan no quiere el Blindaje articular en los días de entrenamiento.
+-- Se borraron de las 29 sesiones 'Blindaje articular ligero' y 'Ejercicio 1..7' (232 filas).
+-- Queda: Movilidad articular suave al inicio y Recuperación muscular al final.
+--
 -- Agrega calentamiento (bloques 1-2) y cierre (bloque 5) a las sesiones de entrenamiento del motor.
 -- Fuente: la sesión de Recuperación Activa dc41632a-… (Movilidad, Blindaje + Ejercicios 1-7, Recuperación muscular).
 -- Los ejercicios existentes no cambian, solo se corren de order_index 1..5 a 11..15.
