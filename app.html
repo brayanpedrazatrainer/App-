@@ -464,7 +464,9 @@ function exListSesion(sess){
     if(esc2==='C'||!ex.familia||!ex.equipo)return ex;
     const cambia=esc2==='B'?ex.equipo==='gimnasio':(ex.equipo==='gimnasio'||ex.equipo==='mancuernas');
     if(!cambia)return ex;
-    const va=S.variantes&&S.variantes[ex.familia+'_'+esc2];
+    const V=S.variantes||{};
+    // Si no hay versión Solo cuerpo de algo de gimnasio, se usa la de mancuernas/banda (ej. jalón)
+    const va=V[ex.familia+'_'+esc2]||(esc2==='A'&&ex.equipo==='gimnasio'?V[ex.familia+'_B']:null);
     if(!va)return ex;
     const nota=(ex.n.match(/\(([^)]*)\)\s*$/)||[])[1];
     return Object.assign({},ex,{n:va.n+(nota?' ('+nota+')':''),v:va.v||ex.v,desc:va.d||null,carga_kg:null,sustituido:true});
