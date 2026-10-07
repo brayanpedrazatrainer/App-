@@ -59,3 +59,13 @@ update public.exercises set familia='hip_thrust', equipo = case when name ilike 
   where name ilike 'Hip thrust%' or name ilike 'Puente de glúteo%';
 update public.exercises set familia='remo', equipo='mancuernas' where name = 'Remo con mancuerna a un brazo';
 update public.exercises set familia='jalon', equipo='banda' where name = 'Jalón con banda';
+
+-- 2026-10-07: faltaba este permiso; sin él la app de las clientas no podía leer las versiones y no reemplazaba nada
+grant select, insert, update, delete on public.variantes to authenticated;
+-- 2026-10-07: versiones Solo cuerpo de jalón y pallof
+insert into public.variantes (familia, escenario, nombre, video_url) values
+ ('jalon','A','Jalón acostado con toalla','https://youtube.com/shorts/U7k4i4yVXEI'),
+ ('pallof','A','Pallof con mano','https://youtube.com/shorts/Gon_UpBO-ZU'),
+ ('pallof','B','Pallof press con banda','https://youtube.com/shorts/KFgtBsL_kkM')
+on conflict (familia, escenario) do nothing;
+update public.exercises set familia='pallof', equipo='banda' where name='Pallof press con banda';

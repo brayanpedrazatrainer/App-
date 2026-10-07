@@ -462,9 +462,10 @@ function exListSesion(sess){
   function resolverEx(ex){
     const esc2=S.escenario||'C';
     if(esc2==='C'||!ex.familia||!ex.equipo)return ex;
-    const cambia=esc2==='B'?ex.equipo==='gimnasio':(ex.equipo==='gimnasio'||ex.equipo==='mancuernas');
-    if(!cambia)return ex;
     const V=S.variantes||{};
+    // Solo cuerpo: la banda también cambia, pero solo si ya hay una versión sin equipo
+    const cambia=esc2==='B'?ex.equipo==='gimnasio':(ex.equipo==='gimnasio'||ex.equipo==='mancuernas'||(ex.equipo==='banda'&&!!V[ex.familia+'_A']));
+    if(!cambia)return ex;
     // Si no hay versión Solo cuerpo de algo de gimnasio, se usa la de mancuernas/banda (ej. jalón)
     const va=V[ex.familia+'_'+esc2]||(esc2==='A'&&ex.equipo==='gimnasio'?V[ex.familia+'_B']:null);
     if(!va)return ex;
@@ -1005,6 +1006,7 @@ async function loadClientData(){
   let variantes={};
   try{
     const vaR=await sb.from('variantes').select('familia,escenario,nombre,video_url,descripcion');
+    if(vaR&&vaR.error)console.error('variantes:',vaR.error.message);
     ((vaR&&vaR.data)||[]).forEach(function(r){
       variantes[r.familia+'_'+r.escenario]={n:r.nombre,v:r.video_url||'',d:r.descripcion||null};
     });
