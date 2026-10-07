@@ -432,7 +432,9 @@ function textoSeries(n,reps){
   const rango=function(a,b){return b?a+' a '+b:a;};
   const series='<b>'+n+(n===1?' serie':' series')+'</b>';
   let m,principal;
-  if((m=primera.match(/^(\d+)\s*(?:[–-]\s*(\d+))?\s*min/i))){
+  if((m=primera.match(/^(\d+)\s*(?:s|seg|segundos)$/i))){
+    principal='<b>'+n+(n===1?' ronda':' rondas')+'</b> de <b>'+m[1]+' segundos</b>';
+  }else if((m=primera.match(/^(\d+)\s*(?:[–-]\s*(\d+))?\s*min/i))){
     const t=rango(m[1],m[2])+' minutos';
     principal=n>1?'<b>'+n+' veces</b> de <b>'+t+'</b>':'<b>'+t+'</b>';
   }else if((m=primera.match(/^(\d+)\s*(?:[–-]\s*(\d+))?\s*(x\s*lado|reps?)?/i))){
@@ -460,6 +462,12 @@ function exListSesion(sess){
   // Mancuernas (B): cambia lo de máquina/barra. Solo cuerpo (A): cambia mancuernas y máquina/barra; la banda se queda.
   // Se conservan series, reps, tempo e indicaciones; el peso programado no aplica al ejercicio nuevo.
   function resolverEx(ex){
+    // Perimenopausia y menopausia: nunca saltos. El cardio de impacto alto pasa a la caminata con talones.
+    const sub=(S.perfilExt&&S.perfilExt.sub_perfil)||'';
+    if(ex.impacto==='alto'&&(sub==='perimenopausia'||sub==='menopausia')){
+      const bi=S.variantes&&S.variantes['bajo_impacto_A'];
+      if(bi)return Object.assign({},ex,{n:bi.n,v:bi.v||ex.v,impacto:'bajo',sustituido:true});
+    }
     const esc2=S.escenario||'C';
     if(esc2==='C'||!ex.familia||!ex.equipo)return ex;
     const V=S.variantes||{};
@@ -587,8 +595,8 @@ function rSess(){
         h+='<button id="sb-'+ex.eid+'-'+k+'" onclick="tSet(\''+ex.eid+'\','+k+','+n+')" style="width:37px;height:37px;border-radius:8px;font-weight:700;font-size:12px;border:2px solid '+(d?C.pr:C.g3)+';background:'+(d?C.pr:C.wh)+';color:'+(d?C.wh:C.tl)+'">'+(d?'✓':'S'+(k+1))+'</button>';
       }
       h+='</div>';
-    // Calentamiento (bloques 1-2) y cierre (bloque 5) no piden esfuerzo
-    const esMovilidad=[1,2,5].indexOf(ex.bloque)>=0||/movilidad|blindaje|activaci|respiraci|estiramiento|recuperaci/i.test((ex.n||'')+' '+(ex.m||''));
+    // Calentamiento (bloques 1-2), cardio (4) y cierre (5) no piden esfuerzo
+    const esMovilidad=[1,2,4,5].indexOf(ex.bloque)>=0||/movilidad|blindaje|activaci|respiraci|estiramiento|recuperaci/i.test((ex.n||'')+' '+(ex.m||''));
     if(allD&&!isRecovSess&&!esMovilidad){
       const faseActual=getCurrentFase()||'presencial';
       const efYa=S.esfuerzoHecho&&S.esfuerzoHecho[ex.eid];
@@ -970,7 +978,7 @@ async function loadClientData(){
             const w=(s.week_number||1)-1;
             (wk[w]=wk[w]||[]).push({
               id:s.id,day:'Día '+(s.day_number||1),type:s.session_type||'Sesión',
-              ex:(byS[s.id]||[]).map(function(e){return {eid:e.id,n:e.name,m:e.muscle_group,sets:e.sets_count,reps:e.reps_range,v:e.video_url||'',bloque:e.bloque||null,patron:e.patron||null,carga_pct:e.carga_pct||null,carga_kg:e.carga_kg||null,tempo:e.tempo||null,cue:e.cue||null,familia:e.familia||null,equipo:e.equipo||null};})
+              ex:(byS[s.id]||[]).map(function(e){return {eid:e.id,n:e.name,m:e.muscle_group,sets:e.sets_count,reps:e.reps_range,v:e.video_url||'',bloque:e.bloque||null,patron:e.patron||null,carga_pct:e.carga_pct||null,carga_kg:e.carga_kg||null,tempo:e.tempo||null,cue:e.cue||null,familia:e.familia||null,equipo:e.equipo||null,impacto:e.impacto||null};})
             });
           });
           PROG=Object.keys(wk).sort(function(a,b){return a-b;}).map(function(k){return wk[k];});
@@ -993,7 +1001,7 @@ async function loadClientData(){
       exs.forEach(function(e){(byS[e.session_id]=byS[e.session_id]||[]).push(e);});
       const extra=((sR&&sR.data)||[]).map(function(s){
         return {id:s.id,week:s.week_number||1,day:'Día '+(s.day_number||1),type:s.session_type||'Sesión',
-          ex:(byS[s.id]||[]).map(function(e){return {eid:e.id,n:e.name,m:e.muscle_group,sets:e.sets_count,reps:e.reps_range,v:e.video_url||'',bloque:e.bloque||null,patron:e.patron||null,carga_pct:e.carga_pct||null,carga_kg:e.carga_kg||null,tempo:e.tempo||null,cue:e.cue||null,familia:e.familia||null,equipo:e.equipo||null};})};
+          ex:(byS[s.id]||[]).map(function(e){return {eid:e.id,n:e.name,m:e.muscle_group,sets:e.sets_count,reps:e.reps_range,v:e.video_url||'',bloque:e.bloque||null,patron:e.patron||null,carga_pct:e.carga_pct||null,carga_kg:e.carga_kg||null,tempo:e.tempo||null,cue:e.cue||null,familia:e.familia||null,equipo:e.equipo||null,impacto:e.impacto||null};})};
       });
       if(extra.length){
         PROG=PROG.concat([extra]);
@@ -1048,7 +1056,7 @@ function buildProg(prog){
       return {
         id:sess.id,week:wn,day:'Día '+sess.day_number,type:sess.session_type,
         ex:(sess.exercises||[]).sort(function(a,b){return a.order_index-b.order_index}).map(function(ex){
-          return {eid:ex.id,n:ex.name,m:ex.muscle_group,sets:ex.sets_count,reps:ex.reps_range,v:ex.video_url||'',bloque:ex.bloque||null,patron:ex.patron||null,carga_pct:ex.carga_pct||null,carga_kg:ex.carga_kg||null,tempo:ex.tempo||null,cue:ex.cue||null,familia:ex.familia||null,equipo:ex.equipo||null}
+          return {eid:ex.id,n:ex.name,m:ex.muscle_group,sets:ex.sets_count,reps:ex.reps_range,v:ex.video_url||'',bloque:ex.bloque||null,patron:ex.patron||null,carga_pct:ex.carga_pct||null,carga_kg:ex.carga_kg||null,tempo:ex.tempo||null,cue:ex.cue||null,familia:ex.familia||null,equipo:ex.equipo||null,impacto:ex.impacto||null}
         })
       }
     });

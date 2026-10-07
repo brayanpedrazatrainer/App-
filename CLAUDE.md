@@ -74,3 +74,10 @@ Funciones clave `admin1.html`: `calcMotorPhase` (copia del motor), `generarMes`,
 - Bloque 1 (calentamiento) llevará también blindaje articular cuando Brayan grabe la secuencia; por ahora solo Movilidad (se mantiene "8–10 min" aunque el video dure menos). Cierre: queda "Recuperación muscular" hasta que grabe la recuperación. Cuando mande los videos, preguntarle la lista exacta antes de cargarla en las 29 sesiones.
 - Videos: prensa horizontal, press en suelo, pullover en suelo, blindaje articular (bloque 1), recuperación muscular (bloque 5), y sobre todo escenario A (casa).
 - Producto: alertas en admin (duracion_ciclo fuera de 24–35 en 3 ciclos, 3 semáforos rojos en una semana, 40 días sin período en ruta lunar); registro "Asistí a la clase".
+
+## Variabilidad de las Principales (2026-10-07, `supabase/variabilidad_principales_2026-10-07.sql`)
+- Energía: cada semana tiene su sesión; los ejercicios rotan por semana (Resistir/Forjar/Conquistar/Blindar) manteniendo el número de ejercicios. P2 semanas 2-3 = gimnasio; semanas 1 y 4 = flexión, remo solo cuerpo/mancuerna, press sentada, jalón toalla/banda.
+- Lunar: se clonaron Principal A (creciente#5 y menguante_a#4), B (creciente#6) y C (creciente#7) en el programa de Camila y se re-apuntaron esas tarjetas. Las clientas lunares se regeneraron con `regenerar_motor` desde el 2026-10-07.
+- Bloque 4 (cardio, order_index 50): 3 rondas de 30 s. `exercises.impacto = 'alto'` (skipping, jumping jacks) → la app lo cambia por la variante `bajo_impacto_A` (Caminata con levantamiento de talones) si sub_perfil es perimenopausia o menopausia.
+- Bloque 1: Movilidad bajó a "4–5 min" en sesiones de entrenamiento + 2-3 ejercicios de blindaje (bloque 2, order 2-4) según el tipo de día (inferior/superior/completo). Recuperación Activa: + 5 de blindaje ligero (rodilla/cadera) en order 10-14.
+- Los 13 videos "movilidad y/o fortalecimiento" se nombraron viéndolos (nombres propuestos por Claude, Brayan puede corregirlos).
