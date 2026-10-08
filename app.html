@@ -27,6 +27,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
+const APP_VERSION='2026.10.08b';
 const C={pr:'#c7372c',dk:'#710D0B',bk:'#191211',g2:'#94938f',g3:'#d6d7d2',bg:'#ECEAE8',wh:'#FFFFFF',td:'#191211',tm:'#4a4743',tl:'#94938f'};
 const PHASES=[
   {k:'menstrual',l:'Menstrual',r:[1,5],e:'🌑',tip:'Descanso activo — movilidad y respiración',tr:'Movilidad, yoga suave, estiramientos profundos',c:'#be185d',bg:'#fdf2f8',br:'#f9a8d4'},
@@ -77,7 +78,7 @@ function render(){
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
           <p style="color:#fff;font-weight:900;font-size:17px;margin:0">👑 ${S.profile&&S.profile.name?'Hola, '+esc(S.profile.name)+'!':'Mi App'}</p>
-          <p style="color:${C.g2};font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin:2px 0 0">Entrenamiento &amp; Seguimiento</p>
+          <p style="color:${C.g2};font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin:2px 0 0">Entrenamiento &amp; Seguimiento · v${APP_VERSION}</p>
         </div>
         <button onclick="doLogout()" style="background:rgba(255,255,255,.08);border:none;color:${C.g3};padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600">Salir</button>
       </div>
@@ -432,7 +433,9 @@ function textoSeries(n,reps){
   const rango=function(a,b){return b?a+' a '+b:a;};
   const series='<b>'+n+(n===1?' serie':' series')+'</b>';
   let m,principal;
-  if((m=primera.match(/^(\d+)\s*(?:s|seg|segundos)$/i))){
+  if((m=primera.match(/^(\d+)\s*pasos/i))){
+    principal=series+' de <b>'+m[1]+' pasos</b>';
+  }else if((m=primera.match(/^(\d+)\s*(?:s|seg|segundos)$/i))){
     principal='<b>'+n+(n===1?' ronda':' rondas')+'</b> de <b>'+m[1]+' segundos</b>';
   }else if((m=primera.match(/^(\d+)\s*(?:[–-]\s*(\d+))?\s*min/i))){
     const t=rango(m[1],m[2])+' minutos';
@@ -465,11 +468,11 @@ function exListSesion(sess){
   // Gimnasio: versión C, o la de mancuernas si no hay C. Mancuernas: versión B. Solo cuerpo: versión A
   // (si no hay A de algo de gimnasio, la B). Se conservan series, reps, tempo e indicaciones.
   function resolverEx(ex){
-    // Perimenopausia y menopausia: nunca saltos. El cardio de impacto alto pasa a la caminata con talones.
+    // Perimenopausia y menopausia: nunca saltos. El cardio de impacto alto pasa a su versión sin salto (escenario 'L').
     const sub=(S.perfilExt&&S.perfilExt.sub_perfil)||'';
-    if(ex.impacto==='alto'&&(sub==='perimenopausia'||sub==='menopausia')){
-      const bi=S.variantes&&S.variantes['bajo_impacto_A'];
-      if(bi)return Object.assign({},ex,{n:bi.n,v:bi.v||ex.v,impacto:'bajo',sustituido:true});
+    if(ex.impacto==='alto'&&ex.familia&&(sub==='perimenopausia'||sub==='menopausia')){
+      const ss=S.variantes&&S.variantes[ex.familia+'_L'];
+      if(ss)return Object.assign({},ex,{n:ss.n,v:ss.v||ex.v,desc:ss.d||null,impacto:'bajo',sustituido:true});
     }
     const esc2=S.escenario||'C';
     if(!ex.familia)return ex;
@@ -1145,6 +1148,7 @@ async function tSet(eid,i,sets){
 }
 
 // ── CRONÓMETRO DE INTERVALOS (cardio) ───────────────────────────
+// (APP_VERSION: subirla en cada publicación; se ve en el encabezado para saber si el celular tiene la última)
 // Vive fuera de #app para que render() no lo borre. Suena y vibra en cada cambio,
 // marca la serie al terminar cada ronda y mantiene la pantalla encendida.
 const CRONO={on:false};
