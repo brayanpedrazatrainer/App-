@@ -16,10 +16,9 @@ input,textarea,select{font-family:inherit}
 <div id="app"></div>
 <script>
 const {createClient}=supabase;
-const sb=createClient(
-  'https://brqojlcdtzmqfurztbnm.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
-);
+const SB_URL='https://brqojlcdtzmqfurztbnm.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4';
+const sb=createClient(SB_URL,SB_KEY);
 const C={pr:'#c7372c',dk:'#710D0B',bk:'#191211',g2:'#94938f',g3:'#d6d7d2',wh:'#fff'};
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function today(){return new Date().toISOString().split('T')[0]}
@@ -808,13 +807,16 @@ async function doAddClient(){
   if(!ruta){set({pForm:Object.assign({},S.pForm||{},{error:'Selecciona la ruta.'})});return;}
   set({loading:true,pForm:Object.assign({},S.pForm||{},{error:'',ok:''})});
   try{
-    const r=await sb.auth.signUp({email:email,password:pass});
+    // Registro con un cliente aparte que no guarda sesión: así el admin NO queda logueado como la clienta nueva
+    const sbAlta=createClient(SB_URL,SB_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'alta-clienta'}});
+    const r=await sbAlta.auth.signUp({email:email,password:pass});
     if(r.error)throw new Error(r.error.message);
     const uid=r.data&&r.data.user&&r.data.user.id;
     if(!uid)throw new Error('No se obtuvo el ID del usuario');
-    await sb.from('profiles').upsert({id:uid,name:name,plan:plan,ruta:ruta,sub_perfil:sub,nivel:2,duracion_ciclo:28,ancla:ancla,escenario_default:'C',dias_presenciales:diasArr});
+    const up=await sb.from('profiles').upsert({id:uid,name:name,plan:plan,ruta:ruta,sub_perfil:sub,nivel:2,duracion_ciclo:28,ancla:ancla,escenario_default:'C',dias_presenciales:diasArr});
+    if(up.error)throw new Error('La cuenta se creó, pero no se pudo guardar el perfil: '+up.error.message);
     await loadData();
-    set({loading:false,pForm:{name:'',email:'',pass:'',ruta:'',plan:'presencial',error:'',ok:'✅ Clienta creada. Confirma el correo en Supabase → Authentication → Users si no puede entrar.'}});
+    set({loading:false,pForm:{name:'',email:'',pass:'',ruta:'',plan:'presencial',error:'',ok:'✅ Clienta creada: '+name+'. Ya puede entrar con su correo y contraseña.'}});
   }catch(e){
     set({loading:false,pForm:Object.assign({},S.pForm||{},{error:'Error: '+e.message})});
   }
