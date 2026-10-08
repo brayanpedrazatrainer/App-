@@ -458,9 +458,9 @@ function textoSeries(n,reps){
 function exListSesion(sess){
   const sem=(S.checkin&&S.checkin.semaforo)||'verde';
   const BLOQUES_ROJO=[1,2,5];
-  // Gimnasio (C): lo programado tal cual, ahí hay de todo.
-  // Mancuernas (B): cambia lo de máquina/barra. Solo cuerpo (A): cambia mancuernas y máquina/barra; la banda se queda.
-  // Se conservan series, reps, tempo e indicaciones; el peso programado no aplica al ejercicio nuevo.
+  // Regla de Brayan (2026-10-08): cada ejercicio con familia muestra SIEMPRE la versión del escenario elegido.
+  // Gimnasio: versión C, o la de mancuernas si no hay C. Mancuernas: versión B. Solo cuerpo: versión A
+  // (si no hay A de algo de gimnasio, la B). Se conservan series, reps, tempo e indicaciones.
   function resolverEx(ex){
     // Perimenopausia y menopausia: nunca saltos. El cardio de impacto alto pasa a la caminata con talones.
     const sub=(S.perfilExt&&S.perfilExt.sub_perfil)||'';
@@ -469,15 +469,16 @@ function exListSesion(sess){
       if(bi)return Object.assign({},ex,{n:bi.n,v:bi.v||ex.v,impacto:'bajo',sustituido:true});
     }
     const esc2=S.escenario||'C';
-    if(esc2==='C'||!ex.familia||!ex.equipo)return ex;
+    if(!ex.familia)return ex;
     const V=S.variantes||{};
-    // Solo cuerpo: la banda también cambia, pero solo si ya hay una versión sin equipo
-    const cambia=esc2==='B'?ex.equipo==='gimnasio':(ex.equipo==='gimnasio'||ex.equipo==='mancuernas'||(ex.equipo==='banda'&&!!V[ex.familia+'_A']));
-    if(!cambia)return ex;
-    // Si no hay versión Solo cuerpo de algo de gimnasio, se usa la de mancuernas/banda (ej. jalón)
-    const va=V[ex.familia+'_'+esc2]||(esc2==='A'&&ex.equipo==='gimnasio'?V[ex.familia+'_B']:null);
+    const f=ex.familia;
+    const va=esc2==='C'?(V[f+'_C']||V[f+'_B'])
+            :esc2==='B'?V[f+'_B']
+            :(V[f+'_A']||(ex.equipo==='gimnasio'?V[f+'_B']:null));
     if(!va)return ex;
     const nota=(ex.n.match(/\(([^)]*)\)\s*$/)||[])[1];
+    const base=ex.n.replace(/\s*\([^)]*\)\s*$/,'');
+    if(va.n===base)return Object.assign({},ex,{desc:va.d||null});
     return Object.assign({},ex,{n:va.n+(nota?' ('+nota+')':''),v:va.v||ex.v,desc:va.d||null,carga_kg:null,sustituido:true});
   }
   let exList=(sess.ex||[]).map(resolverEx);
