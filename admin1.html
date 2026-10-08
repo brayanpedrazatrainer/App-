@@ -133,6 +133,7 @@ function rClientDetail(){
         <div style="background:${C.wh};border-radius:12px;padding:13px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
           <p style="font-weight:700;font-size:13px;margin-bottom:8px">📅 ${m.measurement_date}</p>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            ${m.peso?`<div><p style="font-size:10px;color:${C.g2}">Peso</p><p style="font-weight:700;font-size:14px">${m.peso}kg</p></div>`:''}
             ${m.pecho?`<div><p style="font-size:10px;color:${C.g2}">Pecho</p><p style="font-weight:700;font-size:14px">${m.pecho}cm</p></div>`:''}
             ${m.cintura?`<div><p style="font-size:10px;color:${C.g2}">Cintura</p><p style="font-weight:700;font-size:14px">${m.cintura}cm</p></div>`:''}
             ${m.gluteo?`<div><p style="font-size:10px;color:${C.g2}">Glúteo</p><p style="font-weight:700;font-size:14px">${m.gluteo}cm</p></div>`:''}
