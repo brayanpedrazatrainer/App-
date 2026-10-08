@@ -27,7 +27,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.08c';
+const APP_VERSION='2026.10.08d';
 const C={pr:'#c7372c',dk:'#710D0B',bk:'#191211',g2:'#94938f',g3:'#d6d7d2',bg:'#ECEAE8',wh:'#FFFFFF',td:'#191211',tm:'#4a4743',tl:'#94938f'};
 const PHASES=[
   {k:'menstrual',l:'Menstrual',r:[1,5],e:'🌑',tip:'Descanso activo — movilidad y respiración',tr:'Movilidad, yoga suave, estiramientos profundos',c:'#be185d',bg:'#fdf2f8',br:'#f9a8d4'},
@@ -223,7 +223,8 @@ function rHoy(){
     return (grupo.dias||[]).some(function(d){return d.toLowerCase()===hoyAbr;});
   })();
   const planOnline=perfilExt.plan==='compania'||perfilExt.plan==='corona';
-  const mostrarZoom=planOnline&&grupo&&esClaseHoy&&!S.sesionLibre;
+  // Días de clase en vivo (Compañía/Corona): tarjeta para unirse ARRIBA de la rutina (Brayan 2026-10-08: la rutina siempre se ve)
+  const mostrarZoom=planOnline&&grupo&&esClaseHoy;
   const todSessId=tod?tod.session_id:null;
   let todW=-1,todS=-1,todType='';
   if(todSessId)(S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===todSessId){todW=wi;todS=si;todType=sess.type;}});});
@@ -231,16 +232,15 @@ function rHoy(){
 
   // Zoom card for live class days
   if(mostrarZoom){
-    h+='<div style="background:'+C.bk+';border-radius:14px;padding:20px;margin-bottom:12px;text-align:center">';
-    h+='<p style="font-size:32px;margin-bottom:8px">🎯</p>';
-    h+='<p style="font-weight:900;font-size:17px;color:#fff;margin-bottom:4px">Clase en vivo hoy</p>';
-    h+='<p style="font-size:13px;color:'+C.g2+';margin-bottom:16px">'+esc(grupo.nombre)+' · '+(grupo.hora||'')+'</p>';
+    h+='<div style="background:'+C.bk+';border-radius:14px;padding:18px;margin-bottom:12px;text-align:center">';
+    h+='<p style="font-weight:900;font-size:17px;color:#fff;margin-bottom:4px">🎯 Hoy hay clase en vivo</p>';
+    h+='<p style="font-size:13px;color:'+C.g2+';margin-bottom:14px">'+(grupo.hora?'A las '+esc(String(grupo.hora).slice(0,5))+' · ':'')+'Entrenas tu rutina de hoy con Brayan</p>';
     if(grupo.zoom_url){
-      h+='<a href="'+esc(grupo.zoom_url)+'" target="_blank" style="display:block;padding:14px;background:'+C.pr+';color:#fff;border-radius:11px;font-weight:800;font-size:15px;text-decoration:none;margin-bottom:10px">🔗 Entrar a la clase</a>';
+      h+='<a href="'+esc(grupo.zoom_url)+'" target="_blank" style="display:block;padding:14px;background:'+C.pr+';color:#fff;border-radius:11px;font-weight:800;font-size:15px;text-decoration:none">🔗 Unirme a la clase</a>';
+    }else{
+      h+='<p style="font-size:13px;color:#fff;background:#2a2523;border-radius:10px;padding:11px">El link de la clase aparece aquí el día de la clase.</p>';
     }
-    h+='<button onclick="S.sesionLibre=true;render()" style="width:100%;padding:10px;background:transparent;color:'+C.g2+';border:1px solid #3a3330;border-radius:10px;font-size:13px">No puedo asistir — hacer la sesión sola</button>';
     h+='</div>';
-    return h;
   }
   if(tod&&tod.status!=='rest'){
     h+='<div style="background:'+C.wh+';border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid '+C.pr+'">';

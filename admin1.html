@@ -620,9 +620,10 @@ async function saveGrupo(){
   const zoom=(document.getElementById('gf-zoom')||{}).value||'';
   const cupo=parseInt((document.getElementById('gf-cupo')||{}).value)||10;
   const dias=Array.from(document.querySelectorAll('.gf-dia:checked')).map(function(el){return el.value;});
-  if(!nombre||!hora){alert('Nombre y hora son obligatorios.');return;}
+  if(!nombre){alert('El nombre es obligatorio.');return;}
   set({loading:true});
-  const data={nombre,dias,hora,zoom_url:zoom||null,cupo,activo:true};
+  // La hora es opcional: Brayan ajusta los horarios cada semana
+  const data={nombre,dias,hora:hora||null,zoom_url:zoom||null,cupo,activo:true};
   if(S.gForm.id){
     await sb.from('grupos').update(data).eq('id',S.gForm.id);
   } else {
@@ -666,10 +667,10 @@ function rGrupos(){
       h+='<input type="checkbox" class="gf-dia" value="'+d.v+'"'+(chk?' checked':'')+' style="accent-color:'+C.pr+'">'+d.l+'</label>';
     });
     h+='</div></div>';
-    h+='<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase">Hora</label>';
-    h+='<input id="gf-hora" type="time" value="'+(gf.hora||'06:00')+'" style="width:100%;margin-top:5px;padding:10px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>';
-    h+='<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase">Link de Zoom</label>';
-    h+='<input id="gf-zoom" type="url" value="'+esc(gf.zoom_url||'')+'" placeholder="https://zoom.us/j/..." style="width:100%;margin-top:5px;padding:10px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>';
+    h+='<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase">Hora (opcional)</label>';
+    h+='<input id="gf-hora" type="time" value="'+((gf.hora||'').slice(0,5))+'" style="width:100%;margin-top:5px;padding:10px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>';
+    h+='<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase">Link de la clase (Meet o Zoom)</label>';
+    h+='<input id="gf-zoom" type="url" value="'+esc(gf.zoom_url||'')+'" placeholder="https://meet.google.com/..." style="width:100%;margin-top:5px;padding:10px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>';
     h+='<div><label style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase">Cupo máximo</label>';
     h+='<input id="gf-cupo" type="number" value="'+(gf.cupo||10)+'" min="1" max="50" style="width:100%;margin-top:5px;padding:10px;border:1.5px solid '+C.g3+';border-radius:9px;font-size:13px;box-sizing:border-box"></div>';
     h+='</div>';
@@ -678,7 +679,7 @@ function rGrupos(){
     h+='<button onclick="set({gForm:{show:false}})" style="padding:11px 16px;background:#f3f4f6;border:none;border-radius:10px;font-weight:700">Cancelar</button>';
     h+='</div></div>';
   } else {
-    h+='<button onclick="set({gForm:{show:true,nombre:\'\',dias:[],hora:\'06:00\',zoom_url:\'\',cupo:10}})" style="width:100%;padding:12px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:14px;margin-bottom:14px">+ Nuevo grupo</button>';
+    h+='<button onclick="set({gForm:{show:true,nombre:\'\',dias:[],hora:\'\',zoom_url:\'\',cupo:10}})" style="width:100%;padding:12px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:14px;margin-bottom:14px">+ Nuevo grupo</button>';
   }
 
   // Group list
@@ -690,8 +691,8 @@ function rGrupos(){
       h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">';
       h+='<div>';
       h+='<p style="font-weight:800;font-size:15px;color:'+C.td+'">'+esc(g.nombre)+'</p>';
-      h+='<p style="font-size:12px;color:'+C.g2+';margin-top:2px">'+dias+' · '+g.hora+' · '+cupoUsado+'/'+g.cupo+' clientas</p>';
-      if(g.zoom_url)h+='<a href="'+esc(g.zoom_url)+'" target="_blank" style="font-size:11px;color:'+C.pr+';font-weight:600">🔗 Link Zoom</a>';
+      h+='<p style="font-size:12px;color:'+C.g2+';margin-top:2px">'+dias+' · '+(g.hora?g.hora.slice(0,5):'hora por definir')+' · '+cupoUsado+'/'+g.cupo+' clientas</p>';
+      h+=g.zoom_url?'<a href="'+esc(g.zoom_url)+'" target="_blank" style="font-size:11px;color:'+C.pr+';font-weight:600">🔗 Link de la clase</a>':'<p style="font-size:11px;color:'+C.g2+'">Sin link: edita el grupo (✏️) y pega el link de Meet</p>';
       h+='</div>';
       h+='<div style="display:flex;gap:6px">';
       h+='<button onclick="editGrupo('+g.id+')" style="background:#f3f4f6;border:none;border-radius:8px;padding:7px 10px;font-size:12px">✏️</button>';
@@ -731,7 +732,7 @@ function rGrupos(){
 function editGrupo(id){
   const g=(S.grupos||[]).find(function(x){return String(x.id)===String(id);});
   if(!g)return;
-  set({gForm:{show:true,id:g.id,nombre:g.nombre||'',dias:g.dias||[],hora:g.hora||'06:00',zoom_url:g.zoom_url||'',cupo:g.cupo||10}});
+  set({gForm:{show:true,id:g.id,nombre:g.nombre||'',dias:g.dias||[],hora:g.hora||'',zoom_url:g.zoom_url||'',cupo:g.cupo||10}});
   setTimeout(function(){const el=document.getElementById('gf-nombre');if(el)el.scrollIntoView({behavior:'smooth'});},100);
 }
 
@@ -802,7 +803,10 @@ async function doAddClient(){
   const name=g('ac-name').trim(),email=g('ac-email').trim(),pass=g('ac-pass').trim();
   const plan=g('ac-plan')||'presencial',ruta=g('ac-ruta'),sub=g('ac-sub')||null;
   const ancla=g('ac-ancla')||null,dias=g('ac-dias').trim();
-  const diasArr=dias?dias.split(',').map(function(d){return d.trim();}).filter(Boolean):null;
+  // Acepta "Lunes Miércoles Viernes", "lun, mie, vie", "lunes y viernes"… y guarda lun/mar/mie/jue/vie/sab/dom
+  const DIA_ABR={lu:'lun',ma:'mar',mi:'mie',ju:'jue',vi:'vie',sa:'sab',do:'dom'};
+  const diasArr=dias?Array.from(new Set(dias.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .split(/[^a-z]+/).filter(function(w){return w.length>=2&&w!=='y';}).map(function(w){return DIA_ABR[w.slice(0,2)];}).filter(Boolean))):null;
   if(!name||!email||!pass){set({pForm:Object.assign({},S.pForm||{},{error:'Nombre, correo y contraseña son obligatorios.'})});return;}
   if(!ruta){set({pForm:Object.assign({},S.pForm||{},{error:'Selecciona la ruta.'})});return;}
   set({loading:true,pForm:Object.assign({},S.pForm||{},{error:'',ok:''})});
