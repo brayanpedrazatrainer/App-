@@ -27,7 +27,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.08d';
+const APP_VERSION='2026.10.11a';
 const C={pr:'#c7372c',dk:'#710D0B',bk:'#191211',g2:'#94938f',g3:'#d6d7d2',bg:'#ECEAE8',wh:'#FFFFFF',td:'#191211',tm:'#4a4743',tl:'#94938f'};
 const PHASES=[
   {k:'menstrual',l:'Menstrual',r:[1,5],e:'🌑',tip:'Descanso activo — movilidad y respiración',tr:'Movilidad, yoga suave, estiramientos profundos',c:'#be185d',bg:'#fdf2f8',br:'#f9a8d4'},
@@ -436,6 +436,8 @@ function textoSeries(n,reps){
   let m,principal;
   if((m=primera.match(/^(\d+)\s*pasos/i))){
     principal=series+' de <b>'+m[1]+' pasos</b>';
+  }else if((m=primera.match(/^(\d+)\s*(?:s|seg|segundos)\s*x\s*lado$/i))){
+    principal=series+' de <b>'+m[1]+' segundos</b> por lado';
   }else if((m=primera.match(/^(\d+)\s*(?:s|seg|segundos)$/i))){
     principal='<b>'+n+(n===1?' ronda':' rondas')+'</b> de <b>'+m[1]+' segundos</b>';
   }else if((m=primera.match(/^(\d+)\s*(?:[–-]\s*(\d+))?\s*min/i))){
