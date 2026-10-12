@@ -27,7 +27,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.11a';
+const APP_VERSION='2026.10.11b';
 const C={pr:'#c7372c',dk:'#710D0B',bk:'#191211',g2:'#94938f',g3:'#d6d7d2',bg:'#ECEAE8',wh:'#FFFFFF',td:'#191211',tm:'#4a4743',tl:'#94938f'};
 const PHASES=[
   {k:'menstrual',l:'Menstrual',r:[1,5],e:'🌑',tip:'Descanso activo — movilidad y respiración',tr:'Movilidad, yoga suave, estiramientos profundos',c:'#be185d',bg:'#fdf2f8',br:'#f9a8d4'},
@@ -100,7 +100,8 @@ function render(){
        :S.view==='menoform'?rMenoForm()
        :S.view==='sess'?rSess()
        :S.view==='vid'?rVid()
-       :S.view==='mform'?rMForm():''}
+       :S.view==='mform'?rMForm()
+       :S.view==='fotos'?rFotos():''}
     </div>`;
   if(S.view==='main'&&S.tab==='ciclo'){
     const sl=document.getElementById('clen');
@@ -680,8 +681,131 @@ function rVid(){
   </div>`;
 }
 
+// ── MI ANTES Y DESPUÉS ───────────────────────────────────────
+// Mismo flujo y textos que El Reino. Fotos en el bucket privado "fotos" de Supabase,
+// carpeta = id de la clienta ({id}/antes-frente.jpg …). Fila en fotos_clientas: permiso y fechas.
+// La foto de los 3 meses se abre 90 días después de la primera foto de antes.
+const FOTOS={
+  guia:[
+    'Reina, en tres meses vas a querer compararte, y la memoria engaña.',
+    'Toma 4 fotos: de frente, de lado derecho, de lado izquierdo y de espaldas.',
+    'Párate natural, como estás un día cualquiera. En la foto de antes casi todas buscan la "buena foto": meten la panza, buscan el ángulo y esconden el godito. Esta es justo la foto para mostrarlo todo, porque de ahí arranca tu cambio.',
+    'Usa ropa ajustada, top y licra o short, para que se vea la forma de tu cuerpo. Busca buena luz y saca el cuerpo completo.',
+    'Guarda ese lugar y esa ropa para tu foto de los 3 meses.'
+  ],
+  permisos:[{id:'con_cara',texto:'Puedes publicarlas con mi cara'},{id:'sin_cara',texto:'Puedes publicarlas tapando mi cara'}],
+  lados:[{id:'frente',texto:'De frente'},{id:'derecho',texto:'Lado derecho'},{id:'izquierdo',texto:'Lado izquierdo'},{id:'espalda',texto:'De espaldas'}],
+  dias_despues:90
+};
+const rutaFoto=(uid,mom,lado)=>uid+'/'+mom+'-'+lado+'.jpg';
+const fechaLarga=d=>d.toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
+
+async function abrirFotos(){
+  set({view:'fotos',fotos:{cargando:true,urls:{},fila:null,aviso:''}});
+  await cargarFotos();
+}
+async function cargarFotos(aviso){
+  const uid=S.user.id;let fila=null;const urls={};let err='';
+  try{
+    const r=await sb.from('fotos_clientas').select('*').eq('id',uid).maybeSingle();
+    if(r.error)throw r.error;
+    fila=r.data||null;
+    const rutas=[];['antes','despues'].forEach(function(m){FOTOS.lados.forEach(function(l){rutas.push(rutaFoto(uid,m,l.id));});});
+    const f=await sb.storage.from('fotos').createSignedUrls(rutas,3600);
+    ((f&&f.data)||[]).forEach(function(x){if(x.signedUrl&&!x.error)urls[x.path]=x.signedUrl;});
+  }catch(e){console.error(e);err='No pude cargar tus fotos. Revisa tu conexión e intenta de nuevo.';}
+  set({fotos:{cargando:false,fila:fila,urls:urls,aviso:err||aviso||''}});
+}
+function abreDespues(fila){
+  if(!fila||!fila.antes_fecha)return null;
+  const d=new Date(fila.antes_fecha);d.setDate(d.getDate()+FOTOS.dias_despues);return d;
+}
+function rFotos(){
+  const F=S.fotos||{};
+  if(F.cargando)return card('<p style="text-align:center;color:'+C.tl+';padding:20px 0">Cargando tus fotos...</p>');
+  const uid=S.user.id,fila=F.fila,permiso=fila&&fila.permiso;
+  const abre=abreDespues(fila),abierto=!!abre&&new Date()>=abre;
+  let h='<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:'+C.pr+';margin:4px 0 4px">Mi antes y después</p>';
+  h+='<p style="font-size:16px;font-style:italic;color:'+C.td+';margin-bottom:12px">Tu punto de partida y tu cambio a los 3 meses.</p>';
+  h+=card('<p style="font-weight:900;font-size:15px;letter-spacing:.06em;color:'+C.td+';margin-bottom:6px">CÓMO TOMARLAS</p>'+
+    FOTOS.guia.map(function(t){return '<p style="font-size:13.5px;color:'+C.tm+';line-height:1.6;margin-top:8px">'+esc(t)+'</p>';}).join(''),'margin-bottom:12px');
+  let perm='<p style="font-weight:900;font-size:15px;letter-spacing:.06em;color:'+C.td+';margin-bottom:4px">TU PERMISO</p>';
+  perm+='<p style="font-size:13px;color:'+C.tl+';margin-bottom:10px">Estas fotos son para mostrar tu cambio. Escoge cómo las podemos publicar antes de subirlas.</p>';
+  FOTOS.permisos.forEach(function(p){
+    const sel=permiso===p.id;
+    perm+='<button data-p="'+p.id+'" onclick="guardarPermiso(this)" style="display:block;width:100%;text-align:left;padding:13px 14px;margin-bottom:8px;border-radius:11px;font-size:14px;font-weight:'+(sel?800:600)+';border:2px solid '+(sel?C.pr:C.g3)+';background:'+(sel?'#fde8e8':C.wh)+';color:'+(sel?C.pr:C.td)+'">'+(sel?'✓ ':'')+esc(p.texto)+'</button>';
+  });
+  h+=card(perm,'margin-bottom:12px');
+  function grid(mom,habil){
+    let g='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+    FOTOS.lados.forEach(function(l){
+      const url=F.urls[rutaFoto(uid,mom,l.id)];
+      g+='<button data-mom="'+mom+'" data-lado="'+l.id+'" onclick="elegirFoto(this)" '+(habil?'':'disabled')+' style="position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;border:2px dashed '+(url?'transparent':C.g3)+';background:'+(habil?'#f3f1ef':'#ece9e6')+';opacity:'+(habil?1:.55)+';padding:0">';
+      g+=url?'<img src="'+url+'" alt="'+esc(l.texto)+'" style="width:100%;height:100%;object-fit:cover;display:block">':'<span style="font-size:30px;color:'+C.g2+'">+</span>';
+      g+='<span style="position:absolute;left:0;right:0;bottom:0;padding:7px 4px;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.65))">'+esc(l.texto)+(url?' · cambiar':'')+'</span></button>';
+    });
+    return g+'</div>';
+  }
+  h+=card('<p style="font-weight:900;font-size:15px;letter-spacing:.06em;color:'+C.td+';margin-bottom:4px">ANTES</p><p style="font-size:13px;color:'+C.tl+';margin-bottom:10px">Antes de tu primer entreno.</p>'+grid('antes',!!permiso),'margin-bottom:12px');
+  const nota=!abre?'Se abre 3 meses después de tu foto de antes.':abierto?'Ya te toca. Usa el mismo lugar y la misma ropa de tu foto de antes.':'Se abre el '+fechaLarga(abre)+'.';
+  h+=card('<p style="font-weight:900;font-size:15px;letter-spacing:.06em;color:'+C.td+';margin-bottom:4px">A LOS 3 MESES</p><p style="font-size:13px;color:'+C.tl+';margin-bottom:10px">'+nota+'</p>'+grid('despues',!!permiso&&abierto),'margin-bottom:12px');
+  const aviso=F.aviso||(!permiso?'Primero escoge tu permiso, y ahí se habilitan las fotos.':'');
+  if(aviso)h+='<p style="font-size:13px;text-align:center;color:'+C.tm+';background:'+C.wh+';border-radius:10px;padding:10px">'+esc(aviso)+'</p>';
+  return h;
+}
+async function guardarPermiso(btn){
+  const p=btn.dataset.p,F=S.fotos||{};
+  const fila=Object.assign({},F.fila||{},{id:S.user.id,permiso:p});
+  set({fotos:Object.assign({},F,{fila:fila,aviso:''})});
+  const r=await sb.from('fotos_clientas').upsert({id:S.user.id,permiso:p,actualizada:new Date().toISOString()});
+  if(r.error)set({fotos:Object.assign({},S.fotos,{aviso:'No pude guardar tu permiso. Intenta de nuevo.'})});
+}
+// La foto se achica en el celular antes de subirla: lado largo 1280 px, JPEG ~200 KB
+function comprimirFoto(file){
+  return new Promise(function(ok,mal){
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=function(){
+      const k=Math.min(1,1280/Math.max(img.naturalWidth,img.naturalHeight));
+      const c=document.createElement('canvas');
+      c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(function(b){b?ok(b):mal(new Error('sin imagen'));},'image/jpeg',0.82);
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);mal(new Error('formato'));};
+    img.src=url;
+  });
+}
+function elegirFoto(btn){
+  if(btn.disabled)return;
+  const mom=btn.dataset.mom,lado=btn.dataset.lado;
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  inp.onchange=function(){if(inp.files&&inp.files[0])subirFoto(inp.files[0],mom,lado);};
+  inp.click();
+}
+async function subirFoto(file,mom,lado){
+  const uid=S.user.id,F=S.fotos||{};
+  set({fotos:Object.assign({},F,{aviso:'Subiendo tu foto...'})});
+  try{
+    const blob=await comprimirFoto(file);
+    const up=await sb.storage.from('fotos').upload(rutaFoto(uid,mom,lado),blob,{upsert:true,contentType:'image/jpeg',cacheControl:'0'});
+    if(up.error)throw up.error;
+    const ahora=new Date().toISOString(),fila=F.fila||{};
+    const cambios={id:uid,permiso:fila.permiso||null,actualizada:ahora};
+    if(mom==='antes'&&!fila.antes_fecha)cambios.antes_fecha=ahora;
+    if(mom==='despues'&&!fila.despues_fecha)cambios.despues_fecha=ahora;
+    const r=await sb.from('fotos_clientas').upsert(cambios);
+    if(r.error)throw r.error;
+    await cargarFotos('Listo, tu foto quedó guardada.');
+  }catch(e){
+    console.error(e);
+    set({fotos:Object.assign({},S.fotos,{aviso:e&&e.message==='formato'?'Esa foto no se pudo abrir. Prueba tomarla de nuevo con la cámara.':'No se pudo subir la foto. Revisa tu conexión e intenta de nuevo.'})});
+  }
+}
+
 function rMedidas(){
-  let h=btnR('+ Registrar medidas',"set({view:'mform',mf:{},md:today(),mn:''})");
+  let h='<button onclick="abrirFotos()" style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:14px;margin-bottom:12px;background:'+C.bk+';color:#fff;border:none;border-radius:14px"><span style="font-size:26px">📸</span><span><b style="display:block;font-size:15px">Mi antes y después</b><span style="font-size:12px;color:'+C.g2+'">Tus fotos de hoy y de los 3 meses.</span></span></button>';
+  h+=btnR('+ Registrar medidas',"set({view:'mform',mf:{},md:today(),mn:''})");
   if(S.meas.length===0){h+=card(`<div style="text-align:center;padding:26px 0"><p style="font-size:36px;margin-bottom:10px">📏</p><p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">Sin medidas aún</p><p style="font-size:13px;color:${C.tl}">El progreso aparecerá aquí.</p></div>`,'margin-top:14px');}
   else{
     const l=S.meas[0],p=S.meas[1];
@@ -1087,6 +1211,7 @@ async function saveCycleLen(len){
 function goBack(){
   if(S.view==='vid')set({view:'sess'});
   else if(S.view==='sess')set({view:'main'});
+  else if(S.view==='fotos')set({view:'main',tab:'medidas'});
   else set({view:'main'});
 }
 

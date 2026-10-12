@@ -126,6 +126,7 @@ function rClientDetail(){
     <div style="margin-top:10px">
       <button onclick="openSchedule('${c.id}')" style="width:100%;padding:11px;background:${C.bk};color:${C.wh};border:none;border-radius:10px;font-weight:700;font-size:13px">📅 Programar mes</button>
     </div>
+    ${rClientFotos(c)}
     ${S.clientMeas.length>0?`
       <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:14px 0 8px">Últimas medidas</p>
       ${S.clientMeas.slice(0,3).map(m=>`
@@ -431,7 +432,41 @@ async function openClient(id){
     sb.from('meno_logs').select('*').eq('client_id',id).order('log_date',{ascending:false}).limit(10),
     sb.from('carga_log').select('*').eq('client_id',id).order('fecha',{ascending:false}).limit(20),
   ]);
-  set({loading:false,selClient:c,clientMeas:mr.data||[],clientCycle:cyc.data||[],clientSymptoms:sym.data||[],clientMeno:meno.data||[],clientCarga:cargaR.data||[]});
+  set({loading:false,selClient:c,clientMeas:mr.data||[],clientCycle:cyc.data||[],clientSymptoms:sym.data||[],clientMeno:meno.data||[],clientCarga:cargaR.data||[],clientFotos:null});
+  loadClientFotos(id);
+}
+
+// Fotos de antes y después de la clienta (bucket privado "fotos"; solo el admin puede ver las de todas)
+const FOTO_LADOS=[{id:'frente',t:'De frente'},{id:'derecho',t:'Lado derecho'},{id:'izquierdo',t:'Lado izquierdo'},{id:'espalda',t:'De espaldas'}];
+async function loadClientFotos(id){
+  try{
+    const r=await sb.from('fotos_clientas').select('*').eq('id',id).maybeSingle();
+    const rutas=[];['antes','despues'].forEach(function(m){FOTO_LADOS.forEach(function(l){rutas.push(id+'/'+m+'-'+l.id+'.jpg');});});
+    const f=await sb.storage.from('fotos').createSignedUrls(rutas,3600);
+    const urls={};((f&&f.data)||[]).forEach(function(x){if(x.signedUrl&&!x.error)urls[x.path]=x.signedUrl;});
+    if(S.selClient&&S.selClient.id===id)set({clientFotos:{fila:r.data||null,urls:urls}});
+  }catch(e){console.error(e);if(S.selClient&&S.selClient.id===id)set({clientFotos:{fila:null,urls:{},error:true}});}
+}
+function rClientFotos(c){
+  const F=S.clientFotos;
+  let h='<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:'+C.g2+';margin:14px 0 8px">📸 Antes y después</p>';
+  if(!F)return h+'<p style="font-size:12px;color:'+C.g2+'">Cargando fotos...</p>';
+  if(F.error)return h+'<p style="font-size:12px;color:'+C.pr+'">No se pudieron cargar las fotos.</p>';
+  const fila=F.fila||{};
+  const PERM={con_cara:'Puede publicarse con su cara',sin_cara:'Puede publicarse tapando su cara'};
+  const fl=function(d){return d?new Date(d).toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'}):'—';};
+  h+='<div style="background:'+C.wh+';border-radius:12px;padding:13px;box-shadow:0 1px 4px rgba(0,0,0,.07)">';
+  h+='<p style="font-size:12px;margin-bottom:8px">Permiso: <b>'+(PERM[fila.permiso]||'Sin permiso escogido')+'</b><br>Antes: '+fl(fila.antes_fecha)+' · 3 meses: '+fl(fila.despues_fecha)+'</p>';
+  ['antes','despues'].forEach(function(m){
+    h+='<p style="font-size:11px;font-weight:700;color:'+C.g2+';margin:8px 0 5px">'+(m==='antes'?'Antes':'A los 3 meses')+'</p><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">';
+    FOTO_LADOS.forEach(function(l){
+      const url=F.urls[c.id+'/'+m+'-'+l.id+'.jpg'];
+      h+=url?'<a href="'+url+'" target="_blank" rel="noopener" title="'+l.t+' · abrir para descargar"><img src="'+url+'" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;display:block"></a>'
+            :'<div style="aspect-ratio:3/4;border-radius:8px;background:#f3f1ef;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:'+C.g2+'">'+l.t+'</div>';
+    });
+    h+='</div>';
+  });
+  return h+'<p style="font-size:11px;color:'+C.g2+';margin-top:8px">Toca una foto para abrirla en grande y guardarla.</p></div>';
 }
 
 async function assignProg(clientId,progId){
