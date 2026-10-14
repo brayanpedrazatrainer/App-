@@ -3,20 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#191211">
+<meta name="theme-color" content="#0E0B0A">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Entrenamiento">
-<title>Entrenamiento &amp; Ciclo</title>
+<meta name="apple-mobile-web-app-title" content="Reino">
+<title>Reino · Gym Cíclico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@400;600;800;900&family=Fraunces:ital,opsz,wght@0,9..144,400;1,9..144,300&family=Karla:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+/* Estética de El Reino (mismas fuentes, colores y paneles que la app del Club) */
+:root{--ink:#0E0B0A;--surface:#191211;--surface-2:#221818;--red:#C7372C;--burgundy:#710D0B;--gold:#B8963E;--gold-soft:#E0C97F;
+  --cream:#F2E9DC;--muted:#A08D82;--line:rgba(184,150,62,.22);
+  --heroic:'Cinzel',Georgia,serif;--brandface:'Bebas Neue',Impact,sans-serif;--voice:'Fraunces',Georgia,serif;--ui:'Karla',system-ui,sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:#ECEAE8;min-height:100vh}
-body{font-family:system-ui,-apple-system,sans-serif}
+html,body{background:var(--ink);min-height:100vh;color:var(--cream)}
+body{font-family:var(--ui);-webkit-font-smoothing:antialiased;
+  background:radial-gradient(120% 40% at 50% -6%,rgba(113,13,11,.45) 0%,rgba(14,11,10,0) 62%),var(--ink)}
 button{cursor:pointer;font-family:inherit}
-input,textarea{font-family:inherit}
-input[type=range]{accent-color:#c7372c;width:100%;display:block}
-#app{max-width:480px;margin:0 auto;background:#ECEAE8;min-height:100vh}
+input,textarea,select{font-family:inherit;background-color:rgba(0,0,0,.28);color:var(--cream)}
+input::placeholder,textarea::placeholder{color:rgba(242,233,220,.4)}
+input[type=date]{color-scheme:dark}
+input[type=range]{accent-color:var(--gold);width:100%;display:block;background:none}
+#app{max-width:480px;margin:0 auto;min-height:100vh}
+.panel-reino{position:relative}
+.panel-reino>.esq{position:absolute;width:10px;height:10px;border:1px solid var(--gold);opacity:.5;pointer-events:none}
+.panel-reino>.e1{top:5px;left:5px;border-right:none;border-bottom:none}
+.panel-reino>.e2{top:5px;right:5px;border-left:none;border-bottom:none}
+.panel-reino>.e3{bottom:5px;left:5px;border-right:none;border-top:none}
+.panel-reino>.e4{bottom:5px;right:5px;border-left:none;border-top:none}
+.btn-reino{transition:transform .12s ease,box-shadow .12s ease,filter .18s ease}
+.btn-reino:active{transform:translateY(3px)}
+.tit-reino{font-family:var(--heroic);letter-spacing:.08em}
 </style>
 </head>
 <body>
@@ -27,13 +46,14 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.11b';
-const C={pr:'#c7372c',dk:'#710D0B',bk:'#191211',g2:'#94938f',g3:'#d6d7d2',bg:'#ECEAE8',wh:'#FFFFFF',td:'#191211',tm:'#4a4743',tl:'#94938f'};
+const APP_VERSION='2026.10.13a';
+// Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
+const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
-  {k:'menstrual',l:'Menstrual',r:[1,5],e:'🌑',tip:'Descanso activo — movilidad y respiración',tr:'Movilidad, yoga suave, estiramientos profundos',c:'#be185d',bg:'#fdf2f8',br:'#f9a8d4'},
-  {k:'folicular',l:'Folicular',r:[6,13],e:'🌓',tip:'Energía en aumento — ideal para nuevos retos',tr:'Fuerza progresiva, coordinación, aprendizaje motor',c:'#1d4ed8',bg:'#eff6ff',br:'#93c5fd'},
-  {k:'ovulatoria',l:'Ovulatoria',r:[14,16],e:'🌕',tip:'Pico de rendimiento — máxima intensidad',tr:'Alta intensidad, potencia, desafíos motores',c:'#b45309',bg:'#fffbeb',br:'#fcd34d'},
-  {k:'lutea',l:'Lútea',r:[17,28],e:'🌗',tip:'Energía descendente — consistencia sin sobreexigir',tr:'Fuerza moderada, pilates, estabilidad',c:'#7c3aed',bg:'#f5f3ff',br:'#c4b5f8'},
+  {k:'menstrual',l:'Menstrual',r:[1,5],e:'🌑',tip:'Descanso activo — movilidad y respiración',tr:'Movilidad, yoga suave, estiramientos profundos',c:'#E8799F',bg:'rgba(232,121,159,.12)',br:'#f9a8d4'},
+  {k:'folicular',l:'Folicular',r:[6,13],e:'🌓',tip:'Energía en aumento — ideal para nuevos retos',tr:'Fuerza progresiva, coordinación, aprendizaje motor',c:'#7AA2F7',bg:'rgba(122,162,247,.12)',br:'#93c5fd'},
+  {k:'ovulatoria',l:'Ovulatoria',r:[14,16],e:'🌕',tip:'Pico de rendimiento — máxima intensidad',tr:'Alta intensidad, potencia, desafíos motores',c:'#E0A458',bg:'rgba(184,150,62,.14)',br:'#fcd34d'},
+  {k:'lutea',l:'Lútea',r:[17,28],e:'🌗',tip:'Energía descendente — consistencia sin sobreexigir',tr:'Fuerza moderada, pilates, estabilidad',c:'#E0C97F',bg:'rgba(184,150,62,.12)',br:'#c4b5f8'},
 ];
 const SYMPTOMS=[
   {k:'calores',l:'Calores',e:'🔥'},{k:'sudores',l:'Sudores nocturnos',e:'💧'},{k:'sueno',l:'Mal sueño',e:'😴'},
@@ -49,7 +69,7 @@ const MF=[
 ];
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-function fmtDate(iso){if(!iso)return '';return new Date(iso).toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'})}
+function fmtDate(iso){if(!iso)return '';return new Date(iso.length===10?iso+'T12:00:00':iso).toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'})}
 function getCycleDay(d){if(!d)return null;return Math.floor((Date.now()-new Date(d))/86400000)+5}
 function getPhase(day,len){if(!day||day<1)return null;const d=((day-1)%(len||28))+1;return PHASES.find(p=>d>=p.r[0]&&d<=p.r[1])||PHASES[3]}
 function ytId(url){if(!url)return null;const m=url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?\/\s]{11})/);return m?m[1]:null}
@@ -64,9 +84,12 @@ let S={
 };
 function set(u){Object.assign(S,u);render()}
 
-const btnR=(t,fn)=>`<button onclick="${fn}" style="width:100%;padding:12px 16px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:14px">${t}</button>`;
-const card=(i,s='')=>`<div style="background:${C.wh};border-radius:14px;padding:15px;box-shadow:0 1px 4px rgba(25,18,17,.09);${s}">${i}</div>`;
-const secT=(t)=>`<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:${C.tl};margin:18px 0 8px">${t}</p>`;
+// Botón con volumen, panel con esquinas doradas y títulos en Cinzel: el lenguaje visual de El Reino
+const BTN_ROJO='background:linear-gradient(178deg,#D8503F 0%,#C7372C 42%,#8E1A12 100%);box-shadow:0 4px 0 -1px #5C0806,0 8px 16px -6px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.25)';
+const PANEL='background:linear-gradient(178deg,#291E1D 0%,#221818 38%,rgba(22,15,14,.94) 100%);border:1px solid rgba(184,150,62,.22);box-shadow:inset 0 1px 0 rgba(242,233,220,.07),0 3px 0 -1px #100B0A,0 14px 24px -18px rgba(0,0,0,.85)';
+const btnR=(t,fn)=>`<button class="btn-reino" onclick="${fn}" style="width:100%;padding:14px 16px;${BTN_ROJO};color:#fff;border:none;border-radius:10px;font-family:var(--heroic);font-weight:800;font-size:13px;letter-spacing:.12em">${t}</button>`;
+const card=(i,s='')=>`<div class="panel-reino" style="${PANEL};border-radius:12px;padding:17px 16px;${s}"><span class="esq e1"></span><span class="esq e2"></span><span class="esq e3"></span><span class="esq e4"></span>${i}</div>`;
+const secT=(t)=>`<p style="font-family:var(--heroic);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.26em;color:${C.gold};margin:20px 0 9px">${t}</p>`;
 
 function render(){
   const app=document.getElementById('app');if(!app)return;
@@ -75,21 +98,24 @@ function render(){
   if(S.view==='no_prog'){app.innerHTML=rNoProg();return}
   const tabs=[{k:'hoy',e:'📅',l:'Hoy'},{k:'ciclo',e:'🌙',l:'Ciclo'},{k:'rutinas',e:'💪',l:'Rutinas'},{k:'medidas',e:'📏',l:'Medidas'}];
   app.innerHTML=`
-    <div style="background:${C.bk};padding:15px 18px 13px;position:sticky;top:0;z-index:20">
+    <div style="background:rgba(14,11,10,.94);backdrop-filter:blur(6px);padding:16px 18px 12px;position:sticky;top:0;z-index:20">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <p style="color:#fff;font-weight:900;font-size:17px;margin:0">👑 ${S.profile&&S.profile.name?'Hola, '+esc(S.profile.name)+'!':'Mi App'}</p>
-          <p style="color:${C.g2};font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin:2px 0 0">Entrenamiento &amp; Seguimiento · v${APP_VERSION}</p>
+          <p style="font-family:var(--brandface);font-size:20px;letter-spacing:.16em;color:${C.gold};line-height:1">REINO</p>
+          <p style="font-family:var(--voice);font-style:italic;font-weight:300;color:${C.td};font-size:15px;margin-top:3px">${S.profile&&S.profile.name?'Hola, '+esc(S.profile.name):'Bienvenida'}</p>
         </div>
-        <button onclick="doLogout()" style="background:rgba(255,255,255,.08);border:none;color:${C.g3};padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600">Salir</button>
+        <div style="text-align:right">
+          <button onclick="doLogout()" style="background:none;border:1px solid rgba(184,150,62,.3);color:${C.gs};padding:6px 12px;border-radius:8px;font-family:var(--heroic);font-size:9px;letter-spacing:.16em;font-weight:600">SALIR</button>
+          <p style="color:${C.tl};font-size:9px;margin-top:5px;letter-spacing:.06em">v${APP_VERSION}</p>
+        </div>
       </div>
     </div>
     ${S.view==='main'
-      ?`<div style="display:flex;background:${C.bk};border-top:1px solid #2a2523;position:sticky;top:62px;z-index:20">
-          ${tabs.map(t=>`<button onclick="set({tab:'${t.k}'})" style="flex:1;padding:9px 0 10px;font-weight:700;font-size:11px;border:none;background:none;color:${S.tab===t.k?C.pr:C.g2};border-bottom:3px solid ${S.tab===t.k?C.pr:'transparent'}">${t.e} ${t.l}</button>`).join('')}
+      ?`<div style="display:flex;gap:4px;padding:0 10px;background:rgba(14,11,10,.94);border-bottom:1px solid rgba(184,150,62,.22);position:sticky;top:66px;z-index:20">
+          ${tabs.map(t=>`<button onclick="set({tab:'${t.k}'})" style="flex:1;padding:12px 0 11px;font-family:var(--heroic);font-weight:600;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;border:none;background:none;color:${S.tab===t.k?C.gs:C.tl};border-bottom:2px solid ${S.tab===t.k?C.gold:'transparent'}">${t.l}</button>`).join('')}
         </div>`
-      :`<div style="background:${C.bk};padding:10px 14px 12px;border-top:1px solid #2a2523">
-          <button onclick="goBack()" style="background:rgba(255,255,255,.08);border:none;padding:7px 14px;border-radius:9px;font-weight:700;font-size:12px;color:${C.g3}">← Volver</button>
+      :`<div style="padding:10px 14px 12px;border-bottom:1px solid rgba(184,150,62,.22)">
+          <button onclick="goBack()" style="background:none;border:1px solid rgba(184,150,62,.3);padding:7px 14px;border-radius:8px;font-family:var(--heroic);font-weight:600;font-size:10px;letter-spacing:.14em;color:${C.gs}">← VOLVER</button>
         </div>`}
     <div style="padding:13px 13px 50px">
       ${S.view==='main'&&S.tab==='hoy'?rHoy():S.view==='main'&&S.tab==='ciclo'?rCiclo()
@@ -110,15 +136,16 @@ function render(){
 }
 
 function rLogin(){return `
-<div style="min-height:100vh;background:${C.bk};display:flex;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#231d1c;border-radius:18px;padding:28px 20px;width:100%;max-width:380px;border:1px solid #3a3330;text-align:center">
-    <p style="font-size:48px;margin-bottom:12px">👑</p>
-    <p style="font-weight:900;font-size:22px;color:#fff;margin-bottom:5px">Bienvenida!</p>
-    <p style="font-size:14px;color:${C.g2};margin-bottom:22px;line-height:1.7">Reina, he configurado esta app especialmente para ti.</p>
-    ${S.error?`<p style="background:#fde8e8;color:${C.pr};border-radius:8px;padding:10px;font-size:13px;margin-bottom:14px">${esc(S.error)}</p>`:''}
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div class="panel-reino" style="${PANEL};border-radius:14px;padding:30px 20px;width:100%;max-width:380px;text-align:center"><span class="esq e1"></span><span class="esq e2"></span><span class="esq e3"></span><span class="esq e4"></span>
+    <p style="font-family:var(--brandface);font-size:34px;letter-spacing:.18em;color:${C.gold};margin-bottom:6px">REINO</p>
+    <p style="font-family:var(--heroic);font-size:9.5px;letter-spacing:.3em;color:${C.tl};margin-bottom:18px">GYM CÍCLICO</p>
+    <p style="font-family:var(--voice);font-style:italic;font-weight:300;font-size:19px;color:${C.td};margin-bottom:6px">Bienvenida, reina.</p>
+    <p style="font-size:13.5px;color:${C.tl};margin-bottom:22px;line-height:1.6">Esta app la configuré especialmente para ti.</p>
+    ${S.error?`<p style="background:rgba(199,55,44,.16);color:${C.pr};border-radius:8px;padding:10px;font-size:13px;margin-bottom:14px">${esc(S.error)}</p>`:''}
     <input id="le" type="email" placeholder="Tu correo..." style="width:100%;padding:11px 13px;border:2px solid #3a3330;border-radius:10px;font-size:15px;outline:none;margin-bottom:10px;background:#191211;color:#fff"/>
     <input id="lp" type="password" placeholder="Tu contraseña..." style="width:100%;padding:11px 13px;border:2px solid #3a3330;border-radius:10px;font-size:15px;outline:none;margin-bottom:16px;background:#191211;color:#fff"/>
-    <button onclick="doLogin()" style="width:100%;padding:13px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">Ingresar</button>
+    <button onclick="doLogin()" style="width:100%;padding:13px;${BTN_ROJO};color:#fff;border:none;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.14em">INGRESAR</button>
   </div>
 </div>`}
 
@@ -128,7 +155,7 @@ function rNoProg(){return `
     <p style="font-size:40px;margin-bottom:12px">⏳</p>
     <p style="font-weight:800;font-size:17px;color:${C.td};margin-bottom:6px">Sin programa asignado aún</p>
     <p style="font-size:14px;color:${C.tl};line-height:1.6">Tu entrenador está preparando tu programa personalizado.</p>
-    <button onclick="doLogout()" style="margin-top:20px;background:#f3f4f6;border:none;border-radius:10px;padding:10px 20px;font-weight:600;font-size:13px">Cerrar sesión</button>
+    <button onclick="doLogout()" style="margin-top:20px;background:rgba(242,233,220,.08);border:none;border-radius:10px;padding:10px 20px;font-weight:600;font-size:13px">Cerrar sesión</button>
   </div>
 </div>`}
 
@@ -164,9 +191,9 @@ function rHoy(){
 
   // Header fecha
   h+=`<div style="background:${C.bk};border-radius:14px;padding:18px;margin-bottom:14px;color:#fff">
-    <p style="font-size:11px;color:${C.g2};text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px">Hoy es</p>
-    <p style="font-weight:900;font-size:20px;margin-bottom:2px">${dateLabel}</p>
-    <p style="font-size:12px;color:${C.g2}">Tu entrenamiento del día</p>
+    <p style="font-family:Cinzel,serif;font-size:10px;color:${C.gold};text-transform:uppercase;letter-spacing:.26em;margin-bottom:5px">Hoy es</p>
+    <p style="font-family:Cinzel,serif;font-weight:700;font-size:21px;letter-spacing:.03em;color:${C.td};margin-bottom:3px">${dateLabel}</p>
+    <p style="font-family:Fraunces,serif;font-style:italic;font-size:14px;color:${C.tm}">Tu entrenamiento del día</p>
   </div>`;
 
   // Check-in
@@ -183,7 +210,7 @@ function rHoy(){
       pregsHtml+='<div style="margin-bottom:11px"><p style="font-size:11px;font-weight:700;color:'+C.tl+';text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+p.label+'</p><div style="display:flex;gap:6px">';
       p.ops.forEach(function(o){
         const sel=draft[p.campo]===o.v;
-        pregsHtml+='<button onclick="seleccionarCheckin(this.dataset.c,+this.dataset.v)" data-c="'+p.campo+'" data-v="'+o.v+'" style="flex:1;padding:9px 4px;border-radius:9px;font-size:12px;font-weight:'+(sel?700:400)+';border:2px solid '+(sel?C.pr:C.g3)+';background:'+(sel?'#fde8e8':C.wh)+';color:'+(sel?C.pr:C.tl)+'">'+o.l+'</button>';
+        pregsHtml+='<button onclick="seleccionarCheckin(this.dataset.c,+this.dataset.v)" data-c="'+p.campo+'" data-v="'+o.v+'" style="flex:1;padding:9px 4px;border-radius:9px;font-size:12px;font-weight:'+(sel?700:400)+';border:2px solid '+(sel?C.pr:C.g3)+';background:'+(sel?'rgba(199,55,44,.16)':C.wh)+';color:'+(sel?C.pr:C.tl)+'">'+o.l+'</button>';
       });
       pregsHtml+='</div></div>';
     });
@@ -197,8 +224,8 @@ function rHoy(){
     h+='</div>';
     if(semaforo!=='verde'){
       h+='<div style="display:flex;gap:6px;margin-bottom:10px">';
-      if(semaforo!=='verde')h+='<button onclick="ajustarSemaforo(1)" style="flex:1;padding:6px;background:#f0fdf4;border:1px solid #22c55e;border-radius:8px;font-size:11px;font-weight:600;color:#16a34a">Me siento mejor →</button>';
-      if(semaforo!=='rojo') h+='<button onclick="ajustarSemaforo(-1)" style="flex:1;padding:6px;background:#fef2f2;border:1px solid #ef4444;border-radius:8px;font-size:11px;font-weight:600;color:#dc2626">Me siento peor →</button>';
+      if(semaforo!=='verde')h+='<button onclick="ajustarSemaforo(1)" style="flex:1;padding:6px;background:rgba(34,197,94,.12);border:1px solid #22c55e;border-radius:8px;font-size:11px;font-weight:600;color:#16a34a">Me siento mejor →</button>';
+      if(semaforo!=='rojo') h+='<button onclick="ajustarSemaforo(-1)" style="flex:1;padding:6px;background:rgba(199,55,44,.12);border:1px solid #ef4444;border-radius:8px;font-size:11px;font-weight:600;color:#dc2626">Me siento peor →</button>';
       h+='</div>';
     }
   }
@@ -248,16 +275,16 @@ function rHoy(){
     h+='<p style="font-size:11px;color:'+C.g2+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>';
     h+='<p style="font-weight:900;font-size:18px;color:'+C.td+';margin-bottom:12px">'+cleanType+'</p>';
     if(todW>=0){
-      h+='<button onclick="goToTodaySess()" style="width:100%;padding:13px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ir a mi sesión de hoy</button>';
+      h+='<button onclick="goToTodaySess()" class="btn-reino" style="width:100%;padding:14px;'+BTN_ROJO+';color:#fff;border:none;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.12em">IR A MI SESIÓN DE HOY</button>';
     } else {
       h+='<button onclick="set({tab:\'rutinas\'})" style="width:100%;padding:13px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ver rutinas</button>';
     }
     h+='</div>';
-    if(isCompleted)h+='<div style="background:#f0fdf4;border-radius:12px;padding:13px;text-align:center;border:1px solid #bbf7d0;margin-bottom:12px"><p style="font-weight:700;color:#16a34a">✅ Sesión completada hoy — ¡Reina!</p></div>';
+    if(isCompleted)h+='<div style="background:rgba(34,197,94,.12);border-radius:12px;padding:13px;text-align:center;border:1px solid rgba(34,197,94,.35);margin-bottom:12px"><p style="font-weight:700;color:#16a34a">✅ Sesión completada hoy — ¡Reina!</p></div>';
   } else if(tod&&tod.status==='rest'){
     h+=card('<div style="text-align:center;padding:16px 0"><p style="font-size:36px;margin-bottom:10px">🌿</p><p style="font-weight:800;font-size:16px;color:'+C.td+';margin-bottom:4px">Recuperación Activa</p><p style="font-size:13px;color:'+C.tl+'">Hoy mueves el cuerpo suave — es parte del método.</p></div>');
   } else if(mt){
-    const FASE_LABELS={luna_nueva:{e:'🌑',l:'Luna Nueva',color:'#be185d'},creciente:{e:'🌓',l:'Creciente',color:'#1d4ed8'},llena:{e:'🌕',l:'Luna Llena',color:'#b45309'},menguante_a:{e:'🌗',l:'Menguante A',color:'#7c3aed'},menguante_b:{e:'🌘',l:'Menguante B',color:'#374151'},semana_1:{e:'💪',l:'Semana 1',color:'#059669'},semana_2:{e:'🔥',l:'Semana 2',color:'#dc2626'},semana_3:{e:'⚡',l:'Semana 3',color:'#7c3aed'},semana_4:{e:'🛡',l:'Semana 4',color:'#0891b2'}};
+    const FASE_LABELS={luna_nueva:{e:'🌑',l:'Luna Nueva',color:'#E8799F'},creciente:{e:'🌓',l:'Creciente',color:'#7AA2F7'},llena:{e:'🌕',l:'Luna Llena',color:'#E0A458'},menguante_a:{e:'🌗',l:'Menguante A',color:'#E0C97F'},menguante_b:{e:'🌘',l:'Menguante B',color:'#A0A7B4'},semana_1:{e:'💪',l:'Semana 1',color:'#4ADE9A'},semana_2:{e:'🔥',l:'Semana 2',color:'#dc2626'},semana_3:{e:'⚡',l:'Semana 3',color:'#E0C97F'},semana_4:{e:'🛡',l:'Semana 4',color:'#5CC8E0'}};
     const fi=FASE_LABELS[mt.fase]||{e:'📅',l:mt.fase,color:C.pr};
     h+='<div style="background:'+C.wh+';border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid '+fi.color+'">';
     h+='<p style="font-size:11px;color:'+C.g2+';text-transform:uppercase;margin-bottom:4px">Motor de ciclo activo</p>';
@@ -315,24 +342,24 @@ function rCiclo(){
   if(ph){h+=`<div style="border-radius:14px;padding:15px;background:${ph.bg};border:1px solid ${ph.br}">
     <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${ph.c};margin-bottom:3px">Día ${day} del ciclo</p>
     <p style="font-size:22px;font-weight:900;color:${ph.c};margin-bottom:6px">${ph.e} Fase ${ph.l}</p>
-    <p style="font-size:13px;color:#4a5568;line-height:1.5;margin-bottom:10px">${ph.tip}</p>
+    <p style="font-size:13px;color:#A08D82;line-height:1.5;margin-bottom:10px">${ph.tip}</p>
     <div style="background:rgba(255,255,255,.7);border-radius:9px;padding:9px 12px">
-      <p style="font-size:12px;font-weight:600;color:${ph.c};margin:0">💪 <span style="font-weight:400;color:#374151">${ph.tr}</span></p>
+      <p style="font-size:12px;font-weight:600;color:${ph.c};margin:0">💪 <span style="font-weight:400;color:#A0A7B4">${ph.tr}</span></p>
     </div>
   </div>`;}
   else{h+=card(`<div style="text-align:center;padding:18px 0"><p style="font-size:34px;margin-bottom:10px">🌙</p><p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">¡Bienvenida, Reina!</p><p style="font-size:13px;color:${C.tl}">Registra el último día de tu sangrado para ver tu fase.</p><p style=\"font-size:12px;color:${C.g2};margin-top:6px\">Si tu ciclo es irregular o usas implante subdérmico, guíate por tu energía del día — alta = sesión principal · baja = sesión suave.</p></div>`);}
   h+=`<div style="display:flex;gap:8px;margin-top:12px">
     <button onclick="set({view:'pform'})" style="flex:1;padding:11px 6px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:12px">🌙 Mi sangrado</button>
     <button onclick="set({view:'sform',selSym:[],symNote:''})" style="flex:1;padding:11px 6px;background:${C.wh};color:${C.pr};border:2px solid ${C.pr};border-radius:11px;font-weight:700;font-size:12px">📋 Síntomas</button>
-    <button onclick="set({view:'menoform'})" style="flex:1;padding:11px 6px;background:${C.bk};color:${C.wh};border:none;border-radius:11px;font-weight:700;font-size:12px">👑 Bienestar</button>
+    <button onclick="set({view:'menoform'})" style="flex:1;padding:11px 6px;background:${C.bk};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:12px">👑 Bienestar</button>
   </div>`;
-  if(ts&&ts.symptoms&&ts.symptoms.length>0){h+=secT('Síntomas de hoy');h+=card(`<div style="display:flex;flex-wrap:wrap;gap:6px">${ts.symptoms.map(function(k){const s=SYMPTOMS.find(function(x){return x.k===k});return s?`<span style="background:#f5f0fd;color:#7c3aed;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700">${s.e} ${s.l}</span>`:''}).join('')}</div>${ts.notes?`<p style="margin-top:8px;font-size:12px;color:${C.tl};font-style:italic">"${esc(ts.notes)}"</p>`:''}`)}
+  if(ts&&ts.symptoms&&ts.symptoms.length>0){h+=secT('Síntomas de hoy');h+=card(`<div style="display:flex;flex-wrap:wrap;gap:6px">${ts.symptoms.map(function(k){const s=SYMPTOMS.find(function(x){return x.k===k});return s?`<span style="background:rgba(184,150,62,.12);color:#E0C97F;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700">${s.e} ${s.l}</span>`:''}).join('')}</div>${ts.notes?`<p style="margin-top:8px;font-size:12px;color:${C.tl};font-style:italic">"${esc(ts.notes)}"</p>`:''}`)}
   if(tm){h+=secT('Bienestar de hoy');h+=card(`${tm.energia?`<p style="font-size:12px;color:${C.tl};margin-bottom:2px">⚡ Energía</p><p style="font-size:13px;color:${C.td};margin-bottom:10px">${esc(tm.energia)}</p>`:''}${tm.sueno?`<p style="font-size:12px;color:${C.tl};margin-bottom:2px">😴 Sueño</p><p style="font-size:13px;color:${C.td};margin-bottom:10px">${esc(tm.sueno)}</p>`:''}${tm.emocional?`<p style="font-size:12px;color:${C.tl};margin-bottom:2px">💭 Emocional</p><p style="font-size:13px;color:${C.td}">${esc(tm.emocional)}</p>`:''}${tm.tratamiento?`<p style="font-size:12px;color:${C.tl};margin-top:8px;margin-bottom:2px">💊 Tratamiento</p><p style="font-size:13px;color:${C.td}">${esc(tm.tratamiento)}</p>`:''}`)}
   h+=secT('Guía de fases');
   PHASES.forEach(function(p){h+=`<div style="background:${C.wh};border-radius:13px;padding:13px;border:1px solid ${p.br};margin-bottom:8px;box-shadow:0 1px 3px rgba(25,18,17,.07)"><div style="display:flex;gap:10px"><span style="font-size:26px;line-height:1">${p.e}</span><div><div style="display:flex;align-items:baseline;gap:7px;margin-bottom:2px"><span style="font-weight:800;font-size:13px;color:${p.c}">${p.l}</span><span style="font-size:11px;color:${C.tl}">Días ${p.r[0]}–${p.r[1]}</span></div><p style="font-size:12px;color:${C.tm};line-height:1.5;margin:0">${p.tip}</p></div></div></div>`});
   h+=secT('Duración de mi ciclo');
   h+=card(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><p style="font-size:13px;color:${C.tl};margin:0">Días promedio</p><span id="clend" style="font-size:21px;font-weight:900;color:${C.pr}">${S.cycleLen}d</span></div><input type="range" id="clen" min="20" max="45" value="${S.cycleLen}"/><p style="font-size:11px;color:${C.g2};margin-top:6px">En perimenopausia los ciclos pueden variar mucho.</p>`);
-  if(S.cycleHistory.length>0){h+=secT('Historial de sangrado');h+=`<div style="display:flex;flex-direction:column;gap:7px">${S.cycleHistory.slice(0,8).map(function(cy,i){return`<div style="background:${C.wh};border-radius:11px;padding:11px 14px;${i===0?'border:2px solid '+C.pr:''};box-shadow:0 1px 3px rgba(25,18,17,.07)"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:${C.td}">🌙 Último día: ${fmtDate(cy.last_bleeding_date)}</span>${i===0?'<span style="font-size:11px;font-weight:700;background:#fde8e8;color:'+C.pr+';border-radius:20px;padding:3px 10px">Reciente</span>':''}</div></div>`}).join('')}</div>`}
+  if(S.cycleHistory.length>0){h+=secT('Historial de sangrado');h+=`<div style="display:flex;flex-direction:column;gap:7px">${S.cycleHistory.slice(0,8).map(function(cy,i){return`<div style="background:${C.wh};border-radius:11px;padding:11px 14px;${i===0?'border:2px solid '+C.pr:''};box-shadow:0 1px 3px rgba(25,18,17,.07)"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:${C.td}">🌙 Último día: ${fmtDate(cy.last_bleeding_date)}</span>${i===0?'<span style="font-size:11px;font-weight:700;background:rgba(199,55,44,.16);color:'+C.pr+';border-radius:20px;padding:3px 10px">Reciente</span>':''}</div></div>`}).join('')}</div>`}
   return h;
 }
 
@@ -348,7 +375,7 @@ function rSForm(){return `
 <div style="background:${C.wh};border-radius:18px;padding:18px;box-shadow:0 2px 10px rgba(25,18,17,.1)">
   <p style="font-weight:900;font-size:18px;color:${C.td};margin-bottom:14px">¿Cómo te sientes hoy?</p>
   <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px">
-    ${SYMPTOMS.map(function(s){const sel=S.selSym.includes(s.k);return`<button onclick="tSym('${s.k}')" style="padding:7px 12px;border-radius:20px;font-size:12px;border:2px solid ${sel?C.pr:C.g3};background:${sel?'#fde8e8':C.bg};color:${sel?C.pr:C.tm};font-weight:${sel?700:400}">${s.e} ${s.l}</button>`}).join('')}
+    ${SYMPTOMS.map(function(s){const sel=S.selSym.includes(s.k);return`<button onclick="tSym('${s.k}')" style="padding:7px 12px;border-radius:20px;font-size:12px;border:2px solid ${sel?C.pr:C.g3};background:${sel?'rgba(199,55,44,.16)':C.bg};color:${sel?C.pr:C.tm};font-weight:${sel?700:400}">${s.e} ${s.l}</button>`}).join('')}
   </div>
   <textarea id="sn-in" placeholder="Notas adicionales..." style="width:100%;padding:9px 13px;border:2px solid ${C.g3};border-radius:10px;font-size:13px;resize:none;min-height:60px;outline:none;margin-bottom:14px;color:${C.td}">${esc(S.symNote)}</textarea>
   <button onclick="saveSym()" ${S.selSym.length===0?'disabled':''} style="width:100%;padding:12px;background:${S.selSym.length===0?C.g3:C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:14px">Guardar síntomas</button>
@@ -400,7 +427,7 @@ function rRutinas(){
       const dateLabel=WEEK_ES[d.getDay()]+' '+d.getDate();
       const modeColor=isPresencial2?C.pr:C.bk;
       const modeLabel=isPresencial2?'Con Brayan':'Sesión Reina';
-      const bgColor=isToday2?'#fff8f8':isCompleted2?'#f0fdf4':C.wh;
+      const bgColor=isToday2?'rgba(199,55,44,.10)':isCompleted2?'rgba(34,197,94,.12)':C.wh;
       const borderStyle=isToday2?'border-left:4px solid '+C.pr:isCompleted2?'border-left:4px solid #22c55e':'border-left:4px solid transparent';
       const clickable=foundW>=0;
       h+=`<div data-w="${foundW}" data-s="${foundS}" onclick="${clickable?'set({view:\'sess\',sessW:+this.dataset.w,sessI:+this.dataset.s})':''}" style="background:${bgColor};border-radius:11px;padding:11px 14px;margin-bottom:7px;${borderStyle};box-shadow:0 1px 3px rgba(25,18,17,.07);cursor:${clickable?'pointer':'default'}">
@@ -546,9 +573,9 @@ function rSess(){
       const subs=[];
       let j=i+1;
       while(j<exList.length&&exList[j].m&&exList[j].m.indexOf('tobillo')>=0){subs.push({ex:exList[j],oi:j});j++;}
-      h+='<div style="background:#f8f8f8;border-radius:14px;margin-bottom:8px;overflow:hidden;box-shadow:0 1px 4px rgba(25,18,17,.08)">';
+      h+='<div style="background:rgba(242,233,220,.04);border-radius:14px;margin-bottom:8px;overflow:hidden;box-shadow:0 1px 4px rgba(25,18,17,.08)">';
       h+='<div onclick="var d=document.getElementById(\'blin'+i+'\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\'" style="padding:13px;cursor:pointer;display:flex;gap:11px;align-items:center;background:'+C.wh+'">';
-      h+='<div style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:#fde8e8;color:'+C.dk+'">'+visN+'</div>';
+      h+='<div style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:rgba(199,55,44,.16);color:'+C.gs+'">'+visN+'</div>';
       h+='<div style="flex:1"><p style="font-weight:700;font-size:14px;color:'+C.td+';margin-bottom:2px">'+esc(ex.n)+'</p><p style="font-size:11px;color:'+C.tl+'">'+esc(ex.m)+'</p></div>';
       h+='<span style="font-size:18px;color:'+C.g2+'">▸</span>';
       h+='</div>';
@@ -560,12 +587,12 @@ function rSess(){
           const aD=Array.from({length:n},function(_,k){return S.completions[se.eid+'_'+k];}).every(Boolean);
           h+='<div style="background:'+(aD?'#1a0a09':C.bg)+';border-radius:10px;padding:10px 12px;border:2px solid '+(aD?C.pr:C.g3)+'">';
           h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">';
-          h+='<div><p style="font-weight:700;font-size:13px;color:'+(aD?C.wh:C.td)+'">'+esc(se.n)+'</p><p style="font-size:13px;color:'+(aD?C.g3:C.tm)+';margin-top:2px">'+textoSeries(n,se.reps).principal+'</p></div>';
+          h+='<div><p style="font-weight:700;font-size:13px;color:'+(aD?'#fff':C.td)+'">'+esc(se.n)+'</p><p style="font-size:13px;color:'+(aD?C.gs:C.tm)+';margin-top:2px">'+textoSeries(n,se.reps).principal+'</p></div>';
           if(se.v)h+='<button onclick="set({view:\'vid\',vidW:'+S.sessW+',vidS:'+S.sessI+',vidE:'+si+'})" style="background:'+C.pr+';color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600">▶ Ver</button>';
           h+='</div><div style="display:flex;gap:5px">';
           for(let k=0;k<n;k++){
             const d=S.completions[se.eid+'_'+k];
-            h+='<button id="sb-'+se.eid+'-'+k+'" onclick="tSet(\''+se.eid+'\','+k+','+n+')" style="width:34px;height:34px;border-radius:7px;font-weight:700;font-size:11px;border:2px solid '+(d?C.pr:C.g3)+';background:'+(d?C.pr:C.wh)+';color:'+(d?C.wh:C.tl)+'">'+(d?'✓':'S'+(k+1))+'</button>';
+            h+='<button id="sb-'+se.eid+'-'+k+'" onclick="tSet(\''+se.eid+'\','+k+','+n+')" style="width:34px;height:34px;border-radius:7px;font-weight:700;font-size:11px;border:2px solid '+(d?C.pr:C.g3)+';background:'+(d?C.pr:C.wh)+';color:'+(d?'#fff':C.tl)+'">'+(d?'✓':'S'+(k+1))+'</button>';
           }
           h+='</div></div>';
         });
@@ -579,38 +606,38 @@ function rSess(){
       visN++;
       h+='<div id="ec-'+ex.eid+'" style="background:'+(allD?'#1a0a09':C.wh)+';border-radius:14px;padding:13px;margin-bottom:8px;border:2px solid '+(allD?C.pr:'transparent')+';box-shadow:0 1px 4px rgba(25,18,17,.08)">';
       h+='<div style="display:flex;gap:11px">';
-      h+='<div id="nb-'+ex.eid+'" style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:'+(allD?C.pr:'#fde8e8')+';color:'+(allD?C.wh:C.dk)+'">'+(allD?'✓':visN)+'</div>';
+      h+='<div id="nb-'+ex.eid+'" style="width:33px;height:33px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:'+(allD?C.pr:'rgba(199,55,44,.16)')+';color:'+(allD?'#fff':C.gs)+'">'+(allD?'✓':visN)+'</div>';
       h+='<div style="flex:1">';
-      h+='<p style="font-weight:700;font-size:14px;color:'+(allD?C.wh:C.td)+';margin-bottom:2px">'+esc(ex.n)+'</p>';
-      if(ex.desc)h+='<p style="font-size:12px;color:'+(allD?C.g3:C.tm)+';margin-bottom:4px">'+esc(ex.desc)+'</p>';
+      h+='<p style="font-weight:700;font-size:14px;color:'+(allD?'#fff':C.td)+';margin-bottom:2px">'+esc(ex.n)+'</p>';
+      if(ex.desc)h+='<p style="font-size:12px;color:'+(allD?C.gs:C.tm)+';margin-bottom:4px">'+esc(ex.desc)+'</p>';
       // Ejercicio reemplazado por escenario: solo vale el historial de ese patrón en ese escenario
       const patKey='pat_'+(ex.patron||'')+'_'+S.escenario;
       const lastLog=S.cargaLog?((ex.sustituido?S.cargaLog[patKey]:(S.cargaLog[ex.eid]||S.cargaLog[patKey]))||null):null;
     const sugKg=sugerirKg(lastLog,ex.carga_kg);
-    const kgText=sugKg?('<b style="font-size:14px;color:'+(allD?C.wh:C.pr)+';">'+sugKg+' kg</b>'+(lastLog&&lastLog.kg!==ex.carga_kg?' sugerido':'')):(ex.carga_kg?'Anota el peso que uses':'');
-    const cueText=ex.cue?('<p style="font-size:13px;color:'+(allD?'#fde8e8':'#710D0B')+';font-style:italic;margin-bottom:6px;line-height:1.5">'+esc(ex.cue)+'</p>'):'';
+    const kgText=sugKg?('<b style="font-size:14px;color:'+(allD?'#fff':C.pr)+';">'+sugKg+' kg</b>'+(lastLog&&lastLog.kg!==ex.carga_kg?' sugerido':'')):(ex.carga_kg?'Anota el peso que uses':'');
+    const cueText=ex.cue?('<p style="font-size:13px;color:'+(allD?C.gs:'#E8A598')+';font-style:italic;margin-bottom:6px;line-height:1.5">'+esc(ex.cue)+'</p>'):'';
     const tempoMap={'3-1-1':'Baja contando tres','2-1-2':'Baja en dos, sube en dos','4-1-1':'Baja lento contando cuatro','1-0-1':'Explosivo'};
     const tempoText=ex.tempo?(tempoMap[ex.tempo]||ex.tempo):'';
     const ts=textoSeries(n,ex.reps);
-    h+='<p style="font-size:15px;color:'+(allD?C.wh:C.td)+';margin-bottom:6px;line-height:1.4">'+ts.principal+'</p>';
+    h+='<p style="font-size:15px;color:'+(allD?'#fff':C.td)+';margin-bottom:6px;line-height:1.4">'+ts.principal+'</p>';
     const chips=(kgText?[kgText]:[]).concat(ts.extras.map(esc));
     if(chips.length){
       h+='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px">';
-      chips.forEach(function(c){h+='<span style="font-size:12px;padding:3px 9px;border-radius:20px;background:'+(allD?'#2a2523':'#f3f1ef')+';color:'+(allD?C.g3:C.tm)+'">'+c+'</span>';});
+      chips.forEach(function(c){h+='<span style="font-size:12px;padding:3px 9px;border-radius:20px;background:'+(allD?'#2a2523':'rgba(242,233,220,.06)')+';color:'+(allD?C.gs:C.tm)+'">'+c+'</span>';});
       h+='</div>';
     }
-    ts.avisos.forEach(function(a){h+='<p style="font-size:12px;font-weight:700;color:'+(allD?'#fcd34d':'#b45309')+';margin-bottom:6px">⚠ '+esc(a)+'</p>';});
-    if(tempoText)h+='<p style="font-size:11px;color:'+(allD?C.g2:'#7c3aed')+';margin-bottom:6px">'+tempoText+'</p>';
+    ts.avisos.forEach(function(a){h+='<p style="font-size:12px;font-weight:700;color:'+(allD?'#fcd34d':'#E0A458')+';margin-bottom:6px">⚠ '+esc(a)+'</p>';});
+    if(tempoText)h+='<p style="font-size:11px;color:'+(allD?C.g2:'#E0C97F')+';margin-bottom:6px">'+tempoText+'</p>';
     if(cueText)h+=cueText;
       h+='<div style="display:flex;gap:6px;margin-bottom:9px">';
       for(let k=0;k<n;k++){
         const d=S.completions[ex.eid+'_'+k];
-        h+='<button id="sb-'+ex.eid+'-'+k+'" onclick="tSet(\''+ex.eid+'\','+k+','+n+')" style="width:37px;height:37px;border-radius:8px;font-weight:700;font-size:12px;border:2px solid '+(d?C.pr:C.g3)+';background:'+(d?C.pr:C.wh)+';color:'+(d?C.wh:C.tl)+'">'+(d?'✓':'S'+(k+1))+'</button>';
+        h+='<button id="sb-'+ex.eid+'-'+k+'" onclick="tSet(\''+ex.eid+'\','+k+','+n+')" style="width:37px;height:37px;border-radius:8px;font-weight:700;font-size:12px;border:2px solid '+(d?C.pr:C.g3)+';background:'+(d?C.pr:C.wh)+';color:'+(d?'#fff':C.tl)+'">'+(d?'✓':'S'+(k+1))+'</button>';
       }
       h+='</div>';
     // Cronómetro para ejercicios por tiempo (cardio)
     if(parseIntervalo(ex.reps)&&!allD){
-      h+='<button data-eid="'+ex.eid+'" data-nombre="'+esc(ex.n)+'" data-rondas="'+n+'" data-reps="'+esc(ex.reps)+'" onclick="iniciarCrono(this)" style="width:100%;padding:12px;margin-bottom:9px;background:'+C.pr+';color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px">⏱ Iniciar cronómetro</button>';
+      h+='<button data-eid="'+ex.eid+'" data-nombre="'+esc(ex.n)+'" data-rondas="'+n+'" data-reps="'+esc(ex.reps)+'" onclick="iniciarCrono(this)" style="width:100%;padding:12px;margin-bottom:9px;'+BTN_ROJO+';color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px">⏱ Iniciar cronómetro</button>';
     }
     // Calentamiento (bloques 1-2), cardio (4) y cierre (5) no piden esfuerzo
     const esMovilidad=[1,2,4,5].indexOf(ex.bloque)>=0||/movilidad|blindaje|activaci|respiraci|estiramiento|recuperaci/i.test((ex.n||'')+' '+(ex.m||''));
@@ -618,17 +645,17 @@ function rSess(){
       const faseActual=getCurrentFase()||'presencial';
       const efYa=S.esfuerzoHecho&&S.esfuerzoHecho[ex.eid];
       if(!efYa){
-        h+='<div style="margin-bottom:9px"><p style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:6px">\xbfC\xf3mo se sinti\xf3?</p><div style="display:flex;gap:6px">';
+        h+='<div style="margin-bottom:9px"><p style="font-size:11px;font-weight:700;color:#E0C97F;margin-bottom:6px">\xbfC\xf3mo se sinti\xf3?</p><div style="display:flex;gap:6px">';
         [{v:1,l:'Sobrada'},{v:2,l:'Justa'},{v:3,l:'Al l\xedmite'}].forEach(function(op){
-          h+='<button data-eid="'+ex.eid+'" data-pat="'+esc(ex.patron||'')+'" data-fase="'+faseActual+'" data-kg="'+(ex.carga_kg||'')+'" data-ef="'+op.v+'" onclick="efClick(this)" style="flex:1;padding:8px 4px;border-radius:8px;font-size:12px;font-weight:600;border:2px solid #7c3aed;background:#f5f3ff;color:#7c3aed">'+op.l+'</button>';
+          h+='<button data-eid="'+ex.eid+'" data-pat="'+esc(ex.patron||'')+'" data-fase="'+faseActual+'" data-kg="'+(ex.carga_kg||'')+'" data-ef="'+op.v+'" onclick="efClick(this)" style="flex:1;padding:8px 4px;border-radius:8px;font-size:12px;font-weight:600;border:2px solid #E0C97F;background:rgba(184,150,62,.12);color:#E0C97F">'+op.l+'</button>';
         });
         h+='</div></div>';
       } else {
         const efLabels={1:'✓ Sobrada',2:'✓ Justa',3:'✓ Al l\xedmite'};
-        h+='<div style="background:#f5f3ff;border-radius:8px;padding:7px 12px;margin-bottom:9px;font-size:12px;font-weight:700;color:#7c3aed">'+( efLabels[efYa]||'Registrado')+'</div>';
+        h+='<div style="background:rgba(184,150,62,.12);border-radius:8px;padding:7px 12px;margin-bottom:9px;font-size:12px;font-weight:700;color:#E0C97F">'+( efLabels[efYa]||'Registrado')+'</div>';
       }
     }
-      h+='<button onclick="set({view:\'vid\',vidW:'+S.sessW+',vidS:'+S.sessI+',vidE:'+i+'})" style="background:'+C.bk+';color:'+C.g3+';border:1px solid #3a3330;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600">▶ Ver demostración</button>';
+      h+='<button onclick="set({view:\'vid\',vidW:'+S.sessW+',vidS:'+S.sessI+',vidE:'+i+'})" style="background:transparent;color:'+C.gs+';border:1px solid rgba(184,150,62,.45);border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600">▶ Ver demostración</button>';
       h+='</div></div></div>';
       i++;
     }
@@ -637,7 +664,7 @@ function rSess(){
   // Marcar como completada (solo sesión de hoy)
   if(true){
     if(isCompleted){
-      h+='<div style="background:#f0fdf4;border-radius:13px;padding:15px;text-align:center;border:2px solid #22c55e;margin-top:4px"><p style="font-size:24px;margin-bottom:6px">✅</p><p style="font-weight:800;font-size:15px;color:#16a34a">¡Sesión completada!</p></div>';
+      h+='<div style="background:rgba(34,197,94,.12);border-radius:13px;padding:15px;text-align:center;border:2px solid #22c55e;margin-top:4px"><p style="font-size:24px;margin-bottom:6px">✅</p><p style="font-weight:800;font-size:15px;color:#16a34a">¡Sesión completada!</p></div>';
     } else {
       // Batch esfuerzo before marking done
     if(S.showBatchEsfuerzo&&S.batchEsfuerzoExs&&S.batchEsfuerzoExs.length>0){
@@ -649,14 +676,14 @@ function rSess(){
         h+='<p style="font-size:13px;font-weight:700;color:'+C.td+';margin-bottom:6px">'+esc(bex.n)+'</p>';
         h+='<div style="display:flex;gap:6px;margin-bottom:12px">';
         [{v:1,l:'Sobrada'},{v:2,l:'Justa'},{v:3,l:'Al límite'}].forEach(function(op){
-          h+='<button data-eid="'+bex.eid+'" data-pat="'+(bex.patron||'')+'" data-esc="'+S.escenario+'" data-fase="'+fBatch+'" data-kg="'+(bex.carga_kg||'')+'" data-ef="'+op.v+'" onclick="registrarEsfuerzo(this.dataset.eid,this.dataset.pat,this.dataset.esc,this.dataset.fase,+this.dataset.kg||null,+this.dataset.ef);S.batchEsfuerzoExs=S.batchEsfuerzoExs.filter(x=>x.eid!==this.dataset.eid);if(!S.batchEsfuerzoExs.length)markSessionDone();else render()" style="flex:1;padding:8px 4px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid #7c3aed;background:#f5f3ff;color:#7c3aed">'+op.l+'</button>';
+          h+='<button data-eid="'+bex.eid+'" data-pat="'+(bex.patron||'')+'" data-esc="'+S.escenario+'" data-fase="'+fBatch+'" data-kg="'+(bex.carga_kg||'')+'" data-ef="'+op.v+'" onclick="registrarEsfuerzo(this.dataset.eid,this.dataset.pat,this.dataset.esc,this.dataset.fase,+this.dataset.kg||null,+this.dataset.ef);S.batchEsfuerzoExs=S.batchEsfuerzoExs.filter(x=>x.eid!==this.dataset.eid);if(!S.batchEsfuerzoExs.length)markSessionDone();else render()" style="flex:1;padding:8px 4px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid #E0C97F;background:rgba(184,150,62,.12);color:#E0C97F">'+op.l+'</button>';
         });
         h+='</div>';
       });
       h+='<button onclick="markSessionDone()" style="width:100%;padding:10px;background:'+C.g2+';color:#fff;border:none;border-radius:9px;font-size:13px">Saltar y marcar completada</button>';
       h+='</div>';
     } else {
-      h+='<button onclick="initBatchEsfuerzo()" style="width:100%;padding:15px;background:#16a34a;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:15px;margin-top:4px">✅ Marcar sesión como completada</button>';
+      h+='<button onclick="initBatchEsfuerzo()" style="width:100%;padding:15px;'+BTN_ROJO+';color:#fff;border:none;border-radius:13px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase;margin-top:4px">♛ Marcar sesión como completada</button>';
     }
     }
   }
@@ -674,8 +701,8 @@ function rVid(){
     ${ex.desc?`<p style="font-size:13px;font-weight:600;color:${C.tm};margin-bottom:14px">${esc(ex.desc)}</p>`:''}
     ${id?`<div style="border-radius:11px;overflow:hidden;margin-bottom:14px;aspect-ratio:16/9"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}?end=20" frameBorder="0" allowFullscreen></iframe></div>`
     :`<div style="background:${C.bk};border-radius:13px;padding:34px 16px;text-align:center;margin-bottom:14px;border:1px solid #2a2523"><p style="font-size:36px;margin-bottom:10px">🎬</p><p style="font-weight:800;color:#fff;margin-bottom:5px">Video próximamente</p><p style="font-size:12px;color:${C.g2}">Tu entrenador agregará el video de demostración.</p></div>`}
-    <div style="background:#fde8e8;border-radius:11px;padding:13px;border:1px solid #fecaca">
-      <p style="font-weight:700;color:${C.dk};font-size:13px;margin-bottom:7px">💡 Puntos clave</p>
+    <div style="background:rgba(199,55,44,.16);border-radius:11px;padding:13px;border:1px solid rgba(199,55,44,.35)">
+      <p style="font-weight:700;color:${C.gs};font-size:13px;margin-bottom:7px">💡 Puntos clave</p>
       <p style="font-size:12px;color:${C.tm};line-height:1.9;margin:0">· Activa el core antes de comenzar<br>· Controla la fase excéntrica (bajada lenta)<br>· Exhala en el momento de esfuerzo<br>· Columna en posición neutra</p>
     </div>
   </div>`;
@@ -718,29 +745,29 @@ async function cargarFotos(aviso){
 }
 function abreDespues(fila){
   if(!fila||!fila.antes_fecha)return null;
-  const d=new Date(fila.antes_fecha);d.setDate(d.getDate()+FOTOS.dias_despues);return d;
+  const d=new Date(String(fila.antes_fecha).slice(0,10)+'T00:00:00');d.setDate(d.getDate()+FOTOS.dias_despues);return d;
 }
 function rFotos(){
   const F=S.fotos||{};
   if(F.cargando)return card('<p style="text-align:center;color:'+C.tl+';padding:20px 0">Cargando tus fotos...</p>');
   const uid=S.user.id,fila=F.fila,permiso=fila&&fila.permiso;
   const abre=abreDespues(fila),abierto=!!abre&&new Date()>=abre;
-  let h='<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:'+C.pr+';margin:4px 0 4px">Mi antes y después</p>';
-  h+='<p style="font-size:16px;font-style:italic;color:'+C.td+';margin-bottom:12px">Tu punto de partida y tu cambio a los 3 meses.</p>';
+  let h='<p style="font-family:Cinzel,serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.24em;color:'+C.gold+';margin:4px 0 4px">Mi antes y después</p>';
+  h+='<p style="font-family:Fraunces,serif;font-size:17px;font-style:italic;color:'+C.td+';margin-bottom:12px">Tu punto de partida y tu cambio a los 3 meses.</p>';
   h+=card('<p style="font-weight:900;font-size:15px;letter-spacing:.06em;color:'+C.td+';margin-bottom:6px">CÓMO TOMARLAS</p>'+
     FOTOS.guia.map(function(t){return '<p style="font-size:13.5px;color:'+C.tm+';line-height:1.6;margin-top:8px">'+esc(t)+'</p>';}).join(''),'margin-bottom:12px');
   let perm='<p style="font-weight:900;font-size:15px;letter-spacing:.06em;color:'+C.td+';margin-bottom:4px">TU PERMISO</p>';
   perm+='<p style="font-size:13px;color:'+C.tl+';margin-bottom:10px">Estas fotos son para mostrar tu cambio. Escoge cómo las podemos publicar antes de subirlas.</p>';
   FOTOS.permisos.forEach(function(p){
     const sel=permiso===p.id;
-    perm+='<button data-p="'+p.id+'" onclick="guardarPermiso(this)" style="display:block;width:100%;text-align:left;padding:13px 14px;margin-bottom:8px;border-radius:11px;font-size:14px;font-weight:'+(sel?800:600)+';border:2px solid '+(sel?C.pr:C.g3)+';background:'+(sel?'#fde8e8':C.wh)+';color:'+(sel?C.pr:C.td)+'">'+(sel?'✓ ':'')+esc(p.texto)+'</button>';
+    perm+='<button data-p="'+p.id+'" onclick="guardarPermiso(this)" style="display:block;width:100%;text-align:left;padding:13px 14px;margin-bottom:8px;border-radius:11px;font-size:14px;font-weight:'+(sel?800:600)+';border:2px solid '+(sel?C.pr:C.g3)+';background:'+(sel?'rgba(199,55,44,.16)':C.wh)+';color:'+(sel?C.pr:C.td)+'">'+(sel?'✓ ':'')+esc(p.texto)+'</button>';
   });
   h+=card(perm,'margin-bottom:12px');
   function grid(mom,habil){
     let g='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
     FOTOS.lados.forEach(function(l){
       const url=F.urls[rutaFoto(uid,mom,l.id)];
-      g+='<button data-mom="'+mom+'" data-lado="'+l.id+'" onclick="elegirFoto(this)" '+(habil?'':'disabled')+' style="position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;border:2px dashed '+(url?'transparent':C.g3)+';background:'+(habil?'#f3f1ef':'#ece9e6')+';opacity:'+(habil?1:.55)+';padding:0">';
+      g+='<button data-mom="'+mom+'" data-lado="'+l.id+'" onclick="elegirFoto(this)" '+(habil?'':'disabled')+' style="position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;border:2px dashed '+(url?'transparent':C.g3)+';background:'+(habil?'rgba(242,233,220,.06)':'rgba(242,233,220,.03)')+';opacity:'+(habil?1:.55)+';padding:0">';
       g+=url?'<img src="'+url+'" alt="'+esc(l.texto)+'" style="width:100%;height:100%;object-fit:cover;display:block">':'<span style="font-size:30px;color:'+C.g2+'">+</span>';
       g+='<span style="position:absolute;left:0;right:0;bottom:0;padding:7px 4px;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.65))">'+esc(l.texto)+(url?' · cambiar':'')+'</span></button>';
     });
@@ -888,15 +915,15 @@ async function registrarEsfuerzo(exerciseId, patron, escenario, fase, kg, esfuer
 // El motor solo actúa cuando NO hay fila para esa clienta y esa fecha
 
 const FASE_LABELS={
-  luna_nueva:{e:'🌑',l:'Luna Nueva',color:'#be185d'},
-  creciente:{e:'🌓',l:'Creciente',color:'#1d4ed8'},
-  llena:{e:'🌕',l:'Luna Llena',color:'#b45309'},
-  menguante_a:{e:'🌗',l:'Menguante A',color:'#7c3aed'},
-  menguante_b:{e:'🌘',l:'Menguante B',color:'#374151'},
-  semana_1:{e:'💪',l:'Semana 1 · Resistir',color:'#059669'},
+  luna_nueva:{e:'🌑',l:'Luna Nueva',color:'#E8799F'},
+  creciente:{e:'🌓',l:'Creciente',color:'#7AA2F7'},
+  llena:{e:'🌕',l:'Luna Llena',color:'#E0A458'},
+  menguante_a:{e:'🌗',l:'Menguante A',color:'#E0C97F'},
+  menguante_b:{e:'🌘',l:'Menguante B',color:'#A0A7B4'},
+  semana_1:{e:'💪',l:'Semana 1 · Resistir',color:'#4ADE9A'},
   semana_2:{e:'🔥',l:'Semana 2 · Forjar',color:'#dc2626'},
-  semana_3:{e:'⚡',l:'Semana 3 · Conquistar',color:'#7c3aed'},
-  semana_4:{e:'🛡',l:'Semana 4 · Blindar',color:'#0891b2'},
+  semana_3:{e:'⚡',l:'Semana 3 · Conquistar',color:'#E0C97F'},
+  semana_4:{e:'🛡',l:'Semana 4 · Blindar',color:'#5CC8E0'},
 };
 
 
@@ -1265,10 +1292,10 @@ async function tSet(eid,i,sets){
     await sb.from('exercise_completions').delete().eq('client_id',S.user.id).eq('exercise_id',eid).eq('set_number',i).eq('completed_on',today());
   }
   const b=document.getElementById('sb-'+eid+'-'+i);
-  if(b){b.style.background=done?C.pr:C.wh;b.style.borderColor=done?C.pr:C.g3;b.style.color=done?C.wh:C.tl;b.textContent=done?'✓':'S'+(i+1)}
+  if(b){b.style.background=done?C.pr:C.wh;b.style.borderColor=done?C.pr:C.g3;b.style.color=done?'#fff':C.tl;b.textContent=done?'✓':'S'+(i+1)}
   const allD=Array.from({length:sets},function(_,j){return comp[eid+'_'+j]}).every(Boolean);
   const ec=document.getElementById('ec-'+eid);if(ec){ec.style.background=allD?'#1a0a09':C.wh;ec.style.borderColor=allD?C.pr:'transparent'}
-  const nb=document.getElementById('nb-'+eid);if(nb){nb.style.background=allD?C.pr:'#fde8e8';nb.style.color=allD?C.wh:C.dk;if(allD)nb.textContent='✓'}
+  const nb=document.getElementById('nb-'+eid);if(nb){nb.style.background=allD?C.pr:'rgba(199,55,44,.16)';nb.style.color=allD?'#fff':C.gs;if(allD)nb.textContent='✓'}
   // Update counter and reveal esfuerzo buttons
   const hdr=document.getElementById('sess-dc');
   if(hdr&&allD)render();
@@ -1348,15 +1375,15 @@ function pintarCrono(){
   if(!CRONO.on){if(el)el.remove();return;}
   if(!el){el=document.createElement('div');el.id='crono';document.body.appendChild(el);}
   const rest=CRONO.pausa?Math.ceil(CRONO.quedaba):Math.max(0,Math.ceil((CRONO.fin-Date.now())/1000));
-  const F={prep:{t:'Prepárate',bg:C.bk},trabajo:{t:'¡Muévete!',bg:C.pr},descanso:{t:'Descansa',bg:'#2a2523'}}[CRONO.fase];
-  el.style.cssText='position:fixed;inset:0;z-index:100;background:'+F.bg+';color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:system-ui,-apple-system,sans-serif';
-  el.innerHTML='<p style="font-size:15px;color:#e5e5e5;margin-bottom:6px">'+esc(CRONO.nombre)+'</p>'
-    +'<p style="font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px">Ronda '+CRONO.ronda+' de '+CRONO.rondas+'</p>'
-    +'<p style="font-size:30px;font-weight:900;margin-bottom:4px">'+(CRONO.pausa?'En pausa':F.t)+'</p>'
-    +'<p style="font-size:120px;font-weight:900;line-height:1;margin-bottom:34px">'+rest+'</p>'
+  const F={prep:{t:'Prepárate',bg:'radial-gradient(120% 80% at 50% 0%,#3A0D0A 0%,#0E0B0A 65%)'},trabajo:{t:'¡Muévete!',bg:'radial-gradient(120% 90% at 50% 20%,#D8503F 0%,#C7372C 40%,#710D0B 100%)'},descanso:{t:'Descansa',bg:'radial-gradient(120% 80% at 50% 0%,#2A1C1A 0%,#120C0B 70%)'}}[CRONO.fase];
+  el.style.cssText='position:fixed;inset:0;z-index:100;background:'+F.bg+';color:#F2E9DC;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:Karla,system-ui,sans-serif';
+  el.innerHTML='<p style="font-family:Fraunces,serif;font-style:italic;font-size:17px;color:'+(CRONO.fase==='trabajo'?'#FBEFE0':'#E0C97F')+';margin-bottom:8px">'+esc(CRONO.nombre)+'</p>'
+    +'<p style="font-family:Cinzel,serif;font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;margin-bottom:18px">Ronda '+CRONO.ronda+' de '+CRONO.rondas+'</p>'
+    +'<p style="font-family:Cinzel,serif;font-size:28px;font-weight:700;letter-spacing:.06em;margin-bottom:4px;color:#fff">'+(CRONO.pausa?'En pausa':F.t)+'</p>'
+    +'<p style="font-family:\'Bebas Neue\',sans-serif;font-size:150px;line-height:1;margin-bottom:30px;color:#fff;text-shadow:0 4px 24px rgba(0,0,0,.45)">'+rest+'</p>'
     +'<div style="display:flex;gap:10px;width:100%;max-width:340px">'
-    +'<button onclick="pausarCrono()" style="flex:1;padding:15px;border-radius:12px;border:2px solid #fff;background:transparent;color:#fff;font-weight:800;font-size:15px">'+(CRONO.pausa?'▶ Seguir':'⏸ Pausar')+'</button>'
-    +'<button onclick="terminarCrono()" style="flex:1;padding:15px;border-radius:12px;border:none;background:#fff;color:'+C.bk+';font-weight:800;font-size:15px">Terminar</button>'
+    +'<button onclick="pausarCrono()" style="flex:1;padding:15px;border-radius:12px;border:1.5px solid #E0C97F;background:rgba(0,0,0,.25);color:#E0C97F;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.12em">'+(CRONO.pausa?'▶ SEGUIR':'⏸ PAUSAR')+'</button>'
+    +'<button onclick="terminarCrono()" style="flex:1;padding:15px;border-radius:12px;border:none;background:#F2E9DC;color:#0E0B0A;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.12em">TERMINAR</button>'
     +'</div>';
 }
 
