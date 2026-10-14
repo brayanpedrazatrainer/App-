@@ -46,7 +46,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.13f';
+const APP_VERSION='2026.10.14a';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -739,7 +739,7 @@ function rVid(){
     <p style="font-weight:900;font-size:17px;color:${C.td};margin-bottom:3px">${esc(ex.n)}</p>
     <p style="font-size:12px;color:${C.tl};margin-bottom:${ex.desc?4:14}px">${esc(ex.m)}</p>
     ${ex.desc?`<p style="font-size:13px;font-weight:600;color:${C.tm};margin-bottom:14px">${esc(ex.desc)}</p>`:''}
-    ${id?`<div style="border-radius:11px;overflow:hidden;margin-bottom:14px;aspect-ratio:16/9"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}?end=20" frameBorder="0" allowFullscreen></iframe></div>`
+    ${id?`<div style="border-radius:11px;overflow:hidden;margin-bottom:14px;aspect-ratio:16/9"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}?rel=0&playsinline=1" frameBorder="0" allowFullscreen></iframe></div>`
     :`<div style="background:${C.bk};border-radius:13px;padding:34px 16px;text-align:center;margin-bottom:14px;border:1px solid #2a2523"><p style="font-size:36px;margin-bottom:10px">🎬</p><p style="font-weight:800;color:#fff;margin-bottom:5px">Video próximamente</p><p style="font-size:12px;color:${C.g2}">Tu entrenador agregará el video de demostración.</p></div>`}
     <div style="background:rgba(199,55,44,.16);border-radius:11px;padding:13px;border:1px solid rgba(199,55,44,.35)">
       <p style="font-weight:700;color:${C.gs};font-size:13px;margin-bottom:7px">💡 Puntos clave</p>
@@ -1120,6 +1120,8 @@ async function ajustarSemaforo(dir){
 async function loadClientData(){
   set({loading:true});
   const userId=S.user.id;
+  // Calendario siempre lleno hasta fin del mes siguiente (respaldo de la tarea diaria de Supabase; solo llena días vacíos)
+  try{const ac=await sb.rpc('asegurar_calendario',{p_client:userId});if(ac.error)console.error('asegurar_calendario:',ac.error.message);}catch(e){console.error(e);}
   const results=await Promise.all([
     sb.from('profiles').select('*').eq('id',userId).single(),
     sb.from('client_programs').select('program_id').eq('client_id',userId).maybeSingle(),
