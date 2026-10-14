@@ -46,7 +46,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.13b';
+const APP_VERSION='2026.10.13c';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -95,7 +95,7 @@ const corona=(w,id)=>`<svg width="${w}" height="${Math.round(w*.75)}" viewBox="0
   <path d="M7 37 L4 14 L19 26 L32 7 L45 26 L60 14 L57 37 Z" fill="url(#cg-${id})" stroke="#6E5418" stroke-width="1" stroke-linejoin="round"/>
   <rect x="6" y="37" width="52" height="7" rx="1.5" fill="url(#cg-${id})" stroke="#6E5418" stroke-width="1"/>
   <circle cx="4" cy="13" r="3.2" fill="url(#cg-${id})" stroke="#6E5418" stroke-width=".8"/><circle cx="32" cy="5.5" r="3.6" fill="url(#cg-${id})" stroke="#6E5418" stroke-width=".8"/><circle cx="60" cy="13" r="3.2" fill="url(#cg-${id})" stroke="#6E5418" stroke-width=".8"/>
-  <path d="M32 31 L35 35 L32 39 L29 35 Z" fill="#C7372C" stroke="#5C0806" stroke-width=".7"/>
+  <path d="M32 22 L32 35 M27 26.5 L37 26.5" stroke="#5E4614" stroke-width="2" stroke-linecap="square"/>
   <circle cx="18" cy="40.5" r="1.6" fill="#710D0B"/><circle cx="46" cy="40.5" r="1.6" fill="#710D0B"/>
 </svg>`;
 const secT=(t)=>`<p style="font-family:var(--heroic);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.26em;color:${C.gold};margin:20px 0 9px">${t}</p>`;
