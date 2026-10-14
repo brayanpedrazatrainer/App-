@@ -46,7 +46,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.14a';
+const APP_VERSION='2026.10.14b';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -146,7 +146,7 @@ function render(){
   if(hdr&&tb){tb.style.top=hdr.offsetHeight+'px';if(document.fonts)document.fonts.ready.then(function(){tb.style.top=hdr.offsetHeight+'px'})}
   if(S.view==='main'&&S.tab==='ciclo'){
     const sl=document.getElementById('clen');
-    if(sl)sl.oninput=async function(e){S.cycleLen=+e.target.value;const d=document.getElementById('clend');if(d)d.textContent=e.target.value+'d';await saveCycleLen(+e.target.value)};
+    if(sl){sl.oninput=function(e){const d=document.getElementById('clend');if(d)d.textContent=e.target.value+'d'};sl.onchange=function(e){saveCycleLen(+e.target.value)};}
   }
 }
 
@@ -377,36 +377,45 @@ function goToSess(w,s){
 
 
 function rCiclo(){
-  const rawDay=getCycleDay(S.lastBleeding);const day=rawDay?((rawDay-1)%(S.cycleLen||28))+1:null;const ph=getPhase(rawDay,S.cycleLen),ts=S.symLog[today()],tm=S.menoLog[today()];
+  const ts=S.symLog[today()],tm=S.menoLog[today()];
+  const p=S.perfilExt||{};
+  const conPeriodo=p.ruta==='lunar'||['irregular','perimenopausia'].includes(p.sub_perfil);
+  // Misma fase que sus rutinas (cicloHoy usa el primer día del período y la duración del perfil)
+  const c=cicloHoy();
+  const VERBO={luna_nueva:'Reconectar',creciente:'Construir',llena:'Expresar',menguante_a:'Integrar',menguante_b:'Sostener'};
   let h='';
-  if(ph){h+=`<div style="border-radius:14px;padding:15px;background:${ph.bg};border:1px solid ${ph.br}">
-    <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${ph.c};margin-bottom:3px">Día ${day} del ciclo</p>
-    <p style="font-size:22px;font-weight:900;color:${ph.c};margin-bottom:6px">${ph.e} Fase ${ph.l}</p>
-    <p style="font-size:13px;color:#A08D82;line-height:1.5;margin-bottom:10px">${ph.tip}</p>
-    <div style="background:rgba(255,255,255,.7);border-radius:9px;padding:9px 12px">
-      <p style="font-size:12px;font-weight:600;color:${ph.c};margin:0">💪 <span style="font-weight:400;color:#A0A7B4">${ph.tr}</span></p>
-    </div>
-  </div>`;}
-  else{h+=card(`<div style="text-align:center;padding:18px 0"><p style="font-size:34px;margin-bottom:10px">🌙</p><p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">¡Bienvenida, Reina!</p><p style="font-size:13px;color:${C.tl}">Registra el último día de tu sangrado para ver tu fase.</p><p style=\"font-size:12px;color:${C.g2};margin-top:6px\">Si tu ciclo es irregular o usas implante subdérmico, guíate por tu energía del día — alta = sesión principal · baja = sesión suave.</p></div>`);}
+  if(c){
+    const fi=FASE_LABELS[c.fase]||{e:'🌙',l:c.fase,color:C.gs};
+    const arriba=c.ruta==='energia'?'Semana '+c.fase.slice(-1)+' de 4 · día '+c.dia:'Día '+c.dia+' de tu ciclo';
+    const titulo=c.ruta==='energia'?fi.l:fi.l+' · '+VERBO[c.fase];
+    h+=card(`<p style="font-family:Cinzel,serif;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:${C.gold};margin-bottom:6px">${arriba}</p>
+      <p style="font-size:22px;font-weight:900;color:${fi.color};margin-bottom:6px">${fi.e} ${esc(titulo)}</p>
+      <p style="font-family:Fraunces,serif;font-style:italic;font-size:14px;color:${C.tm};line-height:1.5">${c.ruta==='energia'?'Tus rutinas siguen este bloque de 4 semanas.':'Tus rutinas de hoy siguen esta fase.'}</p>`);
+  }
+  else{h+=card(`<div style="text-align:center;padding:18px 0"><p style="font-size:34px;margin-bottom:10px">🌙</p><p style="font-weight:800;font-size:16px;color:${C.td};margin-bottom:4px">¡Bienvenida, Reina!</p><p style="font-size:13px;color:${C.tl}">${conPeriodo?'Registra el primer día de tu último período para ver tu fase.':'Brayan está configurando tu plan.'}</p></div>`);}
   h+=`<div style="display:flex;gap:8px;margin-top:12px">
-    <button onclick="set({view:'pform'})" style="flex:1;padding:11px 6px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:12px">🌙 Mi sangrado</button>
+    ${conPeriodo?`<button onclick="set({view:'pform'})" style="flex:1;padding:11px 6px;background:${C.pr};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:12px">🌙 Mi período</button>`:''}
     <button onclick="set({view:'sform',selSym:[],symNote:''})" style="flex:1;padding:11px 6px;background:${C.wh};color:${C.pr};border:2px solid ${C.pr};border-radius:11px;font-weight:700;font-size:12px">📋 Síntomas</button>
     <button onclick="set({view:'menoform'})" style="flex:1;padding:11px 6px;background:${C.bk};color:#fff;border:none;border-radius:11px;font-weight:700;font-size:12px">👑 Bienestar</button>
   </div>`;
   if(ts&&ts.symptoms&&ts.symptoms.length>0){h+=secT('Síntomas de hoy');h+=card(`<div style="display:flex;flex-wrap:wrap;gap:6px">${ts.symptoms.map(function(k){const s=SYMPTOMS.find(function(x){return x.k===k});return s?`<span style="background:rgba(184,150,62,.12);color:#E0C97F;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700">${s.e} ${s.l}</span>`:''}).join('')}</div>${ts.notes?`<p style="margin-top:8px;font-size:12px;color:${C.tl};font-style:italic">"${esc(ts.notes)}"</p>`:''}`)}
   if(tm){h+=secT('Bienestar de hoy');h+=card(`${tm.energia?`<p style="font-size:12px;color:${C.tl};margin-bottom:2px">⚡ Energía</p><p style="font-size:13px;color:${C.td};margin-bottom:10px">${esc(tm.energia)}</p>`:''}${tm.sueno?`<p style="font-size:12px;color:${C.tl};margin-bottom:2px">😴 Sueño</p><p style="font-size:13px;color:${C.td};margin-bottom:10px">${esc(tm.sueno)}</p>`:''}${tm.emocional?`<p style="font-size:12px;color:${C.tl};margin-bottom:2px">💭 Emocional</p><p style="font-size:13px;color:${C.td}">${esc(tm.emocional)}</p>`:''}${tm.tratamiento?`<p style="font-size:12px;color:${C.tl};margin-top:8px;margin-bottom:2px">💊 Tratamiento</p><p style="font-size:13px;color:${C.td}">${esc(tm.tratamiento)}</p>`:''}`)}
+  // Guía general del ciclo (28 días). Cada fase dice a qué fase de sus rutinas corresponde.
+  const LUNAR_DE={menstrual:'🌑 Luna nueva',folicular:'🌓 Creciente',ovulatoria:'🌕 Llena',lutea:'🌗 Menguante'};
   h+=secT('Guía de fases');
-  PHASES.forEach(function(p){h+=`<div style="background:${C.wh};border-radius:13px;padding:13px;border:1px solid ${p.br};margin-bottom:8px;box-shadow:0 1px 3px rgba(25,18,17,.07)"><div style="display:flex;gap:10px"><span style="font-size:26px;line-height:1">${p.e}</span><div><div style="display:flex;align-items:baseline;gap:7px;margin-bottom:2px"><span style="font-weight:800;font-size:13px;color:${p.c}">${p.l}</span><span style="font-size:11px;color:${C.tl}">Días ${p.r[0]}–${p.r[1]}</span></div><p style="font-size:12px;color:${C.tm};line-height:1.5;margin:0">${p.tip}</p></div></div></div>`});
-  h+=secT('Duración de mi ciclo');
-  h+=card(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><p style="font-size:13px;color:${C.tl};margin:0">Días promedio</p><span id="clend" style="font-size:21px;font-weight:900;color:${C.pr}">${S.cycleLen}d</span></div><input type="range" id="clen" min="20" max="45" value="${S.cycleLen}"/><p style="font-size:11px;color:${C.g2};margin-top:6px">En perimenopausia los ciclos pueden variar mucho.</p>`);
-  if(S.cycleHistory.length>0){h+=secT('Historial de sangrado');h+=`<div style="display:flex;flex-direction:column;gap:7px">${S.cycleHistory.slice(0,8).map(function(cy,i){return`<div style="background:${C.wh};border-radius:11px;padding:11px 14px;${i===0?'border:2px solid '+C.pr:''};box-shadow:0 1px 3px rgba(25,18,17,.07)"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:${C.td}">🌙 Último día: ${fmtDate(cy.last_bleeding_date)}</span>${i===0?'<span style="font-size:11px;font-weight:700;background:rgba(199,55,44,.16);color:'+C.pr+';border-radius:20px;padding:3px 10px">Reciente</span>':''}</div></div>`}).join('')}</div>`}
+  PHASES.forEach(function(p){h+=`<div style="background:${C.wh};border-radius:13px;padding:13px;border:1px solid ${p.br};margin-bottom:8px;box-shadow:0 1px 3px rgba(25,18,17,.07)"><div style="display:flex;gap:10px"><span style="font-size:26px;line-height:1">${p.e}</span><div><div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:7px;margin-bottom:2px"><span style="font-weight:800;font-size:13px;color:${p.c}">${p.l}</span><span style="font-size:11px;color:${C.tl}">Días ${p.r[0]}–${p.r[1]} · ${LUNAR_DE[p.k]}</span></div><p style="font-size:12px;color:${C.tm};line-height:1.5;margin:0">${p.tip}</p></div></div></div>`});
+  if(p.ruta==='lunar'){
+    h+=secT('Duración de mi ciclo');
+    h+=card(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><p style="font-size:13px;color:${C.tl};margin:0">Días promedio</p><span id="clend" style="font-size:21px;font-weight:900;color:${C.pr}">${S.cycleLen}d</span></div><input type="range" id="clen" min="22" max="40" value="${S.cycleLen}"/><p style="font-size:11px;color:${C.g2};margin-top:6px">Cuenta desde el primer día de un período hasta el día antes del siguiente. Al soltar la barra, tus rutinas se ajustan a esta duración.</p>`);
+  }
+  if(conPeriodo&&S.cycleHistory.length>0){h+=secT('Mis períodos registrados');h+=`<div style="display:flex;flex-direction:column;gap:7px">${S.cycleHistory.slice(0,8).map(function(cy,i){return`<div style="background:${C.wh};border-radius:11px;padding:11px 14px;${i===0?'border:2px solid '+C.pr:''};box-shadow:0 1px 3px rgba(25,18,17,.07)"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:${C.td}">🌙 ${fmtDate(cy.last_bleeding_date)}</span>${i===0?'<span style="font-size:11px;font-weight:700;background:rgba(199,55,44,.16);color:'+C.pr+';border-radius:20px;padding:3px 10px">Reciente</span>':''}</div></div>`}).join('')}</div>`}
   return h;
 }
 
 function rPForm(){return `
 <div style="background:${C.wh};border-radius:18px;padding:18px;box-shadow:0 2px 10px rgba(25,18,17,.1)">
-  <p style="font-weight:900;font-size:18px;color:${C.td};margin-bottom:4px">🌙 Registrar sangrado</p>
-  <p style="font-size:13px;color:${C.tl};margin-bottom:14px;line-height:1.6">¿Cuál fue el último día que tuviste sangrado?</p>
+  <p style="font-weight:900;font-size:18px;color:${C.td};margin-bottom:4px">🌙 Mi período</p>
+  <p style="font-size:13px;color:${C.tl};margin-bottom:14px;line-height:1.6">¿Qué día empezó tu último período? Tus rutinas se ajustan desde esa fecha.</p>
   <input type="date" id="pd-in" value="${today()}" max="${today()}" style="width:100%;padding:11px 13px;border:2px solid ${C.g3};border-radius:10px;font-size:15px;outline:none;margin-bottom:16px;color:${C.td}"/>
   ${btnR('Guardar','saveBleeding()')}
 </div>`}
@@ -976,19 +985,21 @@ function limpiarNombre(s){
     .trim();
 }
 
-function getCurrentFase(){
-  if(S.motorTarjeta&&S.motorTarjeta.fase)return S.motorTarjeta.fase;
+// Día y fase de hoy con la misma cuenta que generar_motor (SQL): desde el primer día del período (ancla),
+// proyectando ciclos de duracion_ciclo días. Lo usan la pestaña Ciclo, el esfuerzo y la carga.
+function cicloHoy(){
   const p=S.perfilExt;
   if(!p||!p.ancla)return null;
-  const ancla=new Date(p.ancla+'T00:00:00');
-  const hoy=new Date(today()+'T00:00:00');
-  const dias=Math.floor((hoy-ancla)/86400000);
+  const dias=Math.floor((new Date(today()+'T00:00:00')-new Date(p.ancla+'T00:00:00'))/86400000);
   if(dias<0)return null;
-  if(p.ruta==='energia')return 'semana_'+Math.ceil(((dias%28)+1)/7);
-  const dur=p.duracion_ciclo||28;
-  const dc=dias+1;
-  if(dc>dur)return 'menguante_b';
-  return mapearFaseLunar(dc,dur).fase;
+  if(p.ruta==='energia'){const d=(dias%28)+1;return{ruta:'energia',dia:d,fase:'semana_'+Math.ceil(d/7)};}
+  const dur=p.duracion_ciclo||28,d=(dias%dur)+1;
+  return{ruta:'lunar',dia:d,dur:dur,fase:mapearFaseLunar(d,dur).fase};
+}
+function getCurrentFase(){
+  if(S.motorTarjeta&&S.motorTarjeta.fase)return S.motorTarjeta.fase;
+  const c=cicloHoy();
+  return c?c.fase:null;
 }
 
 function sugerirKg(lastLog, baseKg){
@@ -1031,15 +1042,10 @@ async function calcularTarjetaMotor(perfil,userId,fecha){
     fase='semana_'+Math.ceil(db/7);
     orden=((db-1)%7)+1;
   } else {
+    // Igual que generar_motor: si el período se atrasa, se proyecta el ciclo siguiente
     const dur=perfil.duracion_ciclo||28;
-    const diaCiclo=dias+1;
-    if(diaCiclo>dur){
-      fase='menguante_b';
-      orden=(((diaCiclo-dur)-1)%5)+1;
-    } else {
-      const r=mapearFaseLunar(diaCiclo,dur);
-      fase=r.fase;orden=r.orden;
-    }
+    const r=mapearFaseLunar((dias%dur)+1,dur);
+    fase=r.fase;orden=r.orden;
   }
   const ruta=perfil.ruta||'lunar';
   const{data}=await sb.from('plantilla_tarjetas')
@@ -1050,25 +1056,27 @@ async function calcularTarjetaMotor(perfil,userId,fecha){
   return{fase,orden,ruta,tarjeta:data||null};
 }
 
-async function marcarPeriodo(){
+// "Me llegó el período" (Hoy) y "Mi período" (Ciclo) hacen lo mismo: el primer día del período pasa a ser
+// el ancla del perfil y las rutinas pendientes del motor se recalculan desde hoy (manuales y completadas no se tocan).
+async function registrarPeriodo(fecha,tab){
   const userId=S.user.id;
-  const hoy=today();
   set({loading:true});
   try{
-    const pR=await sb.from('profiles').update({ancla:hoy}).eq('id',userId);
+    const pR=await sb.from('profiles').update({ancla:fecha}).eq('id',userId);
     if(pR.error)throw pR.error;
-    await sb.from('cycle_logs').insert({client_id:userId,last_bleeding_date:hoy,cycle_length:S.perfilExt.duracion_ciclo||28});
-    // Recalcula las sesiones pendientes del motor desde hoy (las manuales y completadas no se tocan)
-    const rg=await sb.rpc('regenerar_motor',{p_client:userId,p_desde:hoy});
+    await sb.from('cycle_logs').insert({client_id:userId,last_bleeding_date:fecha,cycle_length:S.perfilExt.duracion_ciclo||28});
+    const rg=await sb.rpc('regenerar_motor',{p_client:userId,p_desde:today()});
     if(rg.error)console.error(rg.error);
   }catch(e){
     console.error(e);
-    set({loading:false});
+    set({loading:false,view:'main'});
     alert('No se pudo registrar el período. Intenta de nuevo.');
     return;
   }
   await loadClientData();
+  if(tab)set({tab:tab});
 }
+function marcarPeriodo(){return registrarPeriodo(today());}
 
 function calcularSemaforo(energia,animo,molestias,sueno){
   const puntos=energia+animo+sueno+(4-molestias); // rango 4..12
@@ -1252,7 +1260,7 @@ async function loadClientData(){
   const allSchedR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',today()).order('scheduled_date').limit(62);
   const allSchedule=allSchedR.data||[];
   const defaultWeek=currentProgWeek(lastBleeding,cycleLen);
-  set({loading:false,view:perfilExt.estado==='pausada'?'pausa':PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,variantes:variantes});
+  set({loading:false,view:perfilExt.estado==='pausada'?'pausa':PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:perfilExt.duracion_ciclo||28,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,variantes:variantes});
 }
 
 function buildProg(prog){
@@ -1272,9 +1280,17 @@ function buildProg(prog){
   });
 }
 
+// Duración del ciclo: la misma que usan las rutinas. Al cambiarla se recalculan desde hoy.
 async function saveCycleLen(len){
-  if(!S.cycleHistory||!S.cycleHistory[0])return;
-  await sb.from('cycle_logs').update({cycle_length:len}).eq('id',S.cycleHistory[0].id);
+  len=Math.max(22,Math.min(40,len));
+  if(len===(S.perfilExt.duracion_ciclo||28))return;
+  set({loading:true});
+  const r=await sb.from('profiles').update({duracion_ciclo:len}).eq('id',S.user.id);
+  if(r.error){console.error(r.error);set({loading:false});alert('No se pudo guardar la duración. Intenta de nuevo.');return;}
+  const rg=await sb.rpc('regenerar_motor',{p_client:S.user.id,p_desde:today()});
+  if(rg.error)console.error(rg.error);
+  await loadClientData();
+  set({tab:'ciclo'});
 }
 
 function goBack(){
@@ -1285,14 +1301,10 @@ function goBack(){
 }
 
 async function saveBleeding(){
-  const d=document.getElementById('pd-in')?document.getElementById('pd-in').value:today();
-  const res=await sb.from('cycle_logs').insert({client_id:S.user.id,last_bleeding_date:d,cycle_length:S.cycleLen}).select().single();
-  if(res.data){
-    const ch=[res.data].concat(S.cycleHistory).slice(0,12);
-    set({cycleHistory:ch,lastBleeding:d,view:'main'});
-  } else {
-    set({view:'main'});
-  }
+  const el=document.getElementById('pd-in');
+  const d=(el&&el.value)||today();
+  if(d>today()){alert('La fecha no puede ser después de hoy.');return;}
+  await registrarPeriodo(d,'ciclo');
 }
 
 function tSym(k){
