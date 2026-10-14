@@ -46,7 +46,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.13e';
+const APP_VERSION='2026.10.13f';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -70,6 +70,8 @@ const MF=[
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function fmtDate(iso){if(!iso)return '';return new Date(iso.length===10?iso+'T12:00:00':iso).toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'})}
+// Días que faltan para pagado_hasta (negativo = ya venció; null = sin fecha)
+function diasParaVencer(f){if(!f)return null;const h=new Date(today()+'T12:00:00'),v=new Date(String(f).slice(0,10)+'T12:00:00');return Math.round((v-h)/86400000)}
 function getCycleDay(d){if(!d)return null;return Math.floor((Date.now()-new Date(d))/86400000)+5}
 function getPhase(day,len){if(!day||day<1)return null;const d=((day-1)%(len||28))+1;return PHASES.find(p=>d>=p.r[0]&&d<=p.r[1])||PHASES[3]}
 function ytId(url){if(!url)return null;const m=url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?\/\s]{11})/);return m?m[1]:null}
@@ -105,6 +107,7 @@ function render(){
   if(S.loading){app.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:${C.bk}"><div style="text-align:center"><div style="display:flex;justify-content:center;margin-bottom:12px">${corona(56,"carga")}</div><p style="font-family:var(--heroic);letter-spacing:.2em;color:${C.g2};font-size:11px">CARGANDO…</p></div></div>`;return}
   if(S.view==='login'){app.innerHTML=rLogin();return}
   if(S.view==='no_prog'){app.innerHTML=rNoProg();return}
+  if(S.view==='pausa'){app.innerHTML=rPausa();return}
   const tabs=[{k:'hoy',e:'📅',l:'Hoy'},{k:'ciclo',e:'🌙',l:'Ciclo'},{k:'rutinas',e:'💪',l:'Rutinas'},{k:'medidas',e:'📏',l:'Medidas'}];
   app.innerHTML=`
     <div id="hdr" style="background:rgba(14,11,10,.94);backdrop-filter:blur(6px);padding:16px 18px 12px;position:sticky;top:0;z-index:20">
@@ -162,6 +165,20 @@ function rLogin(){return `
   </div>
 </div>`}
 
+// Acceso en pausa (estado 'pausada' desde el admin): sin rutinas hasta que Brayan la reactive
+function rPausa(){
+  const nom=S.profile&&S.profile.name?esc(S.profile.name.split(' ')[0]):'reina';
+  return `
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div class="panel-reino" style="${PANEL};border-radius:14px;padding:30px 22px;width:100%;max-width:380px;text-align:center"><span class="esq e1"></span><span class="esq e2"></span><span class="esq e3"></span><span class="esq e4"></span>
+    <div style="display:flex;justify-content:center;margin-bottom:10px">${corona(56,"pausa")}</div>
+    <p style="font-family:var(--heroic);font-size:10px;letter-spacing:.28em;color:${C.gold};margin-bottom:10px">ACCESO EN PAUSA</p>
+    <p style="font-family:var(--voice);font-style:italic;font-weight:300;font-size:20px;color:${C.td};margin-bottom:10px">${nom}, tu reino te espera.</p>
+    <p style="font-size:14px;color:${C.tm};line-height:1.6;margin-bottom:22px">Tu plan está en pausa. Escríbele a Brayan para renovarlo y retomar tus rutinas, tu ciclo y tu progreso donde los dejaste.</p>
+    <button onclick="doLogout()" style="width:100%;background:none;border:1px solid rgba(184,150,62,.35);color:${C.gs};padding:11px;border-radius:10px;font-family:var(--heroic);font-size:11px;letter-spacing:.16em;font-weight:600">SALIR</button>
+  </div>
+</div>`}
+
 function rNoProg(){return `
 <div style="min-height:100vh;background:${C.bg};display:flex;align-items:center;justify-content:center;padding:20px;text-align:center">
   <div>
@@ -208,6 +225,16 @@ function rHoy(){
     <p style="font-family:Cinzel,serif;font-weight:700;font-size:21px;letter-spacing:.03em;color:${C.td};margin-bottom:3px">${dateLabel}</p>
     <p style="font-family:Fraunces,serif;font-style:italic;font-size:14px;color:${C.tm}">Tu entrenamiento del día</p>
   </div>`;
+
+  // Aviso de pago: 5 días antes de vencer y después de vencido (no bloquea; bloquear = estado 'pausada' desde el admin)
+  const dPago=diasParaVencer(perfilExt.pagado_hasta);
+  if(dPago!==null&&dPago<=5){
+    const fV=fmtDate(perfilExt.pagado_hasta);
+    const tit=dPago<0?'Tu plan venció el '+fV:dPago===0?'Tu plan vence hoy':dPago===1?'Tu plan vence mañana':'Tu plan vence en '+dPago+' días';
+    h+=card('<p style="font-family:Cinzel,serif;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:'+C.gold+';margin-bottom:6px">♛ Renovación</p>'
+      +'<p style="font-weight:800;font-size:15px;color:'+(dPago<0?'#E8796E':C.td)+';margin-bottom:4px">'+tit+'</p>'
+      +'<p style="font-family:Fraunces,serif;font-style:italic;font-size:14px;color:'+C.tm+';line-height:1.5">'+(dPago<0?'Escríbele a Brayan para renovar y seguir entrenando sin pausas.':'Pagado hasta el '+fV+'. Escríbele a Brayan para renovar y no perder tu ritmo.')+'</p>','margin-bottom:12px;'+(dPago<0?'border-color:rgba(199,55,44,.55)':''));
+  }
 
   // Check-in
   if(!checkin){
@@ -273,7 +300,7 @@ function rHoy(){
 
   // Zoom card for live class days
   if(mostrarZoom){
-    h+='<div style="background:'+C.bk+';border-radius:14px;padding:18px;margin-bottom:12px;text-align:center">';
+    h+='<div style="'+PANEL+';border-color:rgba(199,55,44,.5);border-radius:14px;padding:18px;margin-bottom:12px;text-align:center">';
     h+='<p style="font-weight:900;font-size:17px;color:#fff;margin-bottom:4px">🎯 Hoy hay clase en vivo</p>';
     h+='<p style="font-size:13px;color:'+C.g2+';margin-bottom:14px">'+(grupo.hora?'A las '+esc(String(grupo.hora).slice(0,5))+' · ':'')+'Entrenas tu rutina de hoy con Brayan</p>';
     if(grupo.zoom_url){
@@ -1129,7 +1156,7 @@ async function loadClientData(){
   const completions={};(results[6].data||[]).forEach(function(r){completions[r.exercise_id+'_'+r.set_number]=true});
   const[todR,profExtR,checkinR]=await Promise.all([
     sb.from('scheduled_sessions').select('*').eq('client_id',userId).eq('scheduled_date',today()).maybeSingle(),
-    sb.from('profiles').select('plan,ruta,sub_perfil,nivel,duracion_ciclo,ancla,escenario_default,dias_presenciales').eq('id',userId).single(),
+    sb.from('profiles').select('plan,ruta,sub_perfil,nivel,duracion_ciclo,ancla,escenario_default,dias_presenciales,grupo_id,estado,pagado_hasta').eq('id',userId).single(),
     sb.from('checkins').select('*').eq('client_id',userId).eq('fecha',today()).maybeSingle(),
   ]);
   const todaySchedule=todR.data||null;
@@ -1223,7 +1250,7 @@ async function loadClientData(){
   const allSchedR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',today()).order('scheduled_date').limit(62);
   const allSchedule=allSchedR.data||[];
   const defaultWeek=currentProgWeek(lastBleeding,cycleLen);
-  set({loading:false,view:PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,variantes:variantes});
+  set({loading:false,view:perfilExt.estado==='pausada'?'pausa':PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:cycleLen,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,variantes:variantes});
 }
 
 function buildProg(prog){
