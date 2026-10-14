@@ -36,6 +36,36 @@ input[type=range]{accent-color:var(--gold);width:100%;display:block;background:n
 .btn-reino{transition:transform .12s ease,box-shadow .12s ease,filter .18s ease}
 .btn-reino:active{transform:translateY(3px)}
 .tit-reino{font-family:var(--heroic);letter-spacing:.08em}
+/* Modo entreno guiado (paso a paso), mismo diseño que El Reino */
+.g-barra{height:4px;border-radius:3px;background:rgba(242,233,220,.10);overflow:hidden;margin-top:6px}
+.g-relleno{height:100%;background:linear-gradient(90deg,var(--burgundy),var(--red),var(--gold));transition:width .35s ease}
+.g-paso{font-family:var(--heroic);font-size:8.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-top:10px;text-align:center}
+.g-bloque{font-family:var(--heroic);font-weight:700;font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.g-titulo{font-family:var(--heroic);font-weight:900;font-size:23px;letter-spacing:.04em;color:var(--cream);line-height:1.2;text-shadow:0 2px 0 rgba(0,0,0,.8)}
+.g-que{font-size:13.5px;color:var(--muted);line-height:1.55;margin-top:9px}
+.g-series{font-size:16px;color:var(--cream);line-height:1.4;margin-top:12px}
+.g-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.g-chip{font-size:12px;padding:4px 10px;border-radius:20px;background:rgba(242,233,220,.06);color:var(--cream)}
+.g-cue{font-family:var(--voice);font-style:italic;font-size:14.5px;color:#E8A598;line-height:1.5;margin-top:10px}
+.g-aviso{font-size:12px;font-weight:700;color:#E0A458;margin-top:8px}
+.g-video{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.g-vbtn{width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--line);background:rgba(184,150,62,.08);color:var(--gold-soft);font-family:var(--heroic);font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;text-align:center}
+.g-vbtn[aria-pressed="true"]{border-color:var(--gold);background:rgba(184,150,62,.18)}
+.g-lista .g-vbtn{text-align:left;text-transform:none;letter-spacing:.01em;font-family:var(--ui);font-weight:600;font-size:13.5px;color:var(--cream);padding:12px 14px}
+.g-vsin{padding:12px 14px;border:1px dashed var(--line);border-radius:8px;font-size:13.5px;color:var(--cream)}
+.g-dosis{display:block;margin-top:3px;font-family:var(--ui);font-weight:400;font-size:12px;color:var(--muted)}
+.g-dosis b{font-weight:600;color:var(--gold-soft)}
+.g-vmarco{position:relative;width:min(100%,280px);aspect-ratio:9/16;margin:2px auto 4px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#000}
+.g-vmarco iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.g-sets{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.g-sets button{width:46px;height:46px;border-radius:10px;font-weight:700;font-size:13px}
+.g-timer{margin-top:18px;padding-top:16px;border-top:1px solid rgba(184,150,62,.25);text-align:center}
+.g-timer-lbl{font-family:var(--heroic);font-size:8px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+.g-reloj{font-family:var(--brandface);font-size:56px;line-height:1;color:var(--cream);margin:8px 0 14px;text-shadow:0 2px 0 rgba(0,0,0,.8)}
+.g-reloj.corriendo{color:var(--gold-soft)}
+.g-reloj.listo{color:var(--red)}
+.g-tbtns{display:flex;gap:8px}
+.g-ghost{flex:1;width:100%;padding:12px 8px;border-radius:10px;border:1px solid rgba(184,150,62,.35);background:none;color:var(--gold-soft);font-family:var(--heroic);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -46,7 +76,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.14b';
+const APP_VERSION='2026.10.14c';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -126,7 +156,7 @@ function render(){
       ?`<div id="tabsbar" style="display:flex;gap:4px;padding:0 10px;background:rgba(14,11,10,.94);border-bottom:1px solid rgba(184,150,62,.22);position:sticky;top:66px;z-index:20">
           ${tabs.map(t=>`<button onclick="set({tab:'${t.k}'})" style="flex:1;padding:12px 0 11px;font-family:var(--heroic);font-weight:600;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;border:none;background:none;color:${S.tab===t.k?C.gs:C.tl};border-bottom:2px solid ${S.tab===t.k?C.gold:'transparent'}">${t.l}</button>`).join('')}
         </div>`
-      :`<div style="padding:10px 14px 12px;border-bottom:1px solid rgba(184,150,62,.22)">
+      :S.view==='guia'?'':`<div style="padding:10px 14px 12px;border-bottom:1px solid rgba(184,150,62,.22)">
           <button onclick="goBack()" style="background:none;border:1px solid rgba(184,150,62,.3);padding:7px 14px;border-radius:8px;font-family:var(--heroic);font-weight:600;font-size:10px;letter-spacing:.14em;color:${C.gs}">← VOLVER</button>
         </div>`}
     <div style="padding:13px 13px 50px">
@@ -139,10 +169,12 @@ function render(){
        :S.view==='sess'?rSess()
        :S.view==='vid'?rVid()
        :S.view==='mform'?rMForm()
-       :S.view==='fotos'?rFotos():''}
+       :S.view==='fotos'?rFotos()
+       :S.view==='guia'?rGuia():''}
     </div>`;
   // Las pestañas se pegan justo debajo del encabezado (su alto cambia con las fuentes)
   const hdr=document.getElementById('hdr'),tb=document.getElementById('tabsbar');
+  if(S.view==='guia')guiaPintarReloj();
   if(hdr&&tb){tb.style.top=hdr.offsetHeight+'px';if(document.fonts)document.fonts.ready.then(function(){tb.style.top=hdr.offsetHeight+'px'})}
   if(S.view==='main'&&S.tab==='ciclo'){
     const sl=document.getElementById('clen');
@@ -315,7 +347,8 @@ function rHoy(){
     h+='<p style="font-size:11px;color:'+C.g2+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>';
     h+='<p style="font-weight:900;font-size:18px;color:'+C.td+';margin-bottom:12px">'+cleanType+'</p>';
     if(todW>=0){
-      h+='<button onclick="goToTodaySess()" class="btn-reino" style="width:100%;padding:14px;'+BTN_ROJO+';color:#fff;border:none;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.12em">IR A MI SESIÓN DE HOY</button>';
+      h+='<button onclick="guiaHoy()" class="btn-reino" style="width:100%;padding:14px;'+BTN_ROJO+';color:#fff;border:none;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.12em">▶ EMPEZAR MI ENTRENO</button>';
+      h+='<button onclick="goToTodaySess()" style="width:100%;margin-top:9px;background:none;border:1px solid rgba(184,150,62,.3);color:'+C.gs+';padding:10px;border-radius:10px;font-family:Cinzel,serif;font-size:10.5px;letter-spacing:.14em;font-weight:600">VER LA SESIÓN COMPLETA</button>';
     } else {
       h+='<button onclick="set({tab:\'rutinas\'})" style="width:100%;padding:13px;background:'+C.pr+';color:#fff;border:none;border-radius:11px;font-weight:700;font-size:15px">💪 Ver rutinas</button>';
     }
@@ -572,30 +605,33 @@ function exListSesion(sess){
   return exList;
 }
 
+// Series de un ejercicio según bloque, semáforo y nivel. La usan la lista de la sesión y el modo guiado.
+function seriesEx(ex,sess){
+  const sem=(S.checkin&&S.checkin.semaforo)||'verde';
+  const isRecovSess=/recuper/i.test((sess&&sess.type)||'');
+  const nivel=(S.perfilExt&&S.perfilExt.nivel)||2;
+  let n=ex.sets||1;
+  // Calentamiento y cierre: siempre las series escritas (sin nivel ni semáforo)
+  if([1,2,5].indexOf(ex.bloque)>=0)return Math.max(1,n);
+  // Cardio: mínimo las rondas escritas (5 para principiante); nivel 3 suma una
+  if(ex.bloque===4)return n+(nivel===3?1:0);
+  // Semáforo amarillo: -1 serie
+  if(sem==='amarillo')n=Math.max(1,n-1);
+  // Nivel (excepto sesiones de recuperación activa)
+  if(!isRecovSess){
+    if(nivel===1)n=Math.max(1,n-1);
+    if(nivel===3)n=n+1;
+  }
+  return Math.max(1,n);
+}
+
 function rSess(){
   const weeks=S.PROG;
   if(!weeks||weeks.length===0)return '';
   const sess=weeks[S.sessW]&&weeks[S.sessW][S.sessI];
   if(!sess)return '';
-  const sem=(S.checkin&&S.checkin.semaforo)||'verde';
-  const BLOQUES_ROJO=[1,2,5];
   const isRecovSess=/recuper/i.test(sess.type||'');
-  const nivel=(S.perfilExt&&S.perfilExt.nivel)||2;
-  function sH(ex){
-    let n=ex.sets||1;
-    // Calentamiento y cierre: siempre las series escritas (sin nivel ni semáforo)
-    if([1,2,5].indexOf(ex.bloque)>=0)return Math.max(1,n);
-    // Cardio: mínimo las rondas escritas (5 para principiante); nivel 3 suma una
-    if(ex.bloque===4)return n+(nivel===3?1:0);
-    // Semáforo amarillo: -1 serie
-    if(sem==='amarillo')n=Math.max(1,n-1);
-    // Nivel (excepto sesiones de recuperación activa)
-    if(!isRecovSess){
-      if(nivel===1)n=Math.max(1,n-1);
-      if(nivel===3)n=n+1;
-    }
-    return Math.max(1,n);
-  }
+  function sH(ex){return seriesEx(ex,sess);}
   const exList=exListSesion(sess);
 
   const todSessId=S.todaySchedule?S.todaySchedule.session_id:null;
@@ -609,8 +645,10 @@ function rSess(){
   let h='<div style="background:'+C.bk+';border-radius:14px;padding:15px;margin-bottom:13px;color:#fff;border:1px solid #2a2523">';
   h+='<p style="font-weight:900;font-size:18px;margin-bottom:2px">'+esc(sess.day)+' · Semana '+(S.sessW+1)+'</p>';
   h+='<p style="font-size:12px;color:'+C.g2+';margin-bottom:2px">'+limpiarNombre(sess.type)+'</p>';
-  h+=(isCompleted?'<p style="font-size:11px;color:#16a34a;font-weight:600">✅ Sesión completada</p>':'<p id="sess-dc" style="font-size:11px;color:'+C.pr+';font-weight:600">'+dc+'/'+exList.length+' ejercicios completados</p>');
+  h+=(isToday&&isCompleted?'<p style="font-size:11px;color:#16a34a;font-weight:600">✅ Sesión completada</p>':'<p id="sess-dc" style="font-size:11px;color:'+C.pr+';font-weight:600">'+dc+'/'+exList.length+' ejercicios completados</p>');
   h+='</div>';
+  // Modo guiado: un paso a la vez, como en El Reino
+  h+='<button onclick="entrenarGuiado('+S.sessW+','+S.sessI+',0)" class="btn-reino" style="width:100%;padding:14px;margin-bottom:12px;'+BTN_ROJO+';color:#fff;border:none;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.12em">▶ ENTRENAR PASO A PASO</button>';
 
   let visN=0;
   let i=0;
@@ -710,8 +748,8 @@ function rSess(){
     }
   }
 
-  // Marcar como completada (solo sesión de hoy)
-  if(true){
+  // Marcar como completada: solo en la sesión de hoy (markSessionDone marca la fila de hoy)
+  if(isToday){
     if(isCompleted){
       h+='<div style="background:rgba(34,197,94,.12);border-radius:13px;padding:15px;text-align:center;border:2px solid #22c55e;margin-top:4px"><p style="font-size:24px;margin-bottom:6px">✅</p><p style="font-weight:800;font-size:15px;color:#16a34a">¡Sesión completada!</p></div>';
     } else {
@@ -755,6 +793,188 @@ function rVid(){
       <p style="font-size:12px;color:${C.tm};line-height:1.9;margin:0">· Activa el core antes de comenzar<br>· Controla la fase excéntrica (bajada lenta)<br>· Exhala en el momento de esfuerzo<br>· Columna en posición neutra</p>
     </div>
   </div>`;
+}
+
+// ── MODO ENTRENO GUIADO ──────────────────────────────────────
+// Un paso a la vez, como en El Reino: movilidad (reloj) → blindaje (lista) → un paso por ejercicio principal
+// (series + descanso automático + esfuerzo) → cardio (cronómetro de rondas) → cierre (reloj) → TERMINASTE.
+// Usa la misma lista que la sesión (exListSesion: escenario, semáforo, sin saltos) y las mismas series (seriesEx).
+// El reloj vive en GUIA y se pinta por id: render() no lo reinicia.
+const GUIA={pasos:[],i:0,w:0,s:0,desdeHoy:false,vid:null,seg:0,fin:0,corre:false,listo:false,mostrar:false,lbl:'',timer:null,lock:null};
+
+function segundosDosis(reps){
+  const p=String(reps||'').split('·')[0].trim();
+  let m=p.match(/^(\d+)(?:\s*[–-]\s*\d+)?\s*min/i);if(m)return +m[1]*60;
+  m=p.match(/^(\d+)\s*(?:s|seg|segundos)\b/i);if(m)return +m[1]*(/lado/i.test(p)?2:1);
+  return 0;
+}
+function descansoDe(reps){const m=String(reps||'').match(/(\d+)\s*s\s*desc/i);return m?+m[1]:0;}
+
+function armarPasos(sess){
+  const exs=exListSesion(sess),pasos=[];
+  const de=function(b){return exs.filter(function(e){return b===3?(e.bloque===3||!e.bloque):e.bloque===b;});};
+  de(1).forEach(function(ex){pasos.push({tipo:'tiempo',bloque:'Antes del entreno',titulo:ex.n,ex:ex,que:'Sigue el video a tu ritmo, sin carga y sin agitarte.'});});
+  const b2=de(2);
+  if(b2.length)pasos.push({tipo:'lista',bloque:'Antes del entreno',titulo:'Prepara tus articulaciones',lista:b2,que:'Toca cada uno para ver cómo se hace. Cuando termines todos, sigue.'});
+  const b3=de(3);
+  b3.forEach(function(ex,k){pasos.push({tipo:'fuerza',bloque:'Ejercicio '+(k+1)+' de '+b3.length+(ex.m?' · '+ex.m:''),titulo:ex.n,ex:ex});});
+  de(4).forEach(function(ex){pasos.push({tipo:'cardio',bloque:'Sube pulsaciones',titulo:ex.n,ex:ex,que:'Subes el ritmo en el trabajo y respiras en el descanso. Con el cronómetro te guío.'});});
+  de(5).forEach(function(ex){pasos.push({tipo:'tiempo',bloque:'Para terminar',titulo:ex.n,ex:ex,que:'Baja el ritmo: camina suave y respira.'});});
+  pasos.push({tipo:'fin'});
+  return pasos;
+}
+
+function entrenarGuiado(w,s,desdeHoy){
+  const sess=S.PROG[w]&&S.PROG[w][s];if(!sess)return;
+  guiaParar();
+  Object.assign(GUIA,{pasos:armarPasos(sess),i:0,w:w,s:s,desdeHoy:!!desdeHoy,vid:null});
+  try{if(!CRONO.ctx)CRONO.ctx=new (window.AudioContext||window.webkitAudioContext)();CRONO.ctx.resume();}catch(e){}
+  try{if(navigator.wakeLock&&!GUIA.lock)navigator.wakeLock.request('screen').then(function(l){GUIA.lock=l;}).catch(function(){});}catch(e){}
+  S.sessW=w;S.sessI=s;
+  guiaEntrarPaso();
+  set({view:'guia'});window.scrollTo(0,0);
+}
+function guiaHoy(){
+  const tod=S.todaySchedule;if(!tod||!tod.session_id)return;
+  let w=-1,s=-1;
+  (S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(se,si){if(se.id===tod.session_id){w=wi;s=si;}});});
+  if(w>=0)entrenarGuiado(w,s,1);
+}
+function salirGuia(){
+  guiaParar();
+  try{if(GUIA.lock)GUIA.lock.release();}catch(e){}GUIA.lock=null;
+  if(GUIA.desdeHoy)set({view:'main',tab:'hoy'});else set({view:'sess'});
+}
+function guiaIr(d){
+  const p=GUIA.pasos[GUIA.i];
+  // Al avanzar desde calentamiento o cierre, sus ejercicios quedan marcados como hechos
+  if(d>0&&p&&(p.tipo==='tiempo'||p.tipo==='lista'))(p.lista||[p.ex]).forEach(guiaMarcarTodo);
+  const n=GUIA.i+d;
+  if(n<0||n>=GUIA.pasos.length)return;
+  guiaParar();GUIA.i=n;GUIA.vid=null;guiaEntrarPaso();render();window.scrollTo(0,0);
+}
+function guiaMarcarTodo(ex){
+  const sess=S.PROG[GUIA.w][GUIA.s],n=seriesEx(ex,sess);
+  for(let k=0;k<n;k++)if(!S.completions[ex.eid+'_'+k])tSet(ex.eid,k,n);
+}
+function guiaEntrarPaso(){
+  const p=GUIA.pasos[GUIA.i];
+  GUIA.mostrar=false;GUIA.empezo=false;GUIA.lbl='';
+  if(p&&p.tipo==='tiempo'){const sg=segundosDosis(p.ex.reps)||300;GUIA.seg=sg;GUIA.mostrar=true;GUIA.lbl='Tiempo';}
+}
+async function guiaSerie(btn){
+  const eid=btn.dataset.eid,k=+btn.dataset.k,n=+btn.dataset.n;
+  const yaHecha=!!S.completions[eid+'_'+k];
+  await tSet(eid,k,n);
+  const p=GUIA.pasos[GUIA.i];
+  const quedan=Array.from({length:n},function(_,j){return S.completions[eid+'_'+j];}).filter(function(x){return !x;}).length;
+  // Al marcar una serie (no la última) arranca solo el descanso
+  if(!yaHecha&&quedan>0&&p&&p.ex&&p.tipo==='fuerza'){const d=descansoDe(p.ex.reps);if(d){guiaParar();GUIA.seg=d;GUIA.mostrar=true;GUIA.lbl='Descanso';guiaPlay();}}
+  if(quedan===0){guiaParar();GUIA.mostrar=false;}
+  render();
+}
+function guiaVideo(btn){GUIA.vid=GUIA.vid===btn.dataset.k?null:btn.dataset.k;render();}
+
+// Reloj del paso: cuenta regresiva con pitidos (los de CRONO), sin repintar la pantalla
+function guiaParar(){clearInterval(GUIA.timer);GUIA.timer=null;GUIA.corre=false;}
+function guiaPlay(){
+  const p=GUIA.pasos[GUIA.i],tiempo=p&&p.tipo==='tiempo';
+  if(GUIA.corre){GUIA.seg=Math.max(0,Math.ceil((GUIA.fin-Date.now())/1000));guiaParar();guiaPintarReloj();return;}
+  if(GUIA.seg<=0){if(tiempo)guiaIr(1);else{GUIA.mostrar=false;guiaPintarReloj();}return;}
+  GUIA.corre=true;GUIA.empezo=true;cronoBeep(880,0.15);
+  GUIA.fin=Date.now()+GUIA.seg*1000;
+  GUIA.timer=setInterval(guiaTick,250);
+  guiaPintarReloj();
+}
+function guiaTick(){
+  const r=Math.max(0,Math.ceil((GUIA.fin-Date.now())/1000));
+  if(r!==GUIA.seg){GUIA.seg=r;if(r>0&&r<=3)cronoBeep(880,0.1);}
+  if(r<=0){
+    guiaParar();
+    cronoBeep(990,0.3);setTimeout(function(){cronoBeep(990,0.3);},400);setTimeout(function(){cronoBeep(990,0.6);},800);
+    if(GUIA.lbl==='Descanso')GUIA.lbl='¡A la siguiente serie!';
+  }
+  guiaPintarReloj();
+}
+function guiaMas(){GUIA.seg+=15;if(GUIA.corre)GUIA.fin+=15000;guiaPintarReloj();}
+function guiaPintarReloj(){
+  const w=document.getElementById('g-timer');if(!w)return;
+  w.style.display=GUIA.mostrar?'':'none';
+  const r=document.getElementById('g-reloj'),b=document.getElementById('g-play'),l=document.getElementById('g-lbl');
+  if(r){r.textContent=String(Math.floor(GUIA.seg/60)).padStart(2,'0')+':'+String(GUIA.seg%60).padStart(2,'0');r.className='g-reloj'+(GUIA.corre?' corriendo':GUIA.seg<=0?' listo':'');}
+  if(l)l.textContent=GUIA.lbl;
+  const p=GUIA.pasos[GUIA.i],tiempo=p&&p.tipo==='tiempo';
+  if(b)b.textContent=GUIA.corre?'Pausar':GUIA.seg<=0?(tiempo?'Listo, sigue':'Cerrar'):GUIA.empezo?'Seguir':'Empezar';
+}
+
+function rGuia(){
+  const P=GUIA.pasos,p=P[GUIA.i];
+  const sess=S.PROG[GUIA.w]&&S.PROG[GUIA.w][GUIA.s];
+  if(!p||!sess)return '';
+  const vbtn=function(ex,k,txt,dosis){
+    if(!ytId(ex.v))return '<p class="g-vsin">'+esc(ex.n)+(dosis?'<small class="g-dosis">'+dosis+'</small>':'')+'</p>';
+    const ab=GUIA.vid===String(k);
+    return '<button class="g-vbtn" data-k="'+k+'" aria-pressed="'+ab+'" onclick="guiaVideo(this)">'+txt+(dosis?'<small class="g-dosis">'+dosis+'</small>':'')+'</button>'
+      +(ab?'<div class="g-vmarco"><iframe src="https://www.youtube-nocookie.com/embed/'+ytId(ex.v)+'?rel=0&playsinline=1&autoplay=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>':'');
+  };
+  let h='<div class="g-barra"><div class="g-relleno" style="width:'+Math.round((GUIA.i+1)/P.length*100)+'%"></div></div>';
+  h+='<p class="g-paso">Paso '+(GUIA.i+1)+' de '+P.length+'</p>';
+  let c='';
+  if(p.tipo==='fin'){
+    const tod=S.todaySchedule,esHoy=tod&&tod.session_id===sess.id,hecha=esHoy&&tod.status==='completed';
+    c+='<div style="text-align:center;padding:8px 0"><div style="display:flex;justify-content:center;margin-bottom:12px">'+corona(64,'fin')+'</div>';
+    c+='<p class="g-titulo" style="font-size:27px">TERMINASTE</p>';
+    c+='<p style="font-family:var(--voice);font-style:italic;font-size:17px;color:var(--cream);margin-top:10px;line-height:1.5">Hoy cumpliste contigo, reina.</p>';
+    if(esHoy&&!hecha)c+='<button onclick="markSessionDone()" class="btn-reino" style="width:100%;margin-top:18px;padding:15px;'+BTN_ROJO+';color:#fff;border:none;border-radius:12px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.1em">♛ MARCAR SESIÓN COMPLETADA</button>';
+    if(hecha)c+='<p style="margin-top:16px;font-weight:700;color:#4ADE80">✅ Sesión de hoy completada</p>';
+    c+='</div>';
+  } else {
+    c+='<p class="g-bloque">'+esc(p.bloque)+'</p><p class="g-titulo">'+esc(p.tipo==='lista'?p.titulo:p.titulo)+'</p>';
+    if(p.que)c+='<p class="g-que">'+esc(p.que)+'</p>';
+    if(p.tipo==='lista'){
+      c+='<div class="g-video g-lista">'+p.lista.map(function(ex,k){return vbtn(ex,k,'▶&nbsp; '+esc(ex.n),textoSeries(seriesEx(ex,sess),ex.reps).principal);}).join('')+'</div>';
+    } else {
+      const ex=p.ex,n=seriesEx(ex,sess),ts=textoSeries(n,ex.reps);
+      if(ex.desc)c+='<p class="g-que" style="color:var(--cream)">'+esc(ex.desc)+'</p>';
+      if(p.tipo!=='tiempo')c+='<p class="g-series">'+ts.principal+'</p>';
+      if(ts.extras.length)c+='<div class="g-chips">'+ts.extras.map(function(x){return '<span class="g-chip">'+esc(x)+'</span>';}).join('')+'</div>';
+      ts.avisos.forEach(function(a){c+='<p class="g-aviso">⚠ '+esc(a)+'</p>';});
+      if(ex.cue)c+='<p class="g-cue">'+esc(ex.cue)+'</p>';
+      c+='<div class="g-video">'+vbtn(ex,0,'▶ Ver cómo se hace','')+'</div>';
+      if(p.tipo==='fuerza'||p.tipo==='cardio'){
+        c+='<p class="g-timer-lbl" style="margin-top:18px">'+(p.tipo==='cardio'?'Rondas':'Marca cada serie al terminarla')+'</p><div class="g-sets">';
+        for(let k=0;k<n;k++){
+          const d=S.completions[ex.eid+'_'+k];
+          c+='<button id="sb-'+ex.eid+'-'+k+'" data-eid="'+ex.eid+'" data-k="'+k+'" data-n="'+n+'" onclick="guiaSerie(this)" style="border:2px solid '+(d?C.pr:C.g3)+';background:'+(d?C.pr:C.wh)+';color:'+(d?'#fff':C.tl)+'">'+(d?'✓':'S'+(k+1))+'</button>';
+        }
+        c+='</div>';
+      }
+      if(p.tipo==='cardio'&&parseIntervalo(ex.reps))
+        c+='<button data-eid="'+ex.eid+'" data-nombre="'+esc(ex.n)+'" data-rondas="'+n+'" data-reps="'+esc(ex.reps)+'" onclick="iniciarCrono(this)" class="btn-reino" style="width:100%;margin-top:14px;padding:14px;'+BTN_ROJO+';color:#fff;border:none;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.1em">⏱ INICIAR CRONÓMETRO</button>';
+      // ¿Cómo se sintió? al terminar todas las series de un ejercicio principal (igual que en la lista)
+      const todas=Array.from({length:n},function(_,k){return S.completions[ex.eid+'_'+k];}).every(Boolean);
+      if(p.tipo==='fuerza'&&todas&&!/recuper/i.test(sess.type||'')&&!/movilidad|blindaje|activaci|respiraci|estiramiento|recuperaci/i.test((ex.n||'')+' '+(ex.m||''))){
+        const efYa=S.esfuerzoHecho&&S.esfuerzoHecho[ex.eid];
+        if(!efYa){
+          c+='<p class="g-timer-lbl" style="margin-top:18px;margin-bottom:8px">¿Cómo se sintió?</p><div style="display:flex;gap:6px">';
+          [{v:1,l:'Sobrada'},{v:2,l:'Justa'},{v:3,l:'Al límite'}].forEach(function(op){
+            c+='<button data-eid="'+ex.eid+'" data-pat="'+esc(ex.patron||'')+'" data-fase="'+(getCurrentFase()||'presencial')+'" data-kg="'+(ex.carga_kg||'')+'" data-ef="'+op.v+'" onclick="efClick(this)" style="flex:1;padding:10px 4px;border-radius:8px;font-size:12px;font-weight:600;border:2px solid #E0C97F;background:rgba(184,150,62,.12);color:#E0C97F">'+op.l+'</button>';
+          });
+          c+='</div>';
+        } else c+='<p style="margin-top:14px;text-align:center;font-size:13px;font-weight:700;color:#E0C97F">✓ '+({1:'Sobrada',2:'Justa',3:'Al límite'}[efYa]||'Registrado')+'</p>';
+      }
+    }
+    // Reloj (movilidad, cierre y descansos)
+    c+='<div class="g-timer" id="g-timer" style="display:none"><p class="g-timer-lbl" id="g-lbl"></p><div class="g-reloj" id="g-reloj">00:00</div>'
+      +'<div class="g-tbtns"><button class="g-ghost" id="g-play" onclick="guiaPlay()">Empezar</button><button class="g-ghost" onclick="guiaMas()">+15 seg</button></div></div>';
+  }
+  h+=card(c,'margin-top:14px');
+  const ult=GUIA.i===P.length-2;
+  if(p.tipo==='fin')h+='<button onclick="salirGuia()" class="btn-reino" style="width:100%;margin-top:18px;padding:14px;'+BTN_ROJO+';color:#fff;border:none;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.12em">VOLVER</button>';
+  else h+='<button onclick="guiaIr(1)" class="btn-reino" style="width:100%;margin-top:18px;padding:15px;'+BTN_ROJO+';color:#fff;border:none;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.14em">'+(ult?'ÚLTIMO PASO':'SIGUIENTE')+'</button>';
+  if(GUIA.i>0)h+='<button class="g-ghost" style="margin-top:10px" onclick="guiaIr(-1)">Anterior</button>';
+  if(p.tipo!=='fin')h+='<button class="g-ghost" style="margin-top:10px" onclick="salirGuia()">Salir del entreno</button>';
+  return h;
 }
 
 // ── MI ANTES Y DESPUÉS ───────────────────────────────────────
@@ -1297,6 +1517,7 @@ function goBack(){
   if(S.view==='vid')set({view:'sess'});
   else if(S.view==='sess')set({view:'main'});
   else if(S.view==='fotos')set({view:'main',tab:'medidas'});
+  else if(S.view==='guia')salirGuia();
   else set({view:'main'});
 }
 
