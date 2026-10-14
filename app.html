@@ -46,7 +46,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.13a';
+const APP_VERSION='2026.10.13b';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -89,19 +89,28 @@ const BTN_ROJO='background:linear-gradient(178deg,#D8503F 0%,#C7372C 42%,#8E1A12
 const PANEL='background:linear-gradient(178deg,#291E1D 0%,#221818 38%,rgba(22,15,14,.94) 100%);border:1px solid rgba(184,150,62,.22);box-shadow:inset 0 1px 0 rgba(242,233,220,.07),0 3px 0 -1px #100B0A,0 14px 24px -18px rgba(0,0,0,.85)';
 const btnR=(t,fn)=>`<button class="btn-reino" onclick="${fn}" style="width:100%;padding:14px 16px;${BTN_ROJO};color:#fff;border:none;border-radius:10px;font-family:var(--heroic);font-weight:800;font-size:13px;letter-spacing:.12em">${t}</button>`;
 const card=(i,s='')=>`<div class="panel-reino" style="${PANEL};border-radius:12px;padding:17px 16px;${s}"><span class="esq e1"></span><span class="esq e2"></span><span class="esq e3"></span><span class="esq e4"></span>${i}</div>`;
+// Corona dorada de la marca (login, encabezado y carga)
+const corona=(w,id)=>`<svg width="${w}" height="${Math.round(w*.75)}" viewBox="0 0 64 48" aria-hidden="true" style="display:block;filter:drop-shadow(0 2px 6px rgba(184,150,62,.35))">
+  <defs><linearGradient id="cg-${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3DE9A"/><stop offset=".55" stop-color="#C9A24A"/><stop offset="1" stop-color="#8A6A22"/></linearGradient></defs>
+  <path d="M7 37 L4 14 L19 26 L32 7 L45 26 L60 14 L57 37 Z" fill="url(#cg-${id})" stroke="#6E5418" stroke-width="1" stroke-linejoin="round"/>
+  <rect x="6" y="37" width="52" height="7" rx="1.5" fill="url(#cg-${id})" stroke="#6E5418" stroke-width="1"/>
+  <circle cx="4" cy="13" r="3.2" fill="url(#cg-${id})" stroke="#6E5418" stroke-width=".8"/><circle cx="32" cy="5.5" r="3.6" fill="url(#cg-${id})" stroke="#6E5418" stroke-width=".8"/><circle cx="60" cy="13" r="3.2" fill="url(#cg-${id})" stroke="#6E5418" stroke-width=".8"/>
+  <path d="M32 31 L35 35 L32 39 L29 35 Z" fill="#C7372C" stroke="#5C0806" stroke-width=".7"/>
+  <circle cx="18" cy="40.5" r="1.6" fill="#710D0B"/><circle cx="46" cy="40.5" r="1.6" fill="#710D0B"/>
+</svg>`;
 const secT=(t)=>`<p style="font-family:var(--heroic);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.26em;color:${C.gold};margin:20px 0 9px">${t}</p>`;
 
 function render(){
   const app=document.getElementById('app');if(!app)return;
-  if(S.loading){app.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:${C.bk}"><div style="text-align:center"><p style="font-size:40px;margin-bottom:10px">👑</p><p style="color:${C.g2};font-size:14px">Cargando...</p></div></div>`;return}
+  if(S.loading){app.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:${C.bk}"><div style="text-align:center"><div style="display:flex;justify-content:center;margin-bottom:12px">${corona(56,"carga")}</div><p style="font-family:var(--heroic);letter-spacing:.2em;color:${C.g2};font-size:11px">CARGANDO…</p></div></div>`;return}
   if(S.view==='login'){app.innerHTML=rLogin();return}
   if(S.view==='no_prog'){app.innerHTML=rNoProg();return}
   const tabs=[{k:'hoy',e:'📅',l:'Hoy'},{k:'ciclo',e:'🌙',l:'Ciclo'},{k:'rutinas',e:'💪',l:'Rutinas'},{k:'medidas',e:'📏',l:'Medidas'}];
   app.innerHTML=`
-    <div style="background:rgba(14,11,10,.94);backdrop-filter:blur(6px);padding:16px 18px 12px;position:sticky;top:0;z-index:20">
+    <div id="hdr" style="background:rgba(14,11,10,.94);backdrop-filter:blur(6px);padding:16px 18px 12px;position:sticky;top:0;z-index:20">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <p style="font-family:var(--brandface);font-size:20px;letter-spacing:.16em;color:${C.gold};line-height:1">REINO</p>
+          <div style="display:flex;align-items:center;gap:7px">${corona(24,"enc")}<p style="font-family:var(--brandface);font-size:20px;letter-spacing:.16em;color:${C.gold};line-height:1">REINO</p></div>
           <p style="font-family:var(--voice);font-style:italic;font-weight:300;color:${C.td};font-size:15px;margin-top:3px">${S.profile&&S.profile.name?'Hola, '+esc(S.profile.name):'Bienvenida'}</p>
         </div>
         <div style="text-align:right">
@@ -111,7 +120,7 @@ function render(){
       </div>
     </div>
     ${S.view==='main'
-      ?`<div style="display:flex;gap:4px;padding:0 10px;background:rgba(14,11,10,.94);border-bottom:1px solid rgba(184,150,62,.22);position:sticky;top:66px;z-index:20">
+      ?`<div id="tabsbar" style="display:flex;gap:4px;padding:0 10px;background:rgba(14,11,10,.94);border-bottom:1px solid rgba(184,150,62,.22);position:sticky;top:66px;z-index:20">
           ${tabs.map(t=>`<button onclick="set({tab:'${t.k}'})" style="flex:1;padding:12px 0 11px;font-family:var(--heroic);font-weight:600;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;border:none;background:none;color:${S.tab===t.k?C.gs:C.tl};border-bottom:2px solid ${S.tab===t.k?C.gold:'transparent'}">${t.l}</button>`).join('')}
         </div>`
       :`<div style="padding:10px 14px 12px;border-bottom:1px solid rgba(184,150,62,.22)">
@@ -129,6 +138,9 @@ function render(){
        :S.view==='mform'?rMForm()
        :S.view==='fotos'?rFotos():''}
     </div>`;
+  // Las pestañas se pegan justo debajo del encabezado (su alto cambia con las fuentes)
+  const hdr=document.getElementById('hdr'),tb=document.getElementById('tabsbar');
+  if(hdr&&tb){tb.style.top=hdr.offsetHeight+'px';if(document.fonts)document.fonts.ready.then(function(){tb.style.top=hdr.offsetHeight+'px'})}
   if(S.view==='main'&&S.tab==='ciclo'){
     const sl=document.getElementById('clen');
     if(sl)sl.oninput=async function(e){S.cycleLen=+e.target.value;const d=document.getElementById('clend');if(d)d.textContent=e.target.value+'d';await saveCycleLen(+e.target.value)};
@@ -138,6 +150,7 @@ function render(){
 function rLogin(){return `
 <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
   <div class="panel-reino" style="${PANEL};border-radius:14px;padding:30px 20px;width:100%;max-width:380px;text-align:center"><span class="esq e1"></span><span class="esq e2"></span><span class="esq e3"></span><span class="esq e4"></span>
+    <div style="display:flex;justify-content:center;margin-bottom:8px">${corona(64,"login")}</div>
     <p style="font-family:var(--brandface);font-size:34px;letter-spacing:.18em;color:${C.gold};margin-bottom:6px">REINO</p>
     <p style="font-family:var(--heroic);font-size:9.5px;letter-spacing:.3em;color:${C.tl};margin-bottom:18px">GYM CÍCLICO</p>
     <p style="font-family:var(--voice);font-style:italic;font-weight:300;font-size:19px;color:${C.td};margin-bottom:6px">Bienvenida, reina.</p>
