@@ -124,6 +124,7 @@ function rClientDetail(){
       </select>
     </div>
     ${rAcceso(c)}
+    ${rPerfilNutri(c)}
     <div style="margin-top:10px">
       <button onclick="openSchedule('${c.id}')" style="width:100%;padding:11px;background:${C.bk};color:${C.wh};border:none;border-radius:10px;font-weight:700;font-size:13px">📅 Programar mes</button>
     </div>
@@ -245,6 +246,37 @@ function sumarMes(id){
   if(d.getDate()!==dia)d.setDate(0); // 31 ene + 1 mes = 28/29 feb, no 3 mar
   const nueva=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   actualizarAcceso(id,{pagado_hasta:nueva,estado:'activa'});
+}
+
+// ── PERFIL DE ALIMENTACIÓN ──────────────────────────────────
+// objetivo (proteína y calorías) y método anticonceptivo + marca (tip de alimentación según el método)
+const OBJETIVOS=[{k:'tonificar',l:'Tonificar'},{k:'bajar_grasa',l:'Bajar grasa'},{k:'recomposicion',l:'Recomposición corporal'}];
+const METODOS=[{k:'pildora_combinada',l:'Píldora combinada'},{k:'pildora_progestina',l:'Píldora solo de progestina'},{k:'anillo',l:'Anillo vaginal'},{k:'parche',l:'Parche'},
+  {k:'inyeccion_mensual',l:'Inyección mensual'},{k:'inyeccion_trimestral',l:'Inyección trimestral'},{k:'implante',l:'Implante subdérmico'},
+  {k:'diu_hormonal',l:'DIU hormonal'},{k:'diu_cobre',l:'DIU de cobre'},{k:'otro',l:'Otro'}];
+function rPerfilNutri(c){
+  const anti=/^anticonceptivo/.test(c.sub_perfil||'')||c.anticonceptivo_metodo;
+  const sel=(id,ops,val,vacio)=>`<select id="${id}" style="width:100%;padding:10px 12px;border:2px solid ${C.g3};border-radius:10px;font-size:14px;background:${C.wh};margin-bottom:10px"><option value="">${vacio}</option>${ops.map(o=>`<option value="${o.k}" ${o.k===val?'selected':''}>${o.l}</option>`).join('')}</select>`;
+  return`<div style="background:${C.wh};border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+    <p style="font-weight:800;font-size:15px;margin-bottom:10px">🍽 Perfil de alimentación</p>
+    <p style="font-size:12px;color:${C.g2};font-weight:600;margin-bottom:6px">Objetivo</p>
+    ${sel('pn-obj',OBJETIVOS,c.objetivo,'— Sin definir —')}
+    ${anti?`<p style="font-size:12px;color:${C.g2};font-weight:600;margin-bottom:6px">Método anticonceptivo</p>
+    ${sel('pn-met',METODOS,c.anticonceptivo_metodo,'— Sin definir —')}
+    <p style="font-size:12px;color:${C.g2};font-weight:600;margin-bottom:6px">Nombre (marca)</p>
+    <input id="pn-nom" type="text" placeholder="Ej: Yasmin, Jadelle, Mirena…" value="${esc(c.anticonceptivo_nombre||'')}" style="width:100%;padding:10px 12px;border:2px solid ${C.g3};border-radius:10px;font-size:14px;margin-bottom:10px"/>`:''}
+    <button onclick="guardarPerfilNutri('${c.id}')" style="width:100%;padding:10px;background:${C.bk};color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px">Guardar perfil de alimentación</button>
+  </div>`;
+}
+async function guardarPerfilNutri(id){
+  const v=x=>{const e=document.getElementById(x);return e?(e.value.trim()||null):undefined;};
+  const cambios={objetivo:v('pn-obj')};
+  if(document.getElementById('pn-met')){cambios.anticonceptivo_metodo=v('pn-met');cambios.anticonceptivo_nombre=v('pn-nom');}
+  const r=await sb.from('profiles').update(cambios).eq('id',id).select('id,objetivo,anticonceptivo_metodo,anticonceptivo_nombre').maybeSingle();
+  if(r.error||!r.data){alert('No se pudo guardar: '+((r.error&&r.error.message)||'sin permiso'));return;}
+  const clients=S.clients.map(function(x){return x.id===id?Object.assign({},x,r.data):x;});
+  set({clients:clients,selClient:Object.assign({},S.selClient,r.data)});
+  alert('✅ Perfil de alimentación guardado');
 }
 
 // ── PROGRAMAS ───────────────────────────────────────────────

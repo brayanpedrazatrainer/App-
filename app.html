@@ -76,7 +76,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.21b';
+const APP_VERSION='2026.10.22a';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -451,7 +451,7 @@ function rCiclo(){
 function rPForm(){return `
 <div style="background:${C.wh};border-radius:18px;padding:18px;box-shadow:0 2px 10px rgba(25,18,17,.1)">
   <p style="font-weight:900;font-size:18px;color:${C.td};margin-bottom:4px">🌙 Mi período</p>
-  <p style="font-size:13px;color:${C.tl};margin-bottom:14px;line-height:1.6">¿Qué día empezó tu último período? Tus rutinas se ajustan desde esa fecha.</p>
+  <p style="font-size:13px;color:${C.tl};margin-bottom:14px;line-height:1.6">¿Qué día empezó tu último período? ${S.perfilExt&&S.perfilExt.ruta==='lunar'?'Tus rutinas se ajustan desde esa fecha.':'Queda en tu historial y esos días tu plato se ajusta para reponer.'}</p>
   <input type="date" id="pd-in" value="${today()}" max="${today()}" style="width:100%;padding:11px 13px;border:2px solid ${C.g3};border-radius:10px;font-size:15px;outline:none;margin-bottom:16px;color:${C.td}"/>
   ${btnR('Guardar','saveBleeding()')}
 </div>`}
@@ -1164,24 +1164,91 @@ function platoSVG(P){
   return '<svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="58" fill="none" stroke="rgba(184,150,62,.45)" stroke-width="1.5"/>'
     +tajada(90,'#C7372C')+tajada(P.verd*90,'#5E9E6E')+tajada(P.carb*90,'#B8963E')+'</svg>';
 }
+// Ruta energía: el plato sigue la carga de la semana de entrenamiento (aprobado por Brayan 2026-10-22).
+// Si registró sangrado en los últimos 5 días, esos días va Plato Calma con refuerzo de hierro (como luna nueva).
+const PLATO_SEMANA={semana_1:'base',semana_2:'fuerza',semana_3:'fuerza',semana_4:'calma'};
+const INT_PLATO={calma:'reponer y estabilizar',base:'saciar',fuerza:'abastecer'};
+function sangradoReciente(){
+  const h=S.cycleHistory&&S.cycleHistory[0];if(!h||!h.last_bleeding_date)return false;
+  const d=Math.round((new Date(today()+'T12:00:00')-new Date(h.last_bleeding_date+'T12:00:00'))/86400000);
+  return d>=0&&d<=4;
+}
+// Sin entrenamiento hoy (recuperación activa): el carbohidrato del Plato Fuerza no tiene entreno al lado → Plato Base
+function hoyEsRecuperacion(){
+  const t=S.todaySchedule;if(!t||!t.session_id)return false;
+  let tipo='';(S.PROG||[]).forEach(function(wk){wk.forEach(function(s){if(s.id===t.session_id)tipo=s.type||'';});});
+  return /recuper/i.test(tipo);
+}
+// Tip según su contexto (borrador aprobado 2026-10-22). Anticonceptivo sin método definido = irregular.
+const TIPS_CONTEXTO={
+  irregular:'Tu ciclo no avisa con fecha, así que tu plato sigue a tu entrenamiento de la semana. Cuando te llegue el período, márcalo: esos días tu plato pasa a ser el de reponer, con hierro y vitamina C.',
+  combinado:'Tus hormonas están estables, así que no tienes fases propias. En la semana de descanso, si sangras, come como en los días de reponer: hierro y vitamina C. Suma hojas verdes, fríjol y banano: este método puede bajar algunas vitaminas del grupo B.',
+  progestina:'Con este método el sangrado puede ser irregular o desaparecer. Cuando sangres, márcalo y esos días come con hierro y vitamina C.',
+  inyeccion_trimestral:'Esta inyección puede bajar la densidad de los huesos con el tiempo. Calcio todos los días (queso campesino, kumis, yogur, sardina con espina) y sol o vitamina D. Puede abrir el apetito: la proteína en cada comida ayuda a sentirte llena.',
+  diu_hormonal:'Este método actúa en el útero y el período suele ser más escaso. Tu plato sigue a tu entrenamiento de la semana.',
+  diu_cobre:'El DIU de cobre puede hacer los períodos más abundantes y con más dolor. Esos días, hierro y vitamina C en cada comida, y jengibre para el dolor.',
+  perimenopausia:'Tus ciclos están cambiando y pueden llegar cuando no los esperas. Dos cosas pesan más que la fase: proteína alta en cada comida, para proteger tu músculo, y calcio con vitamina D, para tus huesos. Si los calores o el mal sueño te molestan, baja el alcohol, el café de la tarde y el picante, y fíjate si mejoran. Cuando te llegue el período, márcalo.',
+  menopausia:'Sin ciclo, tu plato sigue a tu entrenamiento de la semana. Tu prioridad es proteger músculo y hueso: proteína en cada comida, calcio (unos 1200 mg al día) y vitamina D. Omega 3 del pescado (sardina, atún, bocachico) y fibra de granos y verduras. El alcohol, el café y el picante pueden disparar los calores: obsérvalo en ti.'
+};
+const METODO_TIP={pildora_combinada:'combinado',anillo:'combinado',parche:'combinado',inyeccion_mensual:'combinado',pildora_progestina:'progestina',implante:'progestina',inyeccion_trimestral:'inyeccion_trimestral',diu_hormonal:'diu_hormonal',diu_cobre:'diu_cobre'};
+const METODO_NOMBRE={pildora_combinada:'Píldora combinada',pildora_progestina:'Píldora solo de progestina',anillo:'Anillo vaginal',parche:'Parche',inyeccion_mensual:'Inyección mensual',inyeccion_trimestral:'Inyección trimestral',implante:'Implante subdérmico',diu_hormonal:'DIU hormonal',diu_cobre:'DIU de cobre',otro:'Otro'};
+function tipContexto(){
+  const p=S.perfilExt||{},sub=p.sub_perfil||'';
+  if(sub==='perimenopausia')return{t:'Perimenopausia',x:TIPS_CONTEXTO.perimenopausia};
+  if(sub==='menopausia')return{t:'Menopausia',x:TIPS_CONTEXTO.menopausia};
+  if(/^anticonceptivo/.test(sub)){
+    const k=METODO_TIP[p.anticonceptivo_metodo];
+    const nom=p.anticonceptivo_metodo?(METODO_NOMBRE[p.anticonceptivo_metodo]||'')+(p.anticonceptivo_nombre?' ('+p.anticonceptivo_nombre+')':''):'Anticonceptivo';
+    return{t:'Tu método · '+nom,x:TIPS_CONTEXTO[k]||TIPS_CONTEXTO.irregular};
+  }
+  if(sub==='irregular'||p.ruta==='energia')return{t:'Ciclo irregular',x:TIPS_CONTEXTO.irregular};
+  return null;
+}
+// Antojos (borrador aprobado 2026-10-22): se abren solos en menguante A/B y semana 4; si no, con un botón
+function rAntojos(){
+  const c=cicloHoy();
+  const dias=c&&(c.fase==='menguante_a'||c.fase==='menguante_b'||c.fase==='semana_4');
+  const abierto=dias||S.verAntojos;
+  if(!abierto)return '<button onclick="S.verAntojos=true;render()" style="width:100%;margin-top:12px;padding:11px;border-radius:10px;border:1px solid rgba(184,150,62,.3);background:none;color:'+C.gs+';font-family:Cinzel,serif;font-size:10.5px;letter-spacing:.12em;font-weight:600">🍫 TENGO UN ANTOJO</button>';
+  const lista=function(t,items){return '<p style="font-weight:800;font-size:13px;color:'+C.gs+';margin:10px 0 4px">'+t+'</p>'+items.map(function(i){return '<p style="font-size:12.5px;color:'+C.td+';line-height:1.5;padding-left:10px">· '+i+'</p>';}).join('');};
+  return card('<p style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:'+C.gold+';margin-bottom:6px">🍫 Antojos</p>'
+    +'<p style="font-family:Fraunces,serif;font-style:italic;font-size:14px;color:'+C.tm+';line-height:1.5">'+(dias?'El antojo de estos días tiene explicación: tu cuerpo está gastando más. ':'')+'Respóndele con algo que también te sostenga: proteína o grasa al lado del dulce.</p>'
+    +lista('Antojo de dulce',['Banano con una cucharada de mantequilla de maní y dos cuadros de chocolate 70%','Yogur griego con mora o fresas y una cucharadita de miel','Bocadillo con una tajada de queso campesino','Avena caliente con canela y banano','Dos cuadros de chocolate 70% y un puñado de maní','Fruta picada con kumis'])
+    +lista('Antojo de salado',['Un puñado de maní o almendras','Queso campesino con 4 galletas de soda','Huevo cocido con sal y limón','Crispetas hechas en casa, con poco aceite'])
+    +lista('Si el antojo llega con ansiedad',['Antes de comer, toma un vaso de agua y espera cinco minutos. Si sigue ahí, cómetelo con calma, sentada y en un plato: así lo disfrutas de verdad y tu cuerpo registra que comió.'])
+    +(!dias?'<button onclick="S.verAntojos=false;render()" style="margin-top:10px;background:none;border:none;color:'+C.g2+';font-size:12px;text-decoration:underline;padding:0">Cerrar</button>':''),'margin-top:12px');
+}
 function rPlatoHoy(){
   const c=cicloHoy();
-  if(!c||c.ruta!=='lunar')return '';
-  const F=PLATO_FASE[c.fase],P=F&&PLATOS[F.p];if(!P)return '';
-  const fi=FASE_LABELS[c.fase]||{e:'🌙',l:c.fase};
+  if(!c)return '';
+  let F,P,etiqueta,nota='';
+  if(c.ruta==='lunar'){
+    F=PLATO_FASE[c.fase];P=F&&PLATOS[F.p];
+    const fi=FASE_LABELS[c.fase]||{e:'🌙',l:c.fase};etiqueta=fi.e+' '+fi.l;
+  } else {
+    const fi=FASE_LABELS[c.fase]||{e:'📅',l:c.fase};etiqueta=fi.e+' '+fi.l;
+    if(sangradoReciente()){F=PLATO_FASE.luna_nueva;P=PLATOS.calma;nota='Registraste tu período: estos días tu plato es para reponer.';}
+    else{const k=PLATO_SEMANA[c.fase];F={int:INT_PLATO[k]};P=PLATOS[k];}
+  }
+  if(!P)return '';
+  if(P===PLATOS.fuerza&&hoyEsRecuperacion()){P=PLATOS.base;nota='Hoy es día de recuperación, sin entreno fuerte: el carbohidrato baja un poco y tu plato pasa a Base.';}
   const fr=function(x){return x===1.5?'1½':String(x);};
   const ley=function(col,t){return '<p style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:'+C.td+';margin-bottom:5px"><span style="width:10px;height:10px;border-radius:3px;background:'+col+';flex-shrink:0"></span>'+t+'</p>';};
-  let h='<p style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:'+C.gold+';margin-bottom:6px">'+fi.e+' '+esc(fi.l)+' · tu plato de hoy</p>';
+  let h='<p style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:'+C.gold+';margin-bottom:6px">'+esc(etiqueta)+' · tu plato de hoy</p>';
   h+='<p style="font-family:Cinzel,serif;font-weight:900;font-size:22px;color:'+C.td+'">'+P.n+'</p>';
   h+='<p style="font-family:Fraunces,serif;font-style:italic;font-size:14.5px;color:'+C.tm+';margin-bottom:12px">Intención: '+F.int+'</p>';
+  if(nota)h+='<p style="font-size:12.5px;color:'+C.gs+';background:rgba(184,150,62,.10);border-radius:9px;padding:8px 10px;margin-bottom:12px">'+nota+'</p>';
   h+='<div style="display:flex;gap:14px;align-items:center">'+platoSVG(P)+'<div style="flex:1">'
     +ley('#C7372C','Proteína · 1/4')+ley('#5E9E6E','Verdura y fruta · '+fr(P.verd)+'/4')+ley('#B8963E','Carbohidrato · '+fr(P.carb)+'/4')
     +'<p style="font-size:12px;color:'+C.tl+';margin-top:4px">+ '+P.grasa+'</p></div></div>';
   h+='<p style="font-size:13px;color:'+C.tm+';line-height:1.55;margin-top:12px">'+P.como+'</p>';
   h+='<p style="font-size:12.5px;color:'+C.tl+';margin-top:6px"><b style="color:'+C.gs+'">Ejemplo:</b> '+P.ej+'</p>';
-  h+='<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(184,150,62,.25)"><p style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:'+C.gold+';margin-bottom:5px">Refuerzo · '+F.ref+'</p>'
+  if(F.ref)h+='<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(184,150,62,.25)"><p style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:'+C.gold+';margin-bottom:5px">Refuerzo · '+F.ref+'</p>'
     +'<p style="font-size:13px;color:'+C.td+';line-height:1.55">'+F.txt+'</p><p style="font-size:12.5px;color:#E8A598;line-height:1.5;margin-top:6px;font-style:italic">'+F.regla+'</p></div>';
   if(F.ancla)h+='<div style="margin-top:12px;padding:11px 12px;border-radius:10px;background:rgba(184,150,62,.10);border:1px solid rgba(184,150,62,.3)"><p style="font-weight:800;font-size:13px;color:'+C.gs+';margin-bottom:3px">🍌 Merienda ancla</p><p style="font-size:12.5px;color:'+C.td+';line-height:1.5">Proteína + grasa + carbohidrato juntos, planeada y no improvisada. Por ejemplo: banano con mantequilla de maní y dos cuadros de chocolate 70%.</p></div>';
+  // Tip según su contexto (irregular, método anticonceptivo, perimenopausia, menopausia)
+  const tc=tipContexto();
+  if(tc)h+='<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(184,150,62,.25)"><p style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:'+C.gold+';margin-bottom:5px">'+esc(tc.t)+'</p><p style="font-size:13px;color:'+C.td+';line-height:1.55">'+tc.x+'</p></div>';
   return card(h,'margin-bottom:12px');
 }
 function rBaseReino(){
@@ -1248,6 +1315,7 @@ function rNutri(){
     +'<p style="font-weight:800;font-size:17px;color:'+C.td+'">'+vasos+(meta?' de '+meta:'')+(vasos===1&&!meta?' vaso':' vasos')+(meta&&vasos>=meta?' ✓':'')+'</p>'+barra+'</div>'
     +'<button onclick="sumarAgua(-1)" '+(vasos?'':'disabled')+' style="width:42px;height:42px;border-radius:10px;border:1px solid rgba(184,150,62,.3);background:none;color:'+C.gs+';font-size:20px">−</button>'
     +'<button onclick="sumarAgua(1)" class="btn-reino" style="width:42px;height:42px;border-radius:10px;border:none;'+BTN_ROJO+';color:#fff;font-size:20px">+</button></div>','margin-top:12px');
+  if(esHoy)h+=rAntojos();
   // Comidas por momento
   MOMENTOS.forEach(function(m){
     const lista=N.comidas.filter(function(c){return c.momento===m.k;});
@@ -1511,17 +1579,26 @@ async function calcularTarjetaMotor(perfil,userId,fecha){
   return{fase,orden,ruta,tarjeta:data||null};
 }
 
-// "Me llegó el período" (Hoy) y "Mi período" (Ciclo) hacen lo mismo: el primer día del período pasa a ser
-// el ancla del perfil y las rutinas pendientes del motor se recalculan desde hoy (manuales y completadas no se tocan).
+// "Me llegó el período" (Hoy) y "Mi período" (Ciclo) hacen lo mismo.
+// Ruta lunar: el primer día del período pasa a ser el ancla y las rutinas pendientes del motor se recalculan
+// desde hoy (manuales y completadas no se tocan).
+// Ruta energía (irregular, perimenopausia): SOLO se registra el sangrado (plato de esos días e historial).
+// Su bloque de 4 semanas no depende del período y no se toca (Brayan 2026-10-22).
 async function registrarPeriodo(fecha,tab){
   const userId=S.user.id;
+  const lunar=S.perfilExt.ruta==='lunar';
   set({loading:true});
   try{
-    const pR=await sb.from('profiles').update({ancla:fecha}).eq('id',userId);
-    if(pR.error)throw pR.error;
-    await sb.from('cycle_logs').insert({client_id:userId,last_bleeding_date:fecha,cycle_length:S.perfilExt.duracion_ciclo||28});
-    const rg=await sb.rpc('regenerar_motor',{p_client:userId,p_desde:today()});
-    if(rg.error)console.error(rg.error);
+    if(lunar){
+      const pR=await sb.from('profiles').update({ancla:fecha}).eq('id',userId);
+      if(pR.error)throw pR.error;
+    }
+    const cR=await sb.from('cycle_logs').insert({client_id:userId,last_bleeding_date:fecha,cycle_length:S.perfilExt.duracion_ciclo||28});
+    if(cR.error)throw cR.error;
+    if(lunar){
+      const rg=await sb.rpc('regenerar_motor',{p_client:userId,p_desde:today()});
+      if(rg.error)console.error(rg.error);
+    }
   }catch(e){
     console.error(e);
     set({loading:false,view:'main'});
@@ -1621,7 +1698,7 @@ async function loadClientData(){
   const completions={};(results[6].data||[]).forEach(function(r){completions[r.exercise_id+'_'+r.set_number]=true});
   const[todR,profExtR,checkinR]=await Promise.all([
     sb.from('scheduled_sessions').select('*').eq('client_id',userId).eq('scheduled_date',today()).maybeSingle(),
-    sb.from('profiles').select('plan,ruta,sub_perfil,nivel,duracion_ciclo,ancla,escenario_default,dias_presenciales,grupo_id,estado,pagado_hasta').eq('id',userId).single(),
+    sb.from('profiles').select('plan,ruta,sub_perfil,nivel,duracion_ciclo,ancla,escenario_default,dias_presenciales,grupo_id,estado,pagado_hasta,objetivo,anticonceptivo_metodo,anticonceptivo_nombre').eq('id',userId).single(),
     sb.from('checkins').select('*').eq('client_id',userId).eq('fecha',today()).maybeSingle(),
   ]);
   const todaySchedule=todR.data||null;
