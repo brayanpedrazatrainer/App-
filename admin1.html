@@ -128,6 +128,7 @@ function rClientDetail(){
       <button onclick="openSchedule('${c.id}')" style="width:100%;padding:11px;background:${C.bk};color:${C.wh};border:none;border-radius:10px;font-weight:700;font-size:13px">📅 Programar mes</button>
     </div>
     ${rClientFotos(c)}
+    ${rClientNutri()}
     ${S.clientMeas.length>0?`
       <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:14px 0 8px">Últimas medidas</p>
       ${S.clientMeas.slice(0,3).map(m=>`
@@ -490,8 +491,38 @@ async function openClient(id){
     sb.from('meno_logs').select('*').eq('client_id',id).order('log_date',{ascending:false}).limit(10),
     sb.from('carga_log').select('*').eq('client_id',id).order('fecha',{ascending:false}).limit(20),
   ]);
-  set({loading:false,selClient:c,clientMeas:mr.data||[],clientCycle:cyc.data||[],clientSymptoms:sym.data||[],clientMeno:meno.data||[],clientCarga:cargaR.data||[],clientFotos:null});
+  set({loading:false,selClient:c,clientMeas:mr.data||[],clientCycle:cyc.data||[],clientSymptoms:sym.data||[],clientMeno:meno.data||[],clientCarga:cargaR.data||[],clientFotos:null,clientNutri:null});
   loadClientFotos(id);
+  loadClientNutri(id);
+}
+
+// Alimentación de la clienta: totales por día de los últimos 7 días (comidas + agua)
+async function loadClientNutri(id){
+  try{
+    const d=new Date();d.setDate(d.getDate()-6);
+    const desde=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const c=await sb.from('comidas').select('fecha,momento,nombre,gramos,kcal,prot,carb,grasa').eq('client_id',id).gte('fecha',desde).order('fecha',{ascending:false});
+    const a=await sb.from('agua').select('fecha,vasos').eq('client_id',id).gte('fecha',desde);
+    if(S.selClient&&S.selClient.id===id)set({clientNutri:{comidas:c.data||[],agua:a.data||[]}});
+  }catch(e){console.error(e);}
+}
+function rClientNutri(){
+  const N=S.clientNutri;
+  if(!N)return '';
+  const dias={};
+  N.comidas.forEach(function(x){const t=dias[x.fecha]=dias[x.fecha]||{kcal:0,prot:0,carb:0,grasa:0,n:0,vasos:0};t.kcal+=+x.kcal;t.prot+=+x.prot;t.carb+=+x.carb;t.grasa+=+x.grasa;t.n++;});
+  N.agua.forEach(function(x){const t=dias[x.fecha]=dias[x.fecha]||{kcal:0,prot:0,carb:0,grasa:0,n:0,vasos:0};t.vasos=x.vasos;});
+  const fechas=Object.keys(dias).sort().reverse();
+  let h=`<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:14px 0 8px">🍽 Alimentación · últimos 7 días</p>`;
+  if(!fechas.length)return h+`<div style="background:${C.wh};border-radius:12px;padding:13px;font-size:13px;color:${C.g2};box-shadow:0 1px 4px rgba(0,0,0,.07)">Todavía no ha registrado comidas ni agua.</div>`;
+  h+=`<div style="background:${C.wh};border-radius:12px;padding:6px 13px;box-shadow:0 1px 4px rgba(0,0,0,.07)">`;
+  fechas.forEach(function(f,i){
+    const t=dias[f];
+    h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;${i?'border-top:1px solid #eee':''}">
+      <div><p style="font-weight:700;font-size:13px">${f}</p><p style="font-size:11px;color:${C.g2}">${t.n} alimento${t.n!==1?'s':''} · 💧 ${t.vasos} vaso${t.vasos!==1?'s':''}</p></div>
+      <div style="text-align:right"><p style="font-weight:800;font-size:14px">${Math.round(t.kcal)} kcal</p><p style="font-size:11px;color:${C.g2}">P ${Math.round(t.prot)} · C ${Math.round(t.carb)} · G ${Math.round(t.grasa)}</p></div></div>`;
+  });
+  return h+'</div>';
 }
 
 // Fotos de antes y después de la clienta (bucket privado "fotos"; solo el admin puede ver las de todas)
