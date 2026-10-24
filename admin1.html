@@ -124,6 +124,7 @@ function rClientDetail(){
       </select>
     </div>
     ${rAcceso(c)}
+    ${rMenor(c)}
     ${rPerfilNutri(c)}
     <div style="margin-top:10px">
       <button onclick="openSchedule('${c.id}')" style="width:100%;padding:11px;background:${C.bk};color:${C.wh};border:none;border-radius:10px;font-weight:700;font-size:13px">📅 Programar mes</button>
@@ -248,6 +249,54 @@ function sumarMes(id){
   actualizarAcceso(id,{pagado_hasta:nueva,estado:'activa'});
 }
 
+// ── MENOR DE EDAD · CONSENTIMIENTO DEL ACUDIENTE ────────────
+// Si la última valoración dice menos de 18 años. El acudiente firma en consentimiento.html con un enlace de un solo uso.
+function edadAdmin(){const m=(S.clientMeas||[]).find(function(x){return x.edad;});return m?parseFloat(m.edad):null;}
+async function loadClientConsent(id){
+  try{
+    const f=await sb.from('consentimientos').select('*').eq('client_id',id).order('firmado_at',{ascending:false}).limit(1).maybeSingle();
+    const s=await sb.from('consentimiento_solicitudes').select('token,vence').eq('client_id',id).eq('usado',false).gte('vence',new Date().toISOString()).order('creado',{ascending:false}).limit(1).maybeSingle();
+    if(S.selClient&&S.selClient.id===id)set({clientConsent:{firmado:f.data||null,pendiente:s.data||null}});
+  }catch(e){console.error(e);}
+}
+function enlaceConsent(token){return location.origin+location.pathname.replace(/admin1\.html.*$/,'')+'consentimiento.html?t='+token;}
+async function generarConsent(id){
+  const r=await sb.from('consentimiento_solicitudes').insert({client_id:id}).select('token,vence').single();
+  if(r.error){alert('No se pudo generar: '+r.error.message);return;}
+  set({clientConsent:Object.assign({},S.clientConsent,{pendiente:r.data})});
+}
+function copiarConsent(btn){navigator.clipboard.writeText(btn.dataset.url).then(function(){btn.textContent='✅ Copiado';}).catch(function(){prompt('Copia el enlace:',btn.dataset.url);});}
+function rMenor(c){
+  const e=edadAdmin();
+  if(e===null||e>=18)return '';
+  const K=S.clientConsent;
+  let h=`<div style="background:${C.wh};border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);border:2px solid #f5c26b">
+    <p style="font-weight:800;font-size:15px;margin-bottom:4px">🧒 Menor de edad (${e} años) · Consentimiento</p>`;
+  if(!K)return h+`<p style="font-size:13px;color:${C.g2}">Cargando…</p></div>`;
+  if(K.firmado){
+    const f=K.firmado;
+    h+=`<p style="font-size:13px;margin:6px 0">✅ <b>Firmado</b> el ${new Date(f.firmado_at).toLocaleString('es-CO',{dateStyle:'long',timeStyle:'short'})}</p>
+      <p style="font-size:13px">${esc(f.acudiente_nombre)} (${esc(f.parentesco)}) · ${esc(f.acudiente_documento)}</p>
+      <p style="font-size:12.5px;color:${C.g2}">${esc(f.acudiente_email||'')} ${esc(f.acudiente_telefono||'')}</p>
+      <p style="font-size:13px;margin-top:4px">Fotos de progreso: <b>${f.autoriza_fotos?'autorizadas':'NO autorizadas'}</b></p>
+      <details style="margin-top:8px"><summary style="font-size:13px;font-weight:700;cursor:pointer">Ver documento firmado</summary>
+      <div style="font-size:12px;line-height:1.55;white-space:pre-wrap;margin-top:8px;padding:10px;background:#f6f3ee;border-radius:8px">${esc(f.texto_firmado)}</div>
+      <img src="${esc(f.firma)}" alt="Firma" style="width:100%;max-width:320px;margin-top:8px;border:1px solid #ddd;border-radius:8px"></details>`;
+    return h+'</div>';
+  }
+  h+=`<p style="font-size:12.5px;line-height:1.5;margin:6px 0 10px">Falta la firma del acudiente. Mientras no esté, ella no puede tomarse fotos de progreso.</p>
+    <p style="font-size:11.5px;line-height:1.5;color:#92400e;background:#fef3c7;border-radius:8px;padding:8px 10px;margin-bottom:10px">El texto del consentimiento es un borrador: hazlo revisar por un abogado antes de enviar el primer enlace.</p>`;
+  if(K.pendiente){
+    const url=enlaceConsent(K.pendiente.token);
+    const wa='https://wa.me/?text='+encodeURIComponent('Hola. Para que '+c.name.split(' ')[0]+' entrene en Gym Cíclico necesito tu autorización como acudiente. Puedes leerla y firmarla aquí desde el celular: '+url);
+    h+=`<p style="font-size:12px;color:${C.g2};margin-bottom:6px">Enlace (vence el ${new Date(K.pendiente.vence).toLocaleDateString('es-CO')}, sirve una sola vez):</p>
+      <p style="font-size:11.5px;word-break:break-all;background:#f6f3ee;border-radius:8px;padding:8px 10px;margin-bottom:8px">${esc(url)}</p>
+      <div style="display:flex;gap:8px"><button data-url="${esc(url)}" onclick="copiarConsent(this)" style="flex:1;padding:10px;background:${C.bk};color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px">Copiar enlace</button>
+      <a href="${esc(wa)}" target="_blank" style="flex:1;padding:10px;background:#16a34a;color:#fff;border-radius:10px;font-weight:700;font-size:13px;text-align:center;text-decoration:none">Enviar por WhatsApp</a></div>`;
+  } else h+=`<button onclick="generarConsent('${c.id}')" style="width:100%;padding:11px;background:${C.pr};color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px">Generar enlace para el acudiente</button>`;
+  return h+'</div>';
+}
+
 // ── PERFIL DE ALIMENTACIÓN ──────────────────────────────────
 // objetivo (proteína y calorías) y método anticonceptivo + marca (tip de alimentación según el método)
 const ACTIVIDADES=[{k:'sedentaria',l:'Sedentaria (oficina, poco movimiento)'},{k:'ligera',l:'Ligera (se mueve algo en el día)'},{k:'activa',l:'Activa (trabajo de pie o caminando)'}];
@@ -260,8 +309,7 @@ function rPerfilNutri(c){
   const sel=(id,ops,val,vacio)=>`<select id="${id}" style="width:100%;padding:10px 12px;border:2px solid ${C.g3};border-radius:10px;font-size:14px;background:${C.wh};margin-bottom:10px"><option value="">${vacio}</option>${ops.map(o=>`<option value="${o.k}" ${o.k===val?'selected':''}>${o.l}</option>`).join('')}</select>`;
   return`<div style="background:${C.wh};border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
     <p style="font-weight:800;font-size:15px;margin-bottom:10px">🍽 Perfil de alimentación</p>
-    <p style="font-size:12px;color:${C.g2};font-weight:600;margin-bottom:6px">Objetivo</p>
-    ${sel('pn-obj',OBJETIVOS,c.objetivo,'— Sin definir (cuenta como recomposición) —')}
+    <p style="font-size:12.5px;line-height:1.5;margin-bottom:10px;padding:9px 11px;border-radius:9px;background:#f6f3ee"><b>Objetivo: recomposición corporal</b> (único para todas). Con 35% de grasa o más y mayor de edad, la app pone un déficit de 10%, nunca por debajo de su metabolismo en reposo.</p>
     <p style="font-size:12px;color:${C.g2};font-weight:600;margin-bottom:6px">Actividad diaria, sin contar el entreno</p>
     ${sel('pn-act',ACTIVIDADES,c.actividad,'— Sin definir (cuenta como ligera) —')}
     ${anti?`<p style="font-size:12px;color:${C.g2};font-weight:600;margin-bottom:6px">Método anticonceptivo</p>
@@ -273,7 +321,7 @@ function rPerfilNutri(c){
 }
 async function guardarPerfilNutri(id){
   const v=x=>{const e=document.getElementById(x);return e?(e.value.trim()||null):undefined;};
-  const cambios={objetivo:v('pn-obj'),actividad:v('pn-act')};
+  const cambios={actividad:v('pn-act')};
   if(document.getElementById('pn-met')){cambios.anticonceptivo_metodo=v('pn-met');cambios.anticonceptivo_nombre=v('pn-nom');}
   const r=await sb.from('profiles').update(cambios).eq('id',id).select('id,objetivo,actividad,anticonceptivo_metodo,anticonceptivo_nombre').maybeSingle();
   if(r.error||!r.data){alert('No se pudo guardar: '+((r.error&&r.error.message)||'sin permiso'));return;}
@@ -526,9 +574,10 @@ async function openClient(id){
     sb.from('meno_logs').select('*').eq('client_id',id).order('log_date',{ascending:false}).limit(10),
     sb.from('carga_log').select('*').eq('client_id',id).order('fecha',{ascending:false}).limit(20),
   ]);
-  set({loading:false,selClient:c,clientMeas:mr.data||[],clientCycle:cyc.data||[],clientSymptoms:sym.data||[],clientMeno:meno.data||[],clientCarga:cargaR.data||[],clientFotos:null,clientNutri:null});
+  set({loading:false,selClient:c,clientMeas:mr.data||[],clientCycle:cyc.data||[],clientSymptoms:sym.data||[],clientMeno:meno.data||[],clientCarga:cargaR.data||[],clientFotos:null,clientNutri:null,clientConsent:null});
   loadClientFotos(id);
   loadClientNutri(id);
+  loadClientConsent(id);
 }
 
 // Alimentación de la clienta: totales por día de los últimos 7 días (comidas + agua)

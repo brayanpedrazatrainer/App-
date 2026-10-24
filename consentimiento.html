@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0E0B0A">
+<title>Consentimiento · Gym Cíclico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@600;700;900&family=Fraunces:ital,opsz,wght@1,9..144,300&family=Karla:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* Página pública para que el acudiente de una clienta menor firme el consentimiento (enlace con token de un solo uso) */
+:root{--ink:#0E0B0A;--panel:#221818;--red:#C7372C;--gold:#B8963E;--gold-soft:#E0C97F;--cream:#F2E9DC;--muted:#A08D82;--line:rgba(184,150,62,.25)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Karla,system-ui,sans-serif;color:var(--cream);background:radial-gradient(120% 40% at 50% -6%,rgba(113,13,11,.45) 0%,rgba(14,11,10,0) 62%),var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+main{max-width:560px;margin:0 auto;padding:22px 16px 60px}
+.marca{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.18em;color:var(--gold);text-align:center}
+.sub{font-family:Cinzel,serif;font-size:9.5px;letter-spacing:.3em;color:var(--muted);text-align:center;margin-bottom:18px}
+.panel{background:linear-gradient(178deg,#291E1D 0%,#221818 38%,rgba(22,15,14,.94) 100%);border:1px solid var(--line);border-radius:14px;padding:18px 16px;margin-bottom:14px}
+h1{font-family:Cinzel,serif;font-weight:900;font-size:20px;line-height:1.25;margin-bottom:6px}
+.voz{font-family:Fraunces,serif;font-style:italic;font-size:15px;color:#D8C9B6;line-height:1.5}
+.texto p{font-size:13.5px;line-height:1.6;margin-bottom:10px;color:var(--cream)}
+.texto b{color:var(--gold-soft)}
+label{display:block;font-family:Cinzel,serif;font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin:12px 0 6px}
+input,select{width:100%;padding:11px 13px;border:2px solid rgba(184,150,62,.28);border-radius:10px;font-size:15px;background:rgba(0,0,0,.28);color:var(--cream);font-family:inherit;outline:none}
+input:focus,select:focus{border-color:var(--gold)}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13.5px;line-height:1.5}
+.check input{width:22px;height:22px;flex-shrink:0;margin-top:1px;accent-color:#C7372C}
+canvas{width:100%;height:170px;background:#F2E9DC;border-radius:10px;touch-action:none;display:block}
+.btn{width:100%;padding:15px;border:none;border-radius:12px;color:#fff;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.14em;margin-top:16px;
+  background:linear-gradient(178deg,#D8503F 0%,#C7372C 42%,#8E1A12 100%);box-shadow:0 4px 0 -1px #5C0806,0 8px 16px -6px rgba(0,0,0,.75)}
+.btn:disabled{opacity:.5}
+.ghost{background:none;border:1px solid rgba(184,150,62,.35);color:var(--gold-soft);padding:9px 14px;border-radius:9px;font-family:Cinzel,serif;font-size:10px;letter-spacing:.14em;margin-top:8px}
+.error{background:rgba(199,55,44,.16);color:#E8796E;border-radius:9px;padding:10px 12px;font-size:13px;margin-top:12px}
+.nota{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px}
+@media print{body{background:#fff;color:#000}.panel{border:1px solid #999;background:#fff}.texto p,.texto b{color:#000}.noprint{display:none}h1,.marca{color:#000}}
+</style>
+</head>
+<body>
+<main id="app"><p class="nota" style="text-align:center;margin-top:40px">Cargando…</p></main>
+<script>
+const sb=supabase.createClient('https://brqojlcdtzmqfurztbnm.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4',{auth:{persistSession:false,autoRefreshToken:false}});
+// Versión del texto: cambiarla cada vez que el texto cambie (queda guardada con cada firma).
+// BORRADOR: el texto debe revisarlo un abogado antes de usarlo con acudientes.
+const VERSION='v1-2026-10-24';
+let token=new URLSearchParams(location.search).get('t');
+let MENOR='',trazos=0;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// Texto del consentimiento con los datos del formulario. Lo que se guarda es exactamente este texto.
+function textoConsentimiento(d){
+  const v=x=>x&&x.trim()?x.trim():'__________';
+  return [
+    'CONSENTIMIENTO INFORMADO Y AUTORIZACIÓN DEL ACUDIENTE · Gym Cíclico · Brayan Pedraza, entrenador · '+VERSION,
+    'Yo, '+v(d.nombre)+', identificado(a) con '+v(d.documento)+', en calidad de '+v(d.parentesco)+' y representante legal de '+MENOR+', declaro lo siguiente:',
+    '1. Entrenamiento. Autorizo que '+MENOR+' participe en el programa de entrenamiento de Gym Cíclico, dirigido por Brayan Pedraza, de forma presencial o a través de la app. Entiendo que el ejercicio físico tiene riesgos propios, como dolor muscular, mareo o lesiones, y que el programa se adapta a su edad y a su condición.',
+    '2. Salud. Declaro que, hasta donde sé, '+MENOR+' no tiene ninguna condición médica que le impida hacer ejercicio, o que ya la informé al entrenador. Me comprometo a avisar cualquier cambio en su salud. Entiendo que se recomienda una valoración médica antes de empezar y que este programa no reemplaza la atención médica.',
+    '3. Datos personales. Conforme a la Ley 1581 de 2012 y sus decretos reglamentarios, autorizo a Brayan Pedraza (Gym Cíclico) a recoger y tratar los datos personales de '+MENOR+', incluidos datos sensibles de salud (medidas y composición corporal, ciclo menstrual, síntomas, alimentación y suplementos), con la única finalidad de planear, ajustar y hacer seguimiento a su entrenamiento. Entiendo que autorizar el tratamiento de datos sensibles es voluntario. Los datos no se venden ni se comparten con terceros, salvo el proveedor tecnológico que aloja la app. Puedo conocer, actualizar, rectificar o pedir que se borren sus datos, y revocar esta autorización, escribiendo a brayanpedrazatrainer@gmail.com.',
+    '4. Fotos de progreso. '+(d.fotos?'SÍ autorizo que '+MENOR+' tome y guarde en la app fotos de su progreso. Son privadas: solo las ven ella y su entrenador, y nunca se publicarán ni se usarán en publicidad. Puedo pedir que se borren en cualquier momento.':'NO autorizo fotos de progreso.'),
+    '5. Firma electrónica. Acepto firmar este documento de forma electrónica, conforme a la Ley 527 de 1999, con la misma validez de una firma manuscrita. Quedan registradas la fecha y la hora de la firma.',
+    'Contacto del acudiente: '+(d.email&&d.email.trim()?d.email.trim():'sin correo')+' · '+(d.telefono&&d.telefono.trim()?d.telefono.trim():'sin teléfono')
+  ];
+}
+function datos(){return{nombre:$('c-nom').value,documento:$('c-doc').value,parentesco:$('c-par').value,email:$('c-mail').value,telefono:$('c-tel').value,fotos:$('c-fotos').checked};}
+function pintarTexto(){$('texto').innerHTML=textoConsentimiento(datos()).map((p,i)=>i===0?'<p><b>'+esc(p)+'</b></p>':'<p>'+esc(p)+'</p>').join('');}
+
+function cabecera(){return '<p class="marca">REINO</p><p class="sub">GYM CÍCLICO</p>';}
+function mensaje(t,d){$('app').innerHTML=cabecera()+'<div class="panel"><h1>'+t+'</h1><p class="voz">'+d+'</p></div>';}
+
+async function iniciar(){
+  if(!token){mensaje('Enlace incompleto','Pídele a Brayan que te envíe de nuevo el enlace del consentimiento.');return;}
+  const r=await sb.rpc('datos_consentimiento',{p_token:token});
+  const e=r.data&&r.data.estado;
+  if(r.error||!e||e==='no_existe'){mensaje('Enlace no válido','Pídele a Brayan que te envíe de nuevo el enlace del consentimiento.');return;}
+  if(e==='usado'){mensaje('Este consentimiento ya está firmado','Gracias. Si necesitas cambiar algo, escríbele a Brayan.');return;}
+  if(e==='vencido'){mensaje('Este enlace venció','Pídele a Brayan uno nuevo.');return;}
+  MENOR=r.data.menor;
+  $('app').innerHTML=cabecera()
+    +'<div class="panel"><h1>Consentimiento del acudiente</h1><p class="voz">Para que '+esc(MENOR)+' entrene con nosotros, necesitamos tu autorización como su representante. Llena tus datos, lee el texto y firma con el dedo.</p></div>'
+    +'<div class="panel noprint"><label for="c-nom">Tu nombre completo</label><input id="c-nom" autocomplete="name">'
+    +'<label for="c-doc">Tu documento (tipo y número)</label><input id="c-doc" placeholder="CC 1.234.567">'
+    +'<label for="c-par">Parentesco con '+esc(MENOR)+'</label><select id="c-par"><option value="">— Escoge —</option><option>madre</option><option>padre</option><option>acudiente legal</option></select>'
+    +'<label for="c-mail">Tu correo</label><input id="c-mail" type="email" autocomplete="email">'
+    +'<label for="c-tel">Tu teléfono</label><input id="c-tel" type="tel" autocomplete="tel">'
+    +'<div class="check"><input type="checkbox" id="c-fotos"><span>Autorizo fotos de progreso <b style="color:var(--gold-soft)">privadas</b> (opcional; nunca se publican).</span></div></div>'
+    +'<div class="panel texto" id="texto"></div>'
+    +'<div class="panel noprint"><label>Tu firma</label><canvas id="firma"></canvas><button class="ghost" id="borrar">Borrar firma</button>'
+    +'<div class="check"><input type="checkbox" id="c-acepto"><span>Leí el consentimiento completo y lo acepto.</span></div>'
+    +'<div id="err"></div><button class="btn" id="firmar">FIRMAR</button>'
+    +'<p class="nota">Al firmar quedan guardados este texto, tus datos, tu firma, la fecha y la hora.</p></div>';
+  ['c-nom','c-doc','c-par','c-mail','c-tel','c-fotos'].forEach(id=>$(id).addEventListener('input',pintarTexto));
+  $('c-par').addEventListener('change',pintarTexto);
+  pintarTexto();prepararFirma();
+  $('firmar').addEventListener('click',firmar);
+}
+
+// Firma con el dedo (o el mouse) sobre un lienzo
+function prepararFirma(){
+  const c=$('firma'),ctx=c.getContext('2d'),dpr=Math.max(1,Math.min(2,window.devicePixelRatio||1));
+  const ajustar=()=>{const r=c.getBoundingClientRect();c.width=r.width*dpr;c.height=r.height*dpr;ctx.scale(dpr,dpr);ctx.lineWidth=2.4;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#0E0B0A';trazos=0;};
+  ajustar();
+  // Si el lienzo se midió antes de verse (ancho 0) o cambió de tamaño sin trazos, se vuelve a medir
+  const remedir=()=>{const r=c.getBoundingClientRect();if(!trazos&&r.width&&Math.round(r.width*dpr)!==c.width){ctx.setTransform(1,0,0,1,0,0);ajustar();}};
+  window.addEventListener('resize',remedir);
+  let dibujando=false;
+  const pos=e=>{const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];};
+  c.addEventListener('pointerdown',e=>{remedir();dibujando=true;c.setPointerCapture(e.pointerId);const[x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y);});
+  c.addEventListener('pointermove',e=>{if(!dibujando)return;const[x,y]=pos(e);ctx.lineTo(x,y);ctx.stroke();trazos++;});
+  c.addEventListener('pointerup',()=>{dibujando=false;});
+  c.addEventListener('pointercancel',()=>{dibujando=false;});
+  $('borrar').addEventListener('click',()=>{ctx.setTransform(1,0,0,1,0,0);ajustar();});
+}
+
+async function firmar(){
+  const d=datos(),err=$('err');err.innerHTML='';
+  const falta=!d.nombre.trim()||d.nombre.trim().length<3?'tu nombre completo':!d.documento.trim()||d.documento.trim().length<4?'tu documento':!d.parentesco?'el parentesco':(!d.email.trim()&&!d.telefono.trim())?'tu correo o tu teléfono':trazos<8?'tu firma':!$('c-acepto').checked?'aceptar el consentimiento':'';
+  if(falta){err.innerHTML='<p class="error">Falta '+falta+'.</p>';return;}
+  const firmaPng=$('firma').toDataURL('image/png');
+  if(firmaPng.length<500){err.innerHTML='<p class="error">No se alcanzó a guardar tu firma. Toca "Borrar firma" y firma de nuevo.</p>';return;}
+  const b=$('firmar');b.disabled=true;b.textContent='FIRMANDO…';
+  const parrafos=textoConsentimiento(d);
+  const r=await sb.rpc('firmar_consentimiento',{p_token:token,p_nombre:d.nombre,p_documento:d.documento,p_parentesco:d.parentesco,p_email:d.email,p_telefono:d.telefono,
+    p_fotos:d.fotos,p_version:VERSION,p_texto:parrafos.join('\n\n'),p_firma:firmaPng,p_ua:navigator.userAgent});
+  if(r.error){b.disabled=false;b.textContent='FIRMAR';err.innerHTML='<p class="error">No se pudo firmar: '+esc(r.error.message)+'</p>';return;}
+  const img=firmaPng,fecha=new Date().toLocaleString('es-CO',{dateStyle:'long',timeStyle:'short'});
+  $('app').innerHTML=cabecera()+'<div class="panel"><h1>✅ Consentimiento firmado</h1><p class="voz">Gracias. Ya quedó guardado. Puedes guardar una copia.</p>'
+    +'<button class="btn noprint" onclick="window.print()">GUARDAR O IMPRIMIR COPIA</button></div>'
+    +'<div class="panel texto">'+parrafos.map((p,i)=>i===0?'<p><b>'+esc(p)+'</b></p>':'<p>'+esc(p)+'</p>').join('')
+    +'<p style="margin-top:12px"><b>Firma</b></p><img src="'+img+'" alt="Firma" style="width:100%;max-width:360px;background:#F2E9DC;border-radius:8px"><p class="nota">Firmado electrónicamente el '+esc(fecha)+'.</p></div>';
+}
+iniciar();
+</script>
+</body>
+</html>
