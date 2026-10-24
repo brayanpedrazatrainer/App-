@@ -250,6 +250,7 @@ function sumarMes(id){
 
 // ── PERFIL DE ALIMENTACIÓN ──────────────────────────────────
 // objetivo (proteína y calorías) y método anticonceptivo + marca (tip de alimentación según el método)
+const ACTIVIDADES=[{k:'sedentaria',l:'Sedentaria (oficina, poco movimiento)'},{k:'ligera',l:'Ligera (se mueve algo en el día)'},{k:'activa',l:'Activa (trabajo de pie o caminando)'}];
 const OBJETIVOS=[{k:'tonificar',l:'Tonificar'},{k:'bajar_grasa',l:'Bajar grasa'},{k:'recomposicion',l:'Recomposición corporal'}];
 const METODOS=[{k:'pildora_combinada',l:'Píldora combinada'},{k:'pildora_progestina',l:'Píldora solo de progestina'},{k:'anillo',l:'Anillo vaginal'},{k:'parche',l:'Parche'},
   {k:'inyeccion_mensual',l:'Inyección mensual'},{k:'inyeccion_trimestral',l:'Inyección trimestral'},{k:'implante',l:'Implante subdérmico'},
@@ -260,7 +261,9 @@ function rPerfilNutri(c){
   return`<div style="background:${C.wh};border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
     <p style="font-weight:800;font-size:15px;margin-bottom:10px">🍽 Perfil de alimentación</p>
     <p style="font-size:12px;color:${C.g2};font-weight:600;margin-bottom:6px">Objetivo</p>
-    ${sel('pn-obj',OBJETIVOS,c.objetivo,'— Sin definir —')}
+    ${sel('pn-obj',OBJETIVOS,c.objetivo,'— Sin definir (cuenta como recomposición) —')}
+    <p style="font-size:12px;color:${C.g2};font-weight:600;margin-bottom:6px">Actividad diaria, sin contar el entreno</p>
+    ${sel('pn-act',ACTIVIDADES,c.actividad,'— Sin definir (cuenta como ligera) —')}
     ${anti?`<p style="font-size:12px;color:${C.g2};font-weight:600;margin-bottom:6px">Método anticonceptivo</p>
     ${sel('pn-met',METODOS,c.anticonceptivo_metodo,'— Sin definir —')}
     <p style="font-size:12px;color:${C.g2};font-weight:600;margin-bottom:6px">Nombre (marca)</p>
@@ -270,9 +273,9 @@ function rPerfilNutri(c){
 }
 async function guardarPerfilNutri(id){
   const v=x=>{const e=document.getElementById(x);return e?(e.value.trim()||null):undefined;};
-  const cambios={objetivo:v('pn-obj')};
+  const cambios={objetivo:v('pn-obj'),actividad:v('pn-act')};
   if(document.getElementById('pn-met')){cambios.anticonceptivo_metodo=v('pn-met');cambios.anticonceptivo_nombre=v('pn-nom');}
-  const r=await sb.from('profiles').update(cambios).eq('id',id).select('id,objetivo,anticonceptivo_metodo,anticonceptivo_nombre').maybeSingle();
+  const r=await sb.from('profiles').update(cambios).eq('id',id).select('id,objetivo,actividad,anticonceptivo_metodo,anticonceptivo_nombre').maybeSingle();
   if(r.error||!r.data){alert('No se pudo guardar: '+((r.error&&r.error.message)||'sin permiso'));return;}
   const clients=S.clients.map(function(x){return x.id===id?Object.assign({},x,r.data):x;});
   set({clients:clients,selClient:Object.assign({},S.selClient,r.data)});
@@ -535,7 +538,9 @@ async function loadClientNutri(id){
     const desde=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     const c=await sb.from('comidas').select('fecha,momento,nombre,gramos,kcal,prot,carb,grasa').eq('client_id',id).gte('fecha',desde).order('fecha',{ascending:false});
     const a=await sb.from('agua').select('fecha,vasos').eq('client_id',id).gte('fecha',desde);
-    if(S.selClient&&S.selClient.id===id)set({clientNutri:{comidas:c.data||[],agua:a.data||[]}});
+    const su=await sb.from('suplementos').select('id,nombre,dosis').eq('client_id',id).eq('activo',true);
+    const sl=await sb.from('suplementos_log').select('suplemento_id,fecha').eq('client_id',id).gte('fecha',desde);
+    if(S.selClient&&S.selClient.id===id)set({clientNutri:{comidas:c.data||[],agua:a.data||[],sups:su.data||[],supLog:sl.data||[]}});
   }catch(e){console.error(e);}
 }
 function rClientNutri(){
@@ -546,6 +551,10 @@ function rClientNutri(){
   N.agua.forEach(function(x){const t=dias[x.fecha]=dias[x.fecha]||{kcal:0,prot:0,carb:0,grasa:0,n:0,vasos:0};t.vasos=x.vasos;});
   const fechas=Object.keys(dias).sort().reverse();
   let h=`<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:14px 0 8px">🍽 Alimentación · últimos 7 días</p>`;
+  if((N.sups||[]).length){
+    h+=`<div style="background:${C.wh};border-radius:12px;padding:10px 13px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.07)"><p style="font-weight:700;font-size:13px;margin-bottom:4px">💊 Suplementos</p>`
+      +N.sups.map(function(s){const n=(N.supLog||[]).filter(function(l){return l.suplemento_id===s.id;}).length;return `<p style="font-size:12.5px;padding:3px 0">${esc(s.nombre)}${s.dosis?' · '+esc(s.dosis):''} <span style="color:${C.g2}">— tomado ${n} de 7 días</span></p>`;}).join('')+'</div>';
+  }
   if(!fechas.length)return h+`<div style="background:${C.wh};border-radius:12px;padding:13px;font-size:13px;color:${C.g2};box-shadow:0 1px 4px rgba(0,0,0,.07)">Todavía no ha registrado comidas ni agua.</div>`;
   h+=`<div style="background:${C.wh};border-radius:12px;padding:6px 13px;box-shadow:0 1px 4px rgba(0,0,0,.07)">`;
   fechas.forEach(function(f,i){

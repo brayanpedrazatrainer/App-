@@ -76,7 +76,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.22a';
+const APP_VERSION='2026.10.24a';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -1243,6 +1243,8 @@ function rPlatoHoy(){
     +'<p style="font-size:12px;color:'+C.tl+';margin-top:4px">+ '+P.grasa+'</p></div></div>';
   h+='<p style="font-size:13px;color:'+C.tm+';line-height:1.55;margin-top:12px">'+P.como+'</p>';
   h+='<p style="font-size:12.5px;color:'+C.tl+';margin-top:6px"><b style="color:'+C.gs+'">Ejemplo:</b> '+P.ej+'</p>';
+  // Regla de Brayan (2026-10-24): el plato es el del almuerzo y la cena; desayuno y merienda varían, pero nunca sin proteína
+  h+='<p style="font-size:12.5px;color:'+C.td+';line-height:1.5;margin-top:10px;padding:9px 11px;border-radius:9px;background:rgba(242,233,220,.05)">🍽 Arma así tu <b>almuerzo y tu cena</b>. El desayuno y la merienda cambian de una mujer a otra: escoge lo que te siente, pero que <b>nunca falte la proteína</b>.</p>';
   if(F.ref)h+='<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(184,150,62,.25)"><p style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:'+C.gold+';margin-bottom:5px">Refuerzo · '+F.ref+'</p>'
     +'<p style="font-size:13px;color:'+C.td+';line-height:1.55">'+F.txt+'</p><p style="font-size:12.5px;color:#E8A598;line-height:1.5;margin-top:6px;font-style:italic">'+F.regla+'</p></div>';
   if(F.ancla)h+='<div style="margin-top:12px;padding:11px 12px;border-radius:10px;background:rgba(184,150,62,.10);border:1px solid rgba(184,150,62,.3)"><p style="font-weight:800;font-size:13px;color:'+C.gs+';margin-bottom:3px">🍌 Merienda ancla</p><p style="font-size:12.5px;color:'+C.td+';line-height:1.5">Proteína + grasa + carbohidrato juntos, planeada y no improvisada. Por ejemplo: banano con mantequilla de maní y dos cuadros de chocolate 70%.</p></div>';
@@ -1258,6 +1260,81 @@ function rBaseReino(){
     +it('2','Comida real como base','Verdura, fruta, tubérculo o grano, proteína y grasa buena. La fase ajusta las proporciones; la base se queda.')
     +it('3','Comer suficiente','Comer poco es lo primero que rompe el ciclo. Un día sin comer "según tu fase" está bien; lo que cuenta es comer completo.')
     +'<p style="font-size:11.5px;color:'+C.g2+';line-height:1.5;margin-top:4px;font-style:italic">Este sistema te enseña a armar tus platos. No te diagnostica ni te trata. Si tienes una condición diagnosticada, esto se suma a lo que te dijo tu profesional de salud, no lo reemplaza.</p>','margin-top:16px');
+}
+// Límite de calorías del día (punto 3 aprobado por Brayan 2026-10-24):
+// metabolismo en reposo de la báscula (RM) × actividad diaria sin entreno (sedentaria 1.2, ligera 1.3 por defecto, activa 1.45)
+// + entreno SOLO si marcó la sesión de hoy como completada (principal 250, suave/integradora 180, recuperación 80)
+// + objetivo (recomposición = igual al gasto, por defecto; bajar grasa −15% sin bajar del RM; tonificar +10% solo si entrenó)
+// + 150 kcal en menguante A y B. Sin RM: fórmula Mifflin-St Jeor con peso, altura y edad. Menores de 18: sin límite.
+function datoMed(k){const m=(S.meas||[]).find(function(x){return x[k]!==null&&x[k]!==undefined&&x[k]!=='';});return m?parseFloat(m[k]):null;}
+function esMenor(){const e=datoMed('edad');return e!==null&&e<18;}
+function entrenoHoy(){
+  const t=S.todaySchedule;if(!t||!t.session_id)return 0;
+  let tipo='';(S.PROG||[]).forEach(function(wk){wk.forEach(function(s){if(s.id===t.session_id)tipo=s.type||'';});});
+  return /recuper/i.test(tipo)?80:/suave|integradora/i.test(tipo)?180:/principal/i.test(tipo)?250:0;
+}
+function limiteKcal(){
+  if(esMenor())return null;
+  const p=S.perfilExt||{};
+  let rm=datoMed('rm_kcal');
+  if(!rm){const pe=datoMed('peso'),al=datoMed('altura'),ed=datoMed('edad');if(!(pe&&al&&ed))return null;rm=10*pe+6.25*al-5*ed-161;}
+  const fact={sedentaria:1.2,ligera:1.3,activa:1.45}[p.actividad]||1.3;
+  const ent=entrenoHoy(),hecha=!!(S.todaySchedule&&S.todaySchedule.status==='completed');
+  const obj=p.objetivo||'recomposicion';
+  const c=cicloHoy(),lutea=c&&c.ruta==='lunar'&&(c.fase==='menguante_a'||c.fase==='menguante_b')?150:0;
+  const calc=function(conEntreno){
+    const g=rm*fact+(conEntreno?ent:0);
+    const l=obj==='bajar_grasa'?Math.max(rm,g*0.85):obj==='tonificar'&&conEntreno&&ent?g*1.10:g;
+    return Math.round(l+lutea);
+  };
+  const lim=calc(hecha);
+  return{lim:lim,pendiente:!hecha&&ent?calc(true)-lim:0};
+}
+// Suplementos: los registra ella (nombre + dosis) y marca cada día si los tomó. Solo registro, sin recomendaciones.
+const SUP_COMUNES=['Omega 3','Creatina','Proteína en polvo','Multivitamínico','Vitamina D','Magnesio','Hierro','Calcio','Colágeno'];
+function rSuplementos(){
+  const N=S.nutri,sups=N.sups||[],F=S.supForm;
+  let c='<p style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:'+C.gold+';margin-bottom:8px">💊 Mis suplementos</p>';
+  if(!sups.length&&!F)c+='<p style="font-size:12.5px;color:'+C.tl+';margin-bottom:8px">Si tomas alguno (omega 3, creatina, proteína…), agrégalo y marca cada día cuando lo tomes.</p>';
+  sups.forEach(function(s){
+    const t=!!N.tomados[s.id];
+    c+='<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(184,150,62,.12)">'
+      +'<button data-id="'+s.id+'" onclick="marcarSuplemento(this)" aria-label="Tomado" style="width:30px;height:30px;border-radius:8px;flex-shrink:0;border:2px solid '+(t?C.pr:C.g3)+';background:'+(t?C.pr:'none')+';color:#fff;font-size:15px">'+(t?'✓':'')+'</button>'
+      +'<div style="flex:1"><p style="font-weight:700;font-size:13.5px;color:'+C.td+'">'+esc(s.nombre)+'</p>'+(s.dosis?'<p style="font-size:11.5px;color:'+C.tl+'">'+esc(s.dosis)+'</p>':'')+'</div>'
+      +'<button data-id="'+s.id+'" onclick="quitarSuplemento(this)" aria-label="Quitar" style="background:none;border:none;color:'+C.g2+';font-size:15px;padding:4px">✕</button></div>';
+  });
+  if(F){
+    c+='<div style="margin-top:10px"><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">'+SUP_COMUNES.concat(['Otro']).map(function(n){const s=F.nombre===n;return '<button data-n="'+n+'" onclick="S.supForm.nombre=this.dataset.n;render()" style="padding:7px 11px;border-radius:20px;font-size:12px;border:2px solid '+(s?C.pr:C.g3)+';background:'+(s?'rgba(199,55,44,.16)':'none')+';color:'+(s?C.pr:C.tm)+'">'+n+'</button>';}).join('')+'</div>'
+      +(F.nombre==='Otro'?'<input id="sup-otro" maxlength="60" placeholder="¿Cuál?" style="width:100%;padding:10px 12px;border:2px solid '+C.g3+';border-radius:10px;font-size:14px;margin-bottom:8px"/>':'')
+      +'<input id="sup-dosis" maxlength="60" placeholder="Dosis (opcional): 1 cápsula, 5 g…" style="width:100%;padding:10px 12px;border:2px solid '+C.g3+';border-radius:10px;font-size:14px;margin-bottom:8px"/>'
+      +(F.nombre==='Proteína en polvo'?'<p style="font-size:11.5px;color:'+C.gs+';margin-bottom:8px">Para que la proteína sume a tus totales, regístrala también en tus comidas.</p>':'')
+      +'<div style="display:flex;gap:8px"><button onclick="guardarSuplemento()" class="btn-reino" style="flex:1;padding:11px;'+BTN_ROJO+';color:#fff;border:none;border-radius:10px;font-family:Cinzel,serif;font-weight:700;font-size:12px;letter-spacing:.1em">GUARDAR</button>'
+      +'<button class="g-ghost" style="flex:1" onclick="S.supForm=null;render()">Cancelar</button></div></div>';
+  } else c+='<button onclick="S.supForm={nombre:\'\'};render()" style="width:100%;margin-top:10px;padding:9px;border-radius:10px;border:1px dashed rgba(184,150,62,.35);background:none;color:'+C.gs+';font-family:Cinzel,serif;font-size:10.5px;letter-spacing:.12em;font-weight:600">+ AGREGAR SUPLEMENTO</button>';
+  return card(c,'margin-top:12px');
+}
+async function guardarSuplemento(){
+  const F=S.supForm;if(!F||!F.nombre){alert('Escoge el suplemento.');return;}
+  const nombre=F.nombre==='Otro'?((document.getElementById('sup-otro')||{}).value||'').trim():F.nombre;
+  if(!nombre){alert('Escribe el nombre del suplemento.');return;}
+  const dosis=((document.getElementById('sup-dosis')||{}).value||'').trim()||null;
+  const r=await sb.from('suplementos').insert({client_id:S.user.id,nombre:nombre,dosis:dosis}).select('id,nombre,dosis').single();
+  if(r.error){console.error(r.error);alert('No se pudo guardar. Intenta de nuevo.');return;}
+  S.nutri.sups=(S.nutri.sups||[]).concat([r.data]);S.supForm=null;render();
+}
+async function marcarSuplemento(btn){
+  const id=+btn.dataset.id,N=S.nutri,ya=!!N.tomados[id];
+  N.tomados[id]=!ya;render();
+  const r=ya?await sb.from('suplementos_log').delete().eq('suplemento_id',id).eq('fecha',N.fecha).eq('client_id',S.user.id)
+           :await sb.from('suplementos_log').upsert({client_id:S.user.id,suplemento_id:id,fecha:N.fecha},{onConflict:'suplemento_id,fecha'});
+  if(r.error){console.error(r.error);N.tomados[id]=ya;render();}
+}
+async function quitarSuplemento(btn){
+  const id=+btn.dataset.id;
+  if(!confirm('¿Quitar este suplemento de tu lista? Lo que ya marcaste queda guardado.'))return;
+  const r=await sb.from('suplementos').update({activo:false}).eq('id',id).eq('client_id',S.user.id);
+  if(r.error){alert('No se pudo quitar. Intenta de nuevo.');return;}
+  S.nutri.sups=S.nutri.sups.filter(function(s){return s.id!==id;});render();
 }
 // Agua: peso en kg ÷ 7 = vasos de 205 ml (regla de Brayan)
 function metaAgua(){
@@ -1279,8 +1356,11 @@ async function cargarNutri(fecha){
     }
     const c=await sb.from('comidas').select('*').eq('client_id',S.user.id).eq('fecha',fecha).order('created_at');
     const w=await sb.from('agua').select('vasos').eq('client_id',S.user.id).eq('fecha',fecha).maybeSingle();
+    const su=await sb.from('suplementos').select('id,nombre,dosis').eq('client_id',S.user.id).eq('activo',true).order('created_at');
+    const sl=await sb.from('suplementos_log').select('suplemento_id').eq('client_id',S.user.id).eq('fecha',fecha);
     if(S.nutri&&S.nutri.fecha!==fecha)return;
-    set({nutri:{fecha:fecha,comidas:c.data||[],vasos:(w.data&&w.data.vasos)||0,cargando:false}});
+    const tomados={};((sl&&sl.data)||[]).forEach(function(r){tomados[r.suplemento_id]=true;});
+    set({nutri:{fecha:fecha,comidas:c.data||[],vasos:(w.data&&w.data.vasos)||0,sups:(su&&su.data)||[],tomados:tomados,cargando:false}});
   }catch(e){console.error(e);set({nutri:{fecha:fecha,comidas:[],vasos:0,cargando:false,error:true}});}
 }
 function nutriDia(d){
@@ -1306,7 +1386,18 @@ function rNutri(){
   const tile=function(lbl,val,u,grande){return '<div style="flex:1;min-width:'+(grande?'100%':'28%')+';text-align:center;padding:'+(grande?'4px 0 10px':'10px 4px')+';'+(grande?'':'border-radius:9px;background:rgba(242,233,220,.05);border:1px solid rgba(242,233,220,.08)')+'">'
     +'<p style="font-family:Cinzel,serif;font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:'+C.tl+';margin-bottom:4px">'+lbl+'</p>'
     +'<p style="font-family:\'Bebas Neue\',sans-serif;font-size:'+(grande?46:26)+'px;line-height:1;color:'+(grande?C.gs:C.td)+'">'+val+'<span style="font-family:Karla,sans-serif;font-size:'+(grande?14:11)+'px;color:'+C.tl+';margin-left:3px">'+u+'</span></p></div>';};
-  h+=card('<div style="display:flex;flex-wrap:wrap;gap:8px">'+tile('Calorías',Math.round(T.kcal),'kcal',true)+tile('Proteína',Math.round(T.prot),'g')+tile('Carbos',Math.round(T.carb),'g')+tile('Grasa',Math.round(T.grasa),'g')+'</div>'
+  // Límite del día (solo hoy y solo mayores de edad): barra y aviso cuando se pasa
+  const L=esHoy?limiteKcal():null;
+  let lim='';
+  if(L){
+    const pct=Math.min(100,Math.round(T.kcal/L.lim*100)),pasa=Math.round(T.kcal-L.lim);
+    lim='<p style="font-size:13px;color:'+C.tm+';text-align:center;margin-top:-4px">de <b style="color:'+C.td+'">'+L.lim.toLocaleString('es-CO')+' kcal</b>, tu límite de hoy</p>'
+      +'<div style="height:7px;border-radius:4px;background:rgba(242,233,220,.08);overflow:hidden;margin:8px 0 4px"><div style="height:100%;width:'+pct+'%;background:'+(pasa>0?'#C7372C':'linear-gradient(90deg,#8A6A22,#E0C97F)')+'"></div></div>'
+      +(pasa>0?'<p style="font-size:12.5px;color:#E8796E;text-align:center;margin-top:6px">Vas '+pasa+' kcal por encima de tu límite de hoy.</p>'
+        :'<p style="font-size:12px;color:'+C.tl+';text-align:center;margin-top:6px">Te quedan '+Math.max(0,-pasa).toLocaleString('es-CO')+' kcal.</p>')
+      +(L.pendiente?'<p style="font-size:12px;color:'+C.gs+';text-align:center;margin-top:4px">Si entrenas hoy y marcas tu sesión como completada, tu límite sube '+L.pendiente+' kcal.</p>':'');
+  }
+  h+=card('<div style="display:flex;flex-wrap:wrap;gap:8px">'+tile('Calorías',Math.round(T.kcal),'kcal',true)+'<div style="width:100%">'+lim+'</div>'+tile('Proteína',Math.round(T.prot),'g')+tile('Carbos',Math.round(T.carb),'g')+tile('Grasa',Math.round(T.grasa),'g')+'</div>'
     +'<p style="font-size:11px;color:'+C.g2+';text-align:center;margin-top:10px">Valores aproximados: cambian según la receta y la marca.</p>');
   // Agua
   const vasos=N.vasos||0,meta=metaAgua();
@@ -1315,6 +1406,7 @@ function rNutri(){
     +'<p style="font-weight:800;font-size:17px;color:'+C.td+'">'+vasos+(meta?' de '+meta:'')+(vasos===1&&!meta?' vaso':' vasos')+(meta&&vasos>=meta?' ✓':'')+'</p>'+barra+'</div>'
     +'<button onclick="sumarAgua(-1)" '+(vasos?'':'disabled')+' style="width:42px;height:42px;border-radius:10px;border:1px solid rgba(184,150,62,.3);background:none;color:'+C.gs+';font-size:20px">−</button>'
     +'<button onclick="sumarAgua(1)" class="btn-reino" style="width:42px;height:42px;border-radius:10px;border:none;'+BTN_ROJO+';color:#fff;font-size:20px">+</button></div>','margin-top:12px');
+  h+=rSuplementos();
   if(esHoy)h+=rAntojos();
   // Comidas por momento
   MOMENTOS.forEach(function(m){
@@ -1698,7 +1790,7 @@ async function loadClientData(){
   const completions={};(results[6].data||[]).forEach(function(r){completions[r.exercise_id+'_'+r.set_number]=true});
   const[todR,profExtR,checkinR]=await Promise.all([
     sb.from('scheduled_sessions').select('*').eq('client_id',userId).eq('scheduled_date',today()).maybeSingle(),
-    sb.from('profiles').select('plan,ruta,sub_perfil,nivel,duracion_ciclo,ancla,escenario_default,dias_presenciales,grupo_id,estado,pagado_hasta,objetivo,anticonceptivo_metodo,anticonceptivo_nombre').eq('id',userId).single(),
+    sb.from('profiles').select('plan,ruta,sub_perfil,nivel,duracion_ciclo,ancla,escenario_default,dias_presenciales,grupo_id,estado,pagado_hasta,objetivo,anticonceptivo_metodo,anticonceptivo_nombre,actividad').eq('id',userId).single(),
     sb.from('checkins').select('*').eq('client_id',userId).eq('fecha',today()).maybeSingle(),
   ]);
   const todaySchedule=todR.data||null;
@@ -1987,7 +2079,7 @@ async function saveMed(){
   else set({view:'main'});
 }
 
-async function doLogout(){await sb.auth.signOut();set({view:'login',user:null,profile:null,PROG:[],completions:{},nutri:null,cform:null})}
+async function doLogout(){await sb.auth.signOut();set({view:'login',user:null,profile:null,PROG:[],completions:{},nutri:null,cform:null,supForm:null})}
 
 
 
