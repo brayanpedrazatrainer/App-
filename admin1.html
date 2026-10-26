@@ -48,14 +48,14 @@ function render(){
       </div>
     </div>
     <div style="display:flex;background:${C.bk};border-top:1px solid #2a2523">
-      ${[{k:'clients',l:'👥 Clientas'},{k:'programs',l:'💪 Programas'},{k:'motor',l:'🔬 Motor'},{k:'grupos',l:'🎯 Grupos'},{k:'add',l:'➕ Nueva clienta'}].map(t=>`
+      ${[{k:'clients',l:'👥 Clientas'},{k:'programs',l:'💪 Programas'},{k:'motor',l:'🔬 Motor'},{k:'clases',l:'🎥 Clases'},{k:'grupos',l:'🎯 Grupos'},{k:'add',l:'➕ Nueva clienta'}].map(t=>`
         <button onclick="set({tab:'${t.k}',selClient:null,selProgram:null,selSession:null,pForm:{show:false,name:'',desc:''},sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'},eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:''}})"
           style="flex:1;padding:10px 0;font-weight:700;font-size:11px;border:none;background:none;color:${S.tab===t.k?C.pr:C.g2};border-bottom:3px solid ${S.tab===t.k?C.pr:'transparent'}">
           ${t.l}
         </button>`).join('')}
     </div>
     <div style="padding:14px;max-width:640px;margin:0 auto;padding-bottom:40px">
-      ${S.view==='schedule'?rSchedule():S.tab==='clients'?rClients():S.tab==='programs'?rPrograms():S.tab==='motor'?rMotor():S.tab==='grupos'?rGrupos():rAddClient()}
+      ${S.view==='schedule'?rSchedule():S.tab==='clients'?rClients():S.tab==='programs'?rPrograms():S.tab==='motor'?rMotor():S.tab==='clases'?rClasesAdmin():S.tab==='grupos'?rGrupos():rAddClient()}
     </div>`;
 }
 
@@ -247,6 +247,78 @@ function sumarMes(id){
   if(d.getDate()!==dia)d.setDate(0); // 31 ene + 1 mes = 28/29 feb, no 3 mar
   const nueva=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   actualizarAcceso(id,{pagado_hasta:nueva,estado:'activa'});
+}
+
+// ── CLASES EN VIVO (inscripciones de Compañía/Corona) ───────
+// Horario semanal (clases_horario) e inscripciones (clases_inscripciones). Las clientas se inscriben desde la app
+// (máx. 3 por semana); aquí Brayan ve quiénes asistirán y maneja horario y link de cada clase.
+const DIAS_CL=[{k:'lun',l:'Lunes'},{k:'mar',l:'Martes'},{k:'mie',l:'Miércoles'},{k:'jue',l:'Jueves'},{k:'vie',l:'Viernes'},{k:'sab',l:'Sábado'},{k:'dom',l:'Domingo'}];
+function horaBonitaA(h){const p=String(h||'').split(':'),H=+p[0];return (H%12||12)+':'+(p[1]||'00')+(H<12?' a. m.':' p. m.');}
+function fechaMas(f,d){const x=new Date(f+'T12:00:00');x.setDate(x.getDate()+d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
+async function loadClasesAdmin(){
+  try{
+    const h=await sb.from('clases_horario').select('*').order('hora');
+    const i=await sb.from('clases_inscripciones').select('id,client_id,horario_id,fecha').gte('fecha',hoyLocal()).order('fecha');
+    set({clasesAdmin:{horario:h.data||[],ins:i.data||[]}});
+  }catch(e){console.error(e);}
+}
+function rClasesAdmin(){
+  const K=S.clasesAdmin;
+  if(!K)return`<p style="color:${C.g2};font-size:13px">Cargando…</p>`;
+  const nombre=id=>{const c=S.clients.find(x=>x.id===id);return c?c.name:'—';};
+  const orden=['lun','mar','mie','jue','vie','sab','dom'];
+  const ab=['dom','lun','mar','mie','jue','vie','sab'];
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2}">Próximas clases · 14 días</p>
+    <button onclick="loadClasesAdmin()" style="background:#f3f4f6;border:none;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700">↻ Actualizar</button></div>`;
+  const activos=K.horario.filter(x=>x.activo);
+  let hay=false;
+  for(let d=0;d<14;d++){
+    const f=fechaMas(hoyLocal(),d),dia=ab[new Date(f+'T12:00:00').getDay()];
+    activos.filter(x=>x.dia===dia).forEach(x=>{
+      hay=true;
+      const ins=K.ins.filter(i=>i.fecha===f&&i.horario_id===x.id);
+      const dd=new Date(f+'T12:00:00');
+      h+=`<div style="background:${C.wh};border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid ${ins.length?C.pr:'#e5e7eb'}">
+        <div style="display:flex;justify-content:space-between;align-items:center"><p style="font-weight:800;font-size:14px">${dd.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'})} · ${horaBonitaA(x.hora)}</p>
+        <span style="font-size:12px;font-weight:800;color:${ins.length?C.pr:C.g2}">${ins.length} inscrita${ins.length!==1?'s':''}${x.cupo?' / '+x.cupo:''}</span></div>
+        <p style="font-size:12.5px;color:${ins.length?'#191211':C.g2};margin-top:4px">${ins.length?ins.map(i=>esc(nombre(i.client_id))).join(' · '):'Nadie inscrita aún'}</p></div>`;
+    });
+  }
+  if(!hay)h+=`<p style="font-size:13px;color:${C.g2};margin-bottom:12px">No hay clases activas en los próximos 14 días.</p>`;
+  h+=`<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:18px 0 8px">Tu horario semanal</p>
+    <div style="background:${C.wh};border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+    <p style="font-size:12px;color:${C.g2};margin-bottom:10px;line-height:1.5">Pega el link de Meet de cada clase (puede ser uno fijo para todas). Las clientas lo ven el día de la clase. Máximo 3 clases por semana por clienta.</p>`;
+  K.horario.slice().sort((a,b)=>orden.indexOf(a.dia)-orden.indexOf(b.dia)||String(a.hora).localeCompare(String(b.hora))).forEach(x=>{
+    const dl=(DIAS_CL.find(d=>d.k===x.dia)||{}).l||x.dia;
+    h+=`<div style="padding:10px 0;border-bottom:1px solid #eee;${x.activo?'':'opacity:.5'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><p style="font-weight:800;font-size:14px">${dl} · ${horaBonitaA(x.hora)}</p>
+      <button onclick="activarHorario(${x.id},${!x.activo})" style="background:none;border:1px solid ${C.g3};padding:4px 10px;border-radius:8px;font-size:11.5px;font-weight:700">${x.activo?'Pausar':'Activar'}</button></div>
+      <div style="display:flex;gap:6px"><input id="hl-${x.id}" type="url" placeholder="https://meet.google.com/…" value="${esc(x.link||'')}" style="flex:1;padding:8px 10px;border:2px solid ${C.g3};border-radius:9px;font-size:13px"/>
+      <button onclick="guardarLinkHorario(${x.id})" style="padding:8px 12px;background:${C.bk};color:#fff;border:none;border-radius:9px;font-weight:700;font-size:12px">Guardar</button></div></div>`;
+  });
+  h+=`<p style="font-weight:700;font-size:13px;margin:12px 0 6px">Agregar una clase</p>
+    <div style="display:flex;gap:6px"><select id="nh-dia" style="flex:1;padding:9px;border:2px solid ${C.g3};border-radius:9px;font-size:13px">${DIAS_CL.map(d=>`<option value="${d.k}">${d.l}</option>`).join('')}</select>
+    <input id="nh-hora" type="time" value="06:00" style="width:110px;padding:8px;border:2px solid ${C.g3};border-radius:9px;font-size:13px"/>
+    <button onclick="agregarHorario()" style="padding:9px 12px;background:${C.pr};color:#fff;border:none;border-radius:9px;font-weight:700;font-size:12px">Agregar</button></div></div>`;
+  return h;
+}
+async function guardarLinkHorario(id){
+  const v=(document.getElementById('hl-'+id)||{}).value||'';
+  const r=await sb.from('clases_horario').update({link:v.trim()||null}).eq('id',id);
+  if(r.error){alert('No se pudo guardar: '+r.error.message);return;}
+  await loadClasesAdmin();alert('✅ Link guardado');
+}
+async function activarHorario(id,activo){
+  const r=await sb.from('clases_horario').update({activo:activo}).eq('id',id);
+  if(r.error){alert('No se pudo cambiar: '+r.error.message);return;}
+  loadClasesAdmin();
+}
+async function agregarHorario(){
+  const dia=document.getElementById('nh-dia').value,hora=document.getElementById('nh-hora').value;
+  if(!hora){alert('Escribe la hora.');return;}
+  const r=await sb.from('clases_horario').insert({dia:dia,hora:hora});
+  if(r.error){alert(/duplicate|unique/i.test(r.error.message)?'Esa clase ya existe.':'No se pudo agregar: '+r.error.message);return;}
+  loadClasesAdmin();
 }
 
 // ── MENOR DE EDAD · CONSENTIMIENTO DEL ACUDIENTE ────────────
@@ -562,6 +634,7 @@ async function loadData(){
   (cpR.data||[]).forEach(function(r){cpMap[r.client_id]={prog_id:r.program_id,prog_name:r.programs?r.programs.name:''};});
   const clientsWithProg=(clientsR.data||[]).map(function(c){return Object.assign({},c,cpMap[c.id]||{});});
   set({loading:false,clients:clientsWithProg,programs:progsR.data||[],grupos:gruposR.data||[]});
+  loadClasesAdmin();
 }
 
 async function openClient(id){

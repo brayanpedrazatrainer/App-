@@ -76,7 +76,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.24b';
+const APP_VERSION='2026.10.26a';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -317,34 +317,14 @@ function rHoy(){
   }
 
   // Sesión de hoy
-  // Grupo / clase en vivo
-  const grupo=S.grupoData;
-  const esClaseHoy=(function(){
-    if(!grupo||!grupo.dias)return false;
-    const DIAS_MAP=['dom','lun','mar','mie','jue','vie','sab'];
-    const hoyAbr=DIAS_MAP[now.getDay()];
-    return (grupo.dias||[]).some(function(d){return d.toLowerCase()===hoyAbr;});
-  })();
+  // Clase en vivo (Compañía/Corona): se inscriben desde la app (Brayan 2026-10-26). Si hoy tiene clase, la tarjeta
+  // para unirse va ARRIBA de la rutina (Brayan 2026-10-08: la rutina siempre se ve).
   const planOnline=perfilExt.plan==='compania'||perfilExt.plan==='corona';
-  // Días de clase en vivo (Compañía/Corona): tarjeta para unirse ARRIBA de la rutina (Brayan 2026-10-08: la rutina siempre se ve)
-  const mostrarZoom=planOnline&&grupo&&esClaseHoy;
   const todSessId=tod?tod.session_id:null;
   let todW=-1,todS=-1,todType='';
   if(todSessId)(S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===todSessId){todW=wi;todS=si;todType=sess.type;}});});
   const cleanType=limpiarNombre(todType)||'Sesión de hoy';
-
-  // Zoom card for live class days
-  if(mostrarZoom){
-    h+='<div style="'+PANEL+';border-color:rgba(199,55,44,.5);border-radius:14px;padding:18px;margin-bottom:12px;text-align:center">';
-    h+='<p style="font-weight:900;font-size:17px;color:#fff;margin-bottom:4px">🎯 Hoy hay clase en vivo</p>';
-    h+='<p style="font-size:13px;color:'+C.g2+';margin-bottom:14px">'+(grupo.hora?'A las '+esc(String(grupo.hora).slice(0,5))+' · ':'')+'Entrenas tu rutina de hoy con Brayan</p>';
-    if(grupo.zoom_url){
-      h+='<a href="'+esc(grupo.zoom_url)+'" target="_blank" style="display:block;padding:14px;background:'+C.pr+';color:#fff;border-radius:11px;font-weight:800;font-size:15px;text-decoration:none">🔗 Unirme a la clase</a>';
-    }else{
-      h+='<p style="font-size:13px;color:#fff;background:#2a2523;border-radius:10px;padding:11px">El link de la clase aparece aquí el día de la clase.</p>';
-    }
-    h+='</div>';
-  }
+  if(planOnline)h+=rClaseHoy();
   if(tod&&tod.status!=='rest'){
     h+='<div style="background:'+C.wh+';border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid '+C.pr+'">';
     h+='<p style="font-size:11px;color:'+C.g2+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>';
@@ -370,6 +350,9 @@ function rHoy(){
     h+=card('<div style="text-align:center;padding:16px 0"><p style="font-size:36px;margin-bottom:10px">📋</p><p style="font-weight:800;font-size:16px;color:'+C.td+';margin-bottom:4px">Sin sesión programada hoy</p><p style="font-size:13px;color:'+C.tl+';line-height:1.6">Tu entrenador está preparando tu plan.</p></div>');
   }
 
+  // Inscripción a clases en vivo (Compañía/Corona)
+  if(planOnline)h+=rClasesVivo();
+
   // Botón período
   const mostrarPeriodo=perfilExt.ruta==='lunar'||['irregular','perimenopausia'].includes(perfilExt.sub_perfil);
   if(mostrarPeriodo)h+='<button onclick="if(confirm(\'¿Confirmas que te llegó el período hoy?\'))marcarPeriodo()" style="width:100%;padding:12px;background:'+C.wh+';color:'+C.pr+';border:2px solid '+C.pr+';border-radius:11px;font-weight:700;font-size:13px;margin-bottom:14px">🌙 Me llegó el período</button>';
@@ -384,9 +367,9 @@ function rHoy(){
       let fw=-1,fs=-1,st='';
       (S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===u.session_id){fw=wi;fs=si;st=sess.type;}});});
       const ct=limpiarNombre(st);
-      const isCB=u.session_mode==='Con Brayan';
+      const enVivo=misClasesEn(u.scheduled_date).length>0,isCB=enVivo||u.session_mode==='Con Brayan';
       const mc=isCB?C.pr:C.bk;
-      const ml=isCB?'Con Brayan':'Sesión Reina';
+      const ml=enVivo?'Clase en vivo':isCB?'Con Brayan':'Sesión Reina';
       upHtml+='<div onclick="goToSess('+fw+','+fs+')" style="background:'+C.wh+';border-radius:11px;padding:11px 14px;box-shadow:0 1px 3px rgba(25,18,17,.07);display:flex;justify-content:space-between;align-items:center;cursor:'+(fw>=0?'pointer':'default')+'">';
       upHtml+='<div><p style="font-weight:700;font-size:13px;color:'+C.td+'">'+label+'</p>'+(ct?'<p style="font-size:11px;color:'+C.g2+';margin-top:2px">'+ct+'</p>':'')+'</div>';
       upHtml+='<span style="font-size:11px;font-weight:700;background:'+mc+';color:#fff;border-radius:20px;padding:3px 10px">'+ml+'</span>';
@@ -397,6 +380,74 @@ function rHoy(){
   }
 
   return h;
+}
+
+// ── CLASES EN VIVO CON INSCRIPCIÓN (Compañía/Corona) ─────────
+// Horario semanal de Brayan (clases_horario) + inscripciones de ella. Máx. 3 por semana (lunes a domingo),
+// esta semana y la siguiente; las reglas se validan en Supabase (inscribir_clase / cancelar_clase).
+const DIAS_ABR=['dom','lun','mar','mie','jue','vie','sab'];
+function horaBonita(h){const p=String(h||'').split(':'),H=+p[0],M=p[1]||'00';return (H%12||12)+':'+M+(H<12?' a. m.':' p. m.');}
+function lunesDe(f){const d=new Date(f+'T12:00:00');const dow=(d.getDay()+6)%7;d.setDate(d.getDate()-dow);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function claseHora(fecha,hora){return new Date(fecha+'T'+String(hora).slice(0,5)+':00');}
+function misClasesEn(fecha){const K=S.clases;if(!K)return [];return K.mias.filter(function(i){return i.fecha===fecha;});}
+function horarioDe(id){return ((S.clases&&S.clases.horario)||[]).find(function(x){return x.id===id;});}
+function rClaseHoy(){
+  const ahora=new Date();
+  const hoy=misClasesEn(today()).map(function(i){return{i:i,h:horarioDe(i.horario_id)};}).filter(function(x){return x.h&&claseHora(today(),x.h.hora).getTime()+90*60000>ahora.getTime();});
+  if(!hoy.length)return '';
+  const x=hoy[0],link=x.h.link||(S.grupoData&&S.grupoData.zoom_url);
+  let h='<div style="'+PANEL+';border-color:rgba(199,55,44,.5);border-radius:14px;padding:18px;margin-bottom:12px;text-align:center">';
+  h+='<p style="font-weight:900;font-size:17px;color:#fff;margin-bottom:4px">🎯 Hoy tienes clase en vivo</p>';
+  h+='<p style="font-size:13px;color:'+C.g2+';margin-bottom:14px">A las '+horaBonita(x.h.hora)+' · Entrenas tu rutina de hoy con Brayan</p>';
+  h+=link?'<a href="'+esc(link)+'" target="_blank" style="display:block;padding:14px;'+BTN_ROJO+';color:#fff;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.12em;text-decoration:none">🔗 UNIRME A LA CLASE</a>'
+    :'<p style="font-size:13px;color:#fff;background:#2a2523;border-radius:10px;padding:11px">El link de la clase aparece aquí antes de que empiece.</p>';
+  return h+'</div>';
+}
+function rClasesVivo(){
+  const K=S.clases;if(!K||!K.horario.length)return '';
+  const ahora=new Date(),lun=lunesDe(today());
+  let c='<p style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:'+C.gold+';margin-bottom:4px">🎥 Clases en vivo con Brayan</p>'
+    +'<p style="font-size:12.5px;color:'+C.tm+';margin-bottom:6px">Inscríbete hasta a 3 clases por semana.</p>';
+  [0,7].forEach(function(off){
+    // La próxima semana va plegada para no alargar Hoy (salvo que ya tenga clases ahí)
+    if(off&&!S.verProxSemana&&!K.mias.some(function(i){return lunesDe(i.fecha)===sumarDias(lun,7);})){
+      c+='<button onclick="S.verProxSemana=true;render()" style="width:100%;margin-top:10px;padding:9px;border-radius:10px;border:1px dashed rgba(184,150,62,.35);background:none;color:'+C.gs+';font-family:Cinzel,serif;font-size:10px;letter-spacing:.12em;font-weight:600">VER LA PRÓXIMA SEMANA</button>';
+      return;
+    }
+    const ini=sumarDias(lun,off),dias=[];
+    for(let d=0;d<7;d++){const f=sumarDias(ini,d);const ab=DIAS_ABR[new Date(f+'T12:00:00').getDay()];
+      K.horario.filter(function(x){return x.dia===ab;}).forEach(function(x){if(claseHora(f,x.hora)>ahora)dias.push({f:f,h:x});});}
+    const mias=K.mias.filter(function(i){return lunesDe(i.fecha)===ini;}).length;
+    c+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin:12px 0 4px"><p style="font-weight:800;font-size:13px;color:'+C.td+'">'+(off?'Próxima semana':'Esta semana')+'</p><p style="font-size:12px;color:'+(mias>=3?C.gs:C.tl)+'">'+mias+' de 3</p></div>';
+    if(!dias.length){c+='<p style="font-size:12px;color:'+C.tl+'">No quedan clases esta semana.</p>';return;}
+    dias.forEach(function(x){
+      const dd=new Date(x.f+'T12:00:00'),ins=K.mias.find(function(i){return i.fecha===x.f&&i.horario_id===x.h.id;});
+      const lbl=WEEK_ES[dd.getDay()]+' '+dd.getDate()+' '+MONTH_ES[dd.getMonth()]+' · '+horaBonita(x.h.hora);
+      let b;
+      if(ins)b='<span style="font-size:12px;font-weight:800;color:#4ADE80;margin-right:8px">✓ Inscrita</span><button data-id="'+ins.id+'" onclick="cancelarClase(this)" style="background:none;border:none;color:'+C.g2+';font-size:12px;text-decoration:underline;padding:0">Cancelar</button>';
+      else if(mias>=3)b='<span style="font-size:11.5px;color:'+C.g2+'">Semana completa</span>';
+      else b='<button data-h="'+x.h.id+'" data-f="'+x.f+'" onclick="inscribirClase(this)" style="padding:7px 12px;border-radius:9px;border:none;'+BTN_ROJO+';color:#fff;font-family:Cinzel,serif;font-size:10px;font-weight:700;letter-spacing:.1em">INSCRIBIRME</button>';
+      c+='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(184,150,62,.12)"><span style="font-size:13px;color:'+(ins?C.gs:C.td)+';font-weight:'+(ins?700:400)+'">'+lbl+'</span><span style="white-space:nowrap">'+b+'</span></div>';
+    });
+  });
+  return card(c,'margin-bottom:12px');
+}
+async function recargarClases(){
+  const mr=await sb.from('clases_inscripciones').select('id,horario_id,fecha').eq('client_id',S.user.id).gte('fecha',today()).order('fecha');
+  if(S.clases)S.clases.mias=mr.data||[];
+  render();
+}
+async function inscribirClase(btn){
+  btn.disabled=true;
+  const r=await sb.rpc('inscribir_clase',{p_horario:+btn.dataset.h,p_fecha:btn.dataset.f});
+  if(r.error){alert(r.error.message);btn.disabled=false;return;}
+  await recargarClases();
+}
+async function cancelarClase(btn){
+  if(!confirm('¿Cancelar tu inscripción a esta clase?'))return;
+  const r=await sb.rpc('cancelar_clase',{p_id:+btn.dataset.id});
+  if(r.error){alert(r.error.message);return;}
+  await recargarClases();
 }
 
 function goToTodaySess(){
@@ -505,13 +556,13 @@ function rRutinas(){
       const isToday2=s.scheduled_date===today();
       const isCompleted2=s.status==='completed';
       const isRest2=s.status==='rest';
-      const isPresencial2=s.session_mode==='Con Brayan';
+      const enVivo2=misClasesEn(s.scheduled_date).length>0,isPresencial2=enVivo2||s.session_mode==='Con Brayan';
       const sessFromProg=foundW>=0&&foundS>=0?S.PROG[foundW][foundS]:null;
       const sessType=sessFromProg?sessFromProg.type:'';
       const cleanType=limpiarNombre(sessType)||'Recuperación Activa';
       const dateLabel=WEEK_ES[d.getDay()]+' '+d.getDate();
       const modeColor=isPresencial2?C.pr:C.bk;
-      const modeLabel=isPresencial2?'Con Brayan':'Sesión Reina';
+      const modeLabel=enVivo2?'Clase en vivo':isPresencial2?'Con Brayan':'Sesión Reina';
       const bgColor=isToday2?'rgba(199,55,44,.10)':isCompleted2?'rgba(34,197,94,.12)':C.wh;
       const borderStyle=isToday2?'border-left:4px solid '+C.pr:isCompleted2?'border-left:4px solid #22c55e':'border-left:4px solid transparent';
       const clickable=foundW>=0;
@@ -1921,6 +1972,13 @@ async function loadClientData(){
   // Menores de edad: fotos de progreso solo si el acudiente las autorizó en el consentimiento firmado
   let consFotos=false;
   try{const cf=await sb.from('consentimientos').select('autoriza_fotos').eq('client_id',userId).order('firmado_at',{ascending:false}).limit(1).maybeSingle();consFotos=!!(cf.data&&cf.data.autoriza_fotos);}catch(e){}
+  // Clases en vivo: horario de Brayan + sus inscripciones (solo Compañía/Corona)
+  let clases=null;
+  if(perfilExt.plan==='compania'||perfilExt.plan==='corona'){
+    try{const hr=await sb.from('clases_horario').select('id,dia,hora,link,cupo').eq('activo',true).order('hora');
+      const mr=await sb.from('clases_inscripciones').select('id,horario_id,fecha').eq('client_id',userId).gte('fecha',today()).order('fecha');
+      clases={horario:(hr&&hr.data)||[],mias:(mr&&mr.data)||[]};}catch(e){console.error(e);}
+  }
   // Load grupo if client has one (Compañía / Corona)
   let grupoData=null;
   if(perfilExt.grupo_id){
@@ -1945,7 +2003,7 @@ async function loadClientData(){
   const allSchedR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',today()).order('scheduled_date').limit(62);
   const allSchedule=allSchedR.data||[];
   const defaultWeek=currentProgWeek(lastBleeding,cycleLen);
-  set({loading:false,view:perfilExt.estado==='pausada'?'pausa':PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:perfilExt.duracion_ciclo||28,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,variantes:variantes,consFotos:consFotos});
+  set({loading:false,view:perfilExt.estado==='pausada'?'pausa':PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:perfilExt.duracion_ciclo||28,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,variantes:variantes,consFotos:consFotos,clases:clases});
 }
 
 function buildProg(prog){
