@@ -76,7 +76,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.26d';
+const APP_VERSION='2026.10.27a';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -331,6 +331,7 @@ function rHoy(){
     h+='<div style="background:'+C.wh+';border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid '+C.pr+'">';
     h+='<p style="font-size:11px;color:'+C.g2+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>';
     h+='<p style="font-weight:900;font-size:18px;color:'+C.td+';margin-bottom:12px">'+cleanType+'</p>';
+    if(S.motivoHoy&&MOTIVO_TXT[S.motivoHoy]&&!isCompleted)h+='<p style="font-size:12.5px;color:'+C.gs+';background:rgba(184,150,62,.10);border-radius:9px;padding:8px 10px;margin:-4px 0 12px;line-height:1.5">'+MOTIVO_TXT[S.motivoHoy]+'</p>';
     if(todW>=0){
       h+='<button onclick="guiaHoy()" class="btn-reino" style="width:100%;padding:14px;'+BTN_ROJO+';color:#fff;border:none;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.12em">▶ EMPEZAR MI ENTRENO</button>';
       h+='<button onclick="goToTodaySess()" style="width:100%;margin-top:9px;background:none;border:1px solid rgba(184,150,62,.3);color:'+C.gs+';padding:10px;border-radius:10px;font-family:Cinzel,serif;font-size:10.5px;letter-spacing:.14em;font-weight:600">VER LA SESIÓN COMPLETA</button>';
@@ -670,6 +671,9 @@ function exListSesion(sess){
     return Object.assign({},ex,{n:va.n+(nota?' ('+nota+')':''),v:va.v||ex.v,desc:va.d||null,carga_kg:null,sustituido:true});
   }
   let exList=(sess.ex||[]).map(resolverEx);
+  // Nivel en el trabajo principal (no en recuperación activa): cambia repeticiones, peso/banda y descanso
+  const nivel=(S.perfilExt&&S.perfilExt.nivel)||2;
+  if(nivel!==2&&!/recuper/i.test(sess.type||''))exList=exList.map(function(ex){return ex.bloque===3?Object.assign({},ex,{reps:repsNivel(ex.reps,nivel)}):ex;});
   if(sem==='rojo')exList=exList.filter(function(ex){return !ex.bloque||BLOQUES_ROJO.indexOf(ex.bloque)>=0;});
   return exList;
 }
@@ -682,16 +686,38 @@ function seriesEx(ex,sess){
   let n=ex.sets||1;
   // Calentamiento y cierre: siempre las series escritas (sin nivel ni semáforo)
   if([1,2,5].indexOf(ex.bloque)>=0)return Math.max(1,n);
-  // Cardio: mínimo las rondas escritas (5 para principiante); nivel 3 suma una
-  if(ex.bloque===4)return n+(nivel===3?1:0);
-  // Semáforo amarillo: -1 serie
-  if(sem==='amarillo')n=Math.max(1,n-1);
-  // Nivel (excepto sesiones de recuperación activa)
+  // Cardio por nivel (Brayan 2026-10-27): principiante 4 rondas, intermedia 5, avanzada 6 (sobre las 5 programadas)
+  if(ex.bloque===4)return Math.max(1,n+(nivel===3?1:nivel===1?-1:0));
+  const esHoy=sess&&S.todaySchedule&&sess.id===S.todaySchedule.session_id;
+  // Semáforo amarillo: −1 serie, salvo que el motor ya la haya pasado a una sesión Suave por ese amarillo
+  if(sem==='amarillo'&&!(esHoy&&S.motivoHoy==='amarillo'))n=Math.max(1,n-1);
+  // Nivel (excepto sesiones de recuperación activa): principiante 1 menos (sin bajar de 2), avanzada 1 más
   if(!isRecovSess){
-    if(nivel===1)n=Math.max(1,n-1);
+    if(nivel===1)n=Math.max(Math.min(n,2),n-1);
     if(nivel===3)n=n+1;
   }
+  // Vuelta tras 8+ días sin entrenar: una serie menos en esa primera sesión
+  if(esHoy&&S.motivoHoy==='vuelta_larga')n=n-1;
   return Math.max(1,n);
+}
+// Dosis por nivel en el trabajo principal (Brayan 2026-10-27): repeticiones del rango bajo/alto, peso o banda un
+// escalón más liviano/pesado y descanso ±15 s. Intermedia = lo programado.
+const ESCALA_PESO={'Muy ligera':['Muy ligera','Ligera'],'Ligera':['Muy ligera','Moderada'],'Moderada':['Ligera','Moderada'],
+  'muy ligera':['muy ligera','ligera'],'ligera':['muy ligera','moderada'],'moderada':['ligera','moderada'],
+  'Banda ligera':['Banda ligera','Banda media'],'Banda media':['Banda ligera','Banda fuerte'],'Banda fuerte':['Banda media','Banda fuerte']};
+function repsNivel(reps,nivel){
+  if(nivel!==1&&nivel!==3)return reps;
+  const i=nivel===1?0:1;
+  const partes=String(reps||'').split('·').map(function(p){return p.trim();});
+  // Repeticiones: "10–12 reps" → 10 (principiante) o 12 (avanzada)
+  partes[0]=partes[0].replace(/^(\d+)\s*[–-]\s*(\d+)/,function(_,a,b){return nivel===1?a:b;});
+  for(let k=1;k<partes.length;k++){
+    // Peso o banda un escalón (una sola sustitución por parte para no correr dos escalones)
+    partes[k]=partes[k].replace(/Banda (ligera|media|fuerte)|Muy ligera|muy ligera|Moderada|moderada|Ligera|ligera/,function(m){return ESCALA_PESO[m]?ESCALA_PESO[m][i]:m;});
+    // Descanso ±15 s (mínimo 30)
+    partes[k]=partes[k].replace(/(\d+)\s*s\s*desc/i,function(_,s){return Math.max(30,(+s)+(nivel===1?15:-15))+'s desc';});
+  }
+  return partes.join(' · ');
 }
 
 function rSess(){
@@ -1726,10 +1752,10 @@ function limpiarNombre(s){
 
 // Día y fase de hoy con la misma cuenta que generar_motor (SQL): desde el primer día del período (ancla),
 // proyectando ciclos de duracion_ciclo días. Lo usan la pestaña Ciclo, el esfuerzo y la carga.
-function cicloHoy(){
+function cicloHoy(fecha){
   const p=S.perfilExt;
   if(!p||!p.ancla)return null;
-  const dias=Math.floor((new Date(today()+'T00:00:00')-new Date(p.ancla+'T00:00:00'))/86400000);
+  const dias=Math.floor((new Date((fecha||today())+'T00:00:00')-new Date(p.ancla+'T00:00:00'))/86400000);
   if(dias<0)return null;
   if(p.ruta==='energia'){const d=(dias%28)+1;return{ruta:'energia',dia:d,fase:'semana_'+Math.ceil(d/7)};}
   const dur=p.duracion_ciclo||28,d=(dias%dur)+1;
@@ -1826,6 +1852,136 @@ async function registrarPeriodo(fecha,tab){
 }
 function marcarPeriodo(){return registrarPeriodo(today());}
 
+// ── MOTOR ADAPTATIVO (aprobado por Brayan 2026-10-27) ────────
+// El ciclo pone el techo y la intención; lo que ella registra escoge la sesión del día. Orden (la primera que aplica):
+//  1. Semáforo rojo → Recuperación Activa.
+//  2. 3 días seguidos entrenados → el 4.º, Recuperación.
+//  3. Amarillo → Suave.
+//  4. Luna nueva días 1–2 (o sangrado de irregular/peri días 1–2) SIN check-in → Suave (manda el ciclo).
+//  5. Le toca Recuperación y lleva 2+ días sin entrenar → sesión media. 2–7 días sin entrenar → media.
+//     8+ días → media y una serie menos (primera sesión de vuelta).
+//  6. Verde + energía "Encendida" → Principal (media en luna nueva, menguante B y semana 4; alta en las demás).
+//     Freno: máximo 3 subidas por semana. Peri/menopausia: nunca 3 Principales en alta seguidas (la 3.ª va en media).
+//  7. Si nada aplica → la sesión del calendario.
+// "Entrenado" = día con la sesión marcada como completada (ella en la app o Brayan con "Asistió").
+// Solo cambia la fila de HOY del motor, pendiente y sin series marcadas (ajustar_sesion_hoy). Lo manual no se toca.
+let MOTOR_DESDE='2026-10-26';   // el historial cuenta desde el arranque del motor adaptativo
+const NIVEL_TIPO={R:0,S:1,I:2,P:3},NIVEL_CARGA={tecnica:0,media:1,alta:2};
+function tipoSesion(st){st=st||'';return /recuper/i.test(st)?'R':/integradora/i.test(st)?'I':/suave/i.test(st)?'S':/principal/i.test(st)?'P':'';}
+function cargaDe(sessionId,fecha){
+  const c=cicloHoy(fecha),T=(S.motor&&S.motor.tarjetas)||[];
+  const t=T.find(function(x){return x.session_id===sessionId&&c&&x.fase===c.fase;})||T.find(function(x){return x.session_id===sessionId;});
+  return t?t.carga:'media';
+}
+function elegirSesion(tipo,carga,fase,evitar){
+  const T=((S.motor&&S.motor.tarjetas)||[]).filter(function(t){return t.tipo===tipo;});
+  const filtros=[function(t){return t.fase===fase&&t.carga===carga;},function(t){return t.carga===carga;},function(t){return t.fase===fase;},function(){return true;}];
+  for(let i=0;i<filtros.length;i++){
+    const ids=[];T.filter(filtros[i]).forEach(function(t){if(ids.indexOf(t.session_id)<0)ids.push(t.session_id);});
+    if(!ids.length)continue;
+    const L=ids.filter(function(id){return id!==evitar;});const lista=L.length?L:ids;
+    const n=Math.floor(new Date(today()+'T12:00:00').getTime()/86400000);
+    return lista[n%lista.length];
+  }
+  return null;
+}
+function decidirSesionHoy(){
+  const t=S.todaySchedule,M=S.motor;
+  if(!t||!t.session_id||!M)return null;
+  const base=t.session_original||t.session_id;
+  const baseSess=M.sesiones[base];if(!baseSess)return null;
+  const c=cicloHoy();if(!c)return null;
+  const p=S.perfilExt||{},peri=p.sub_perfil==='perimenopausia'||p.sub_perfil==='menopausia';
+  const baseTipo=tipoSesion(baseSess.session_type),baseCarga=cargaDe(base);
+  const hist={};(M.hist||[]).forEach(function(h){hist[h.fecha]=h;});
+  const hecho=function(f){return hist[f]&&hist[f].status==='completed';};
+  // días seguidos entrenados (sin contar recuperación) que terminan ayer
+  let seguidos=0;for(let d=1;d<=7;d++){const f=sumarDias(today(),-d),h=hist[f];if(h&&h.status==='completed'&&h.tipo!=='R')seguidos++;else break;}
+  // días completos sin entrenar antes de hoy (el arranque del motor cuenta como último día entrenado)
+  let ultimo=MOTOR_DESDE;(M.hist||[]).forEach(function(h){if(h.status==='completed'&&h.fecha<today()&&h.fecha>ultimo)ultimo=h.fecha;});
+  const sinEntrenar=Math.max(0,Math.round((new Date(today()+'T12:00:00')-new Date(ultimo+'T12:00:00'))/86400000)-1);
+  // subidas por "Encendida" esta semana (lunes a ayer)
+  const lun=lunesDe(today());
+  const subidas=(M.hist||[]).filter(function(h){return h.fecha>=lun&&h.fecha<today()&&h.ajuste==='encendida';}).length;
+  const ck=S.checkin,sem=ck&&ck.semaforo,enc=ck&&ck.energia===3&&sem==='verde';
+  const sangrado12=c.ruta==='energia'&&S.cycleHistory&&S.cycleHistory[0]&&(function(){const d=Math.round((new Date(today()+'T12:00:00')-new Date(S.cycleHistory[0].last_bleeding_date+'T12:00:00'))/86400000);return d>=0&&d<=1;})();
+  const lunaNueva12=(c.ruta==='lunar'&&c.fase==='luna_nueva'&&c.dia<=2)||sangrado12;
+  const faseBaja=['luna_nueva','menguante_b','semana_4'].indexOf(c.fase)>=0;
+  const ayer=sumarDias(today(),-1),evitar=hist[ayer]&&hist[ayer].session_id;
+  // Sesión de intensidad media para volver: Principal media si le tocaba Principal (creciente, ruta energía);
+  // si no, Integradora media (luna nueva, llena, menguantes). Nunca la misma de ayer si hay otra.
+  const media=function(){
+    const orden=baseTipo==='P'?['P','I']:['I','P'];
+    for(let k=0;k<orden.length;k++){const s=elegirSesion(orden[k],'media',c.fase,evitar);if(s&&s!==evitar)return s;}
+    return elegirSesion(orden[0],'media',c.fase,null)||elegirSesion(orden[1],'media',c.fase,null);
+  };
+  const r=function(sid,aj){return{session_id:sid||base,ajuste:sid&&sid!==base?aj:null,motivo:aj};};
+  if(sem==='rojo')return r(baseTipo==='R'?base:elegirSesion('R','tecnica',c.fase,null),'rojo');
+  if(seguidos>=3)return r(baseTipo==='R'?base:elegirSesion('R','tecnica',c.fase,null),'recuperacion_4');
+  if(sem==='amarillo')return r(NIVEL_TIPO[baseTipo]<=1?base:elegirSesion('S','media',c.fase,evitar),'amarillo');
+  if(!ck&&lunaNueva12)return r(NIVEL_TIPO[baseTipo]<=1?base:elegirSesion('S','tecnica',c.fase,evitar),'amarillo');
+  if(baseTipo==='R'&&sinEntrenar>=2)return r(media(),'sin_entreno_recup');
+  if(sinEntrenar>=8)return r(media(),'vuelta_larga');
+  if(sinEntrenar>=2)return r(media(),'vuelta_media');
+  if(enc){
+    let carga=faseBaja?'media':'alta';
+    // Peri/menopausia: si los 2 días entrenados anteriores fueron Principal en alta, la 3.ª va en media
+    if(peri&&carga==='alta'){
+      const f1=sumarDias(today(),-1),f2=sumarDias(today(),-2);
+      const alta=function(f){const h=hist[f];return h&&h.status==='completed'&&h.tipo==='P'&&cargaDe(h.session_id,f)==='alta';};
+      if(alta(f1)&&alta(f2))carga='media';
+    }
+    const sube=NIVEL_TIPO.P*3+NIVEL_CARGA[carga]>NIVEL_TIPO[baseTipo]*3+(NIVEL_CARGA[baseCarga]||0);
+    if(!sube)return r(base,null);
+    if(subidas>=3)return{session_id:base,ajuste:null,motivo:'freno'};
+    return r(elegirSesion('P',carga,c.fase,evitar),carga==='media'&&peri&&!faseBaja?'peri_freno':'encendida');
+  }
+  // Peri/menopausia también con la sesión del calendario: nunca 3 Principales en alta seguidas
+  if(peri&&baseTipo==='P'&&baseCarga==='alta'){
+    const alta=function(f){const h=hist[f];return h&&h.status==='completed'&&h.tipo==='P'&&cargaDe(h.session_id,f)==='alta';};
+    if(alta(sumarDias(today(),-1))&&alta(sumarDias(today(),-2)))return r(elegirSesion('P','media',c.fase,evitar),'peri_freno');
+  }
+  return r(base,null);
+}
+// Mensaje en "Tu sesión de hoy" (los cambios por el color del check-in no se explican: regla de Brayan)
+const MOTIVO_TXT={recuperacion_4:'Llevas 3 días seguidos entrenando: hoy toca recuperar para que tu cuerpo asimile lo que hiciste.',
+  vuelta_media:'Retomas en intensidad media para volver con buen pie.',
+  vuelta_larga:'Hace varios días que no entrenas: hoy vuelves en intensidad media y con un poco menos de volumen.',
+  sin_entreno_recup:'Llevas días sin entrenar: hoy entrenas en intensidad media.',
+  freno:'Esta semana ya tuviste tus días fuertes: hoy vas con la sesión de tu fase para mantener el equilibrio.',
+  peri_freno:'Vienes de dos sesiones fuertes: esta va en intensidad media para que llegues entera a la próxima.'};
+async function cargarSesionEnProg(id){
+  let ya=false;(S.PROG||[]).forEach(function(wk){wk.forEach(function(s){if(s.id===id)ya=true;});});
+  if(ya)return;
+  const sR=await sb.from('sessions').select('*').eq('id',id).maybeSingle();
+  const eR=await sb.from('exercises').select('*').eq('session_id',id).order('order_index');
+  if(!sR.data)return;
+  const s=sR.data;
+  const ses={id:s.id,week:s.week_number||1,day:'Día '+(s.day_number||1),type:s.session_type||'Sesión',
+    ex:(eR.data||[]).map(function(e){return {eid:e.id,n:e.name,m:e.muscle_group,sets:e.sets_count,reps:e.reps_range,v:e.video_url||'',bloque:e.bloque||null,patron:e.patron||null,carga_pct:e.carga_pct||null,carga_kg:e.carga_kg||null,tempo:e.tempo||null,cue:e.cue||null,familia:e.familia||null,equipo:e.equipo||null,impacto:e.impacto||null};})};
+  S.PROG=(S.PROG||[]).concat([[ses]]);
+}
+// Aplica la decisión: al abrir la app y cada vez que guarda o cambia el check-in
+async function aplicarMotor(){
+  try{
+    const t=S.todaySchedule;
+    if(!t||t.origen!=='motor'||(t.status&&t.status!=='pending')||!S.motor)return;
+    // Si ya marcó series de la sesión de hoy, no se cambia a mitad de entreno
+    const s=sesionDeHoy();
+    if(s&&s.ex.some(function(e){return Object.keys(S.completions).some(function(k){return k.indexOf(e.eid+'_')===0;});}))return;
+    const d=decidirSesionHoy();if(!d)return;
+    S.motivoHoy=d.motivo;
+    if(d.session_id!==t.session_id){
+      const res=await sb.rpc('ajustar_sesion_hoy',{p_session:d.session_id,p_ajuste:d.ajuste});
+      if(res.error){console.error('motor:',res.error.message);return;}
+      if(res.data!=='ok')return;
+      await cargarSesionEnProg(d.session_id);
+      S.todaySchedule=Object.assign({},t,{session_original:t.session_original||t.session_id,session_id:d.session_id,ajuste:d.ajuste});
+    }
+    render();
+  }catch(e){console.error(e);}
+}
+
 function calcularSemaforo(energia,animo,molestias,sueno){
   const puntos=energia+animo+sueno+(4-molestias); // rango 4..12
   if(puntos<=6)return 'rojo';
@@ -1843,6 +1999,7 @@ async function guardarCheckin(energia,animo,molestias,sueno,semaforoManual){
     },{onConflict:'client_id,fecha'})
     .select().single();
   set({checkin:data||{semaforo,energia,animo,molestias,sueno},checkinDraft:{}});
+  aplicarMotor();
 }
 
 async function borrarCheckin(){
@@ -1851,6 +2008,7 @@ async function borrarCheckin(){
     .eq('client_id',S.user.id)
     .eq('fecha',today());
   set({checkin:null,checkinDraft:{}});
+  aplicarMotor();
 }
 
 function seleccionarCheckin(campo,valor){
@@ -1987,6 +2145,21 @@ async function loadClientData(){
   // Menores de edad: fotos de progreso solo si el acudiente las autorizó en el consentimiento firmado
   let consFotos=false;
   try{const cf=await sb.from('consentimientos').select('autoriza_fotos').eq('client_id',userId).order('firmado_at',{ascending:false}).limit(1).maybeSingle();consFotos=!!(cf.data&&cf.data.autoriza_fotos);}catch(e){}
+  // Motor adaptativo: tarjetas de su ruta (fase, carga, tipo de sesión) + su historial de 35 días
+  let motor=null;
+  try{
+    const pl=await sb.from('plantillas').select('id').eq('ruta',perfilExt.ruta||'lunar').eq('activa',true);
+    const plIds=((pl&&pl.data)||[]).map(function(x){return x.id;});
+    const ta=plIds.length?await sb.from('plantilla_tarjetas').select('fase,orden,carga,session_id').in('plantilla_id',plIds):{data:[]};
+    const hi=await sb.from('scheduled_sessions').select('scheduled_date,status,session_id,ajuste').eq('client_id',userId).gte('scheduled_date',sumarDias(today(),-35)).lt('scheduled_date',today());
+    const ids=[];((ta&&ta.data)||[]).concat((hi&&hi.data)||[]).forEach(function(x){if(x.session_id&&ids.indexOf(x.session_id)<0)ids.push(x.session_id);});
+    [todaySchedule&&todaySchedule.session_original,todaySchedule&&todaySchedule.session_id].forEach(function(id){if(id&&ids.indexOf(id)<0)ids.push(id);});
+    const se=ids.length?await sb.from('sessions').select('id,session_type').in('id',ids):{data:[]};
+    const sesiones={};((se&&se.data)||[]).forEach(function(s){sesiones[s.id]=s;});
+    motor={sesiones:sesiones,
+      tarjetas:((ta&&ta.data)||[]).filter(function(t){return t.session_id&&sesiones[t.session_id];}).map(function(t){return{fase:t.fase,orden:t.orden,carga:t.carga||'media',session_id:t.session_id,tipo:tipoSesion(sesiones[t.session_id].session_type)};}),
+      hist:((hi&&hi.data)||[]).map(function(h){return{fecha:h.scheduled_date,status:h.status,session_id:h.session_id,ajuste:h.ajuste,tipo:h.session_id&&sesiones[h.session_id]?tipoSesion(sesiones[h.session_id].session_type):''};})};
+  }catch(e){console.error('motor:',e);}
   // Clases en vivo: horario de Brayan + sus inscripciones (solo Compañía/Corona)
   let clases=null;
   if(perfilExt.plan==='compania'||perfilExt.plan==='corona'||perfilExt.plan==='presencial'){
@@ -2018,7 +2191,8 @@ async function loadClientData(){
   const allSchedR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',today()).order('scheduled_date').limit(62);
   const allSchedule=allSchedR.data||[];
   const defaultWeek=currentProgWeek(lastBleeding,cycleLen);
-  set({loading:false,view:perfilExt.estado==='pausada'?'pausa':PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:perfilExt.duracion_ciclo||28,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,variantes:variantes,consFotos:consFotos,clases:clases});
+  set({loading:false,view:perfilExt.estado==='pausada'?'pausa':PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:perfilExt.duracion_ciclo||28,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,variantes:variantes,consFotos:consFotos,clases:clases,motor:motor,motivoHoy:null});
+  aplicarMotor();
 }
 
 function buildProg(prog){
