@@ -1,5 +1,5 @@
 -- Clases en vivo con inscripción (2026-10-26)
--- Brayan publica su disponibilidad semanal (clases_horario). Las clientas de plan Compañía/Corona se inscriben
+-- Brayan publica su disponibilidad semanal (clases_horario). Las clientas (Compañía, Corona y Presencial) se inscriben
 -- desde la app: máximo 3 clases por semana (lunes a domingo), solo esta semana y la siguiente, y nunca a una
 -- clase que ya empezó. Cancelar se puede hasta la hora de la clase. Brayan ve quiénes asistirán.
 -- Las clientas solo leen sus propias inscripciones; escriben únicamente por las funciones de abajo.
@@ -52,7 +52,8 @@ begin
   if v_uid is null then raise exception 'Inicia sesión para inscribirte'; end if;
   perform pg_advisory_xact_lock(hashtext(v_uid::text));
   select plan, estado into v_plan, v_estado from profiles where id = v_uid;
-  if coalesce(v_plan,'') not in ('compania','corona') then raise exception 'Tu plan no incluye clases en vivo'; end if;
+  -- Desde 2026-10-26 también presencial: clases en vivo para los días en que no pueden verse en persona
+  if coalesce(v_plan,'') not in ('presencial','compania','corona') then raise exception 'Tu plan no incluye clases en vivo'; end if;
   if coalesce(v_estado,'activa') <> 'activa' then raise exception 'Tu plan está en pausa'; end if;
   select * into h from clases_horario where id = p_horario and activo;
   if not found then raise exception 'Esa clase no está disponible'; end if;

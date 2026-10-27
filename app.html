@@ -76,7 +76,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.26a';
+const APP_VERSION='2026.10.26b';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -324,7 +324,9 @@ function rHoy(){
   let todW=-1,todS=-1,todType='';
   if(todSessId)(S.PROG||[]).forEach(function(wk,wi){wk.forEach(function(sess,si){if(sess.id===todSessId){todW=wi;todS=si;todType=sess.type;}});});
   const cleanType=limpiarNombre(todType)||'Sesión de hoy';
-  if(planOnline)h+=rClaseHoy();
+  // Clases en vivo: Compañía/Corona y también Presencial, para los días en que no pueden verse en persona (Brayan 2026-10-26)
+  const conClases=planOnline||perfilExt.plan==='presencial';
+  if(conClases)h+=rClaseHoy();
   if(tod&&tod.status!=='rest'){
     h+='<div style="background:'+C.wh+';border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid '+C.pr+'">';
     h+='<p style="font-size:11px;color:'+C.g2+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>';
@@ -351,7 +353,7 @@ function rHoy(){
   }
 
   // Inscripción a clases en vivo (Compañía/Corona)
-  if(planOnline)h+=rClasesVivo();
+  if(conClases)h+=rClasesVivo();
 
   // Botón período
   const mostrarPeriodo=perfilExt.ruta==='lunar'||['irregular','perimenopausia'].includes(perfilExt.sub_perfil);
@@ -407,7 +409,7 @@ function rClasesVivo(){
   const K=S.clases;if(!K||!K.horario.length)return '';
   const ahora=new Date(),lun=lunesDe(today());
   let c='<p style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:'+C.gold+';margin-bottom:4px">🎥 Clases en vivo con Brayan</p>'
-    +'<p style="font-size:12.5px;color:'+C.tm+';margin-bottom:6px">Inscríbete hasta a 3 clases por semana.</p>';
+    +'<p style="font-size:12.5px;color:'+C.tm+';margin-bottom:6px">'+((S.perfilExt||{}).plan==='presencial'?'¿No podemos vernos en persona? Inscríbete a una clase en vivo, hasta 3 por semana.':'Inscríbete hasta a 3 clases por semana.')+'</p>';
   [0,7].forEach(function(off){
     // La próxima semana va plegada para no alargar Hoy (salvo que ya tenga clases ahí)
     if(off&&!S.verProxSemana&&!K.mias.some(function(i){return lunesDe(i.fecha)===sumarDias(lun,7);})){
@@ -1974,7 +1976,7 @@ async function loadClientData(){
   try{const cf=await sb.from('consentimientos').select('autoriza_fotos').eq('client_id',userId).order('firmado_at',{ascending:false}).limit(1).maybeSingle();consFotos=!!(cf.data&&cf.data.autoriza_fotos);}catch(e){}
   // Clases en vivo: horario de Brayan + sus inscripciones (solo Compañía/Corona)
   let clases=null;
-  if(perfilExt.plan==='compania'||perfilExt.plan==='corona'){
+  if(perfilExt.plan==='compania'||perfilExt.plan==='corona'||perfilExt.plan==='presencial'){
     try{const hr=await sb.from('clases_horario').select('id,dia,hora,link,cupo').eq('activo',true).order('hora');
       const mr=await sb.from('clases_inscripciones').select('id,horario_id,fecha').eq('client_id',userId).gte('fecha',today()).order('fecha');
       clases={horario:(hr&&hr.data)||[],mias:(mr&&mr.data)||[]};}catch(e){console.error(e);}
