@@ -278,6 +278,12 @@ function rClasesAdmin(){
       hay=true;
       const ins=K.ins.filter(i=>i.fecha===f&&i.horario_id===x.id);
       const dd=new Date(f+'T12:00:00');
+      if(x.tipo==='en_vivo'){
+        h+=`<div style="background:#fdf8ec;border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid #B8963E">
+          <p style="font-weight:800;font-size:14px">📡 ${dd.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'})} · ${horaBonitaA(x.hora)} · En vivo semanal</p>
+          <p style="font-size:12.5px;color:${C.g2};margin-top:4px">Para todas, sin inscripción</p></div>`;
+        return;
+      }
       h+=`<div style="background:${C.wh};border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid ${ins.length?C.pr:'#e5e7eb'}">
         <div style="display:flex;justify-content:space-between;align-items:center"><p style="font-weight:800;font-size:14px">${dd.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'})} · ${horaBonitaA(x.hora)}</p>
         <span style="font-size:12px;font-weight:800;color:${ins.length?C.pr:C.g2}">${ins.length} inscrita${ins.length!==1?'s':''}${x.cupo?' / '+x.cupo:''}</span></div>
@@ -287,18 +293,19 @@ function rClasesAdmin(){
   if(!hay)h+=`<p style="font-size:13px;color:${C.g2};margin-bottom:12px">No hay clases activas en los próximos 14 días.</p>`;
   h+=`<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:18px 0 8px">Tu horario semanal</p>
     <div style="background:${C.wh};border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
-    <p style="font-size:12px;color:${C.g2};margin-bottom:10px;line-height:1.5">Pega el link de Meet de cada clase (puede ser uno fijo para todas). Las clientas lo ven el día de la clase. Máximo 3 clases por semana por clienta.</p>`;
+    <p style="font-size:12px;color:${C.g2};margin-bottom:10px;line-height:1.5">Pega el link de Meet de cada clase (puede ser uno fijo para todas). Las clientas lo ven el día de la clase. <b>Corrección</b>: con inscripción, máximo 2 por semana por clienta. <b>En vivo semanal</b>: para todas, sin inscripción.</p>`;
   K.horario.slice().sort((a,b)=>orden.indexOf(a.dia)-orden.indexOf(b.dia)||String(a.hora).localeCompare(String(b.hora))).forEach(x=>{
     const dl=(DIAS_CL.find(d=>d.k===x.dia)||{}).l||x.dia;
     h+=`<div style="padding:10px 0;border-bottom:1px solid #eee;${x.activo?'':'opacity:.5'}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><p style="font-weight:800;font-size:14px">${dl} · ${horaBonitaA(x.hora)}</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><p style="font-weight:800;font-size:14px">${dl} · ${horaBonitaA(x.hora)} <span style="font-size:11px;font-weight:700;border-radius:20px;padding:2px 8px;background:${x.tipo==='en_vivo'?'#fdf0c8':'#f3f4f6'};color:${x.tipo==='en_vivo'?'#8A6A22':C.g2}">${x.tipo==='en_vivo'?'📡 En vivo semanal':'Corrección'}</span></p>
       <button onclick="activarHorario(${x.id},${!x.activo})" style="background:none;border:1px solid ${C.g3};padding:4px 10px;border-radius:8px;font-size:11.5px;font-weight:700">${x.activo?'Pausar':'Activar'}</button></div>
       <div style="display:flex;gap:6px"><input id="hl-${x.id}" type="url" placeholder="https://meet.google.com/…" value="${esc(x.link||'')}" style="flex:1;padding:8px 10px;border:2px solid ${C.g3};border-radius:9px;font-size:13px"/>
       <button onclick="guardarLinkHorario(${x.id})" style="padding:8px 12px;background:${C.bk};color:#fff;border:none;border-radius:9px;font-weight:700;font-size:12px">Guardar</button></div></div>`;
   });
   h+=`<p style="font-weight:700;font-size:13px;margin:12px 0 6px">Agregar una clase</p>
     <div style="display:flex;gap:6px"><select id="nh-dia" style="flex:1;padding:9px;border:2px solid ${C.g3};border-radius:9px;font-size:13px">${DIAS_CL.map(d=>`<option value="${d.k}">${d.l}</option>`).join('')}</select>
-    <input id="nh-hora" type="time" value="06:00" style="width:110px;padding:8px;border:2px solid ${C.g3};border-radius:9px;font-size:13px"/>
+    <input id="nh-hora" type="time" value="06:00" style="width:110px;padding:8px;border:2px solid ${C.g3};border-radius:9px;font-size:13px"/></div>
+    <div style="display:flex;gap:6px;margin-top:6px"><select id="nh-tipo" style="flex:1;padding:9px;border:2px solid ${C.g3};border-radius:9px;font-size:13px"><option value="correccion">Corrección (con inscripción)</option><option value="en_vivo">📡 En vivo semanal (para todas)</option></select>
     <button onclick="agregarHorario()" style="padding:9px 12px;background:${C.pr};color:#fff;border:none;border-radius:9px;font-weight:700;font-size:12px">Agregar</button></div></div>`;
   return h;
 }
@@ -316,7 +323,8 @@ async function activarHorario(id,activo){
 async function agregarHorario(){
   const dia=document.getElementById('nh-dia').value,hora=document.getElementById('nh-hora').value;
   if(!hora){alert('Escribe la hora.');return;}
-  const r=await sb.from('clases_horario').insert({dia:dia,hora:hora});
+  const tipo=(document.getElementById('nh-tipo')||{}).value||'correccion';
+  const r=await sb.from('clases_horario').insert({dia:dia,hora:hora,tipo:tipo});
   if(r.error){alert(/duplicate|unique/i.test(r.error.message)?'Esa clase ya existe.':'No se pudo agregar: '+r.error.message);return;}
   loadClasesAdmin();
 }
