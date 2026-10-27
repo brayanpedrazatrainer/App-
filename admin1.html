@@ -1177,7 +1177,7 @@ async function doAddClient(){
     if(r.error)throw new Error(r.error.message);
     const uid=r.data&&r.data.user&&r.data.user.id;
     if(!uid)throw new Error('No se obtuvo el ID del usuario');
-    const up=await sb.from('profiles').upsert({id:uid,name:name,plan:plan,ruta:ruta,sub_perfil:sub,nivel:2,duracion_ciclo:28,ancla:ancla,escenario_default:'C',dias_presenciales:diasArr});
+    const up=await sb.from('profiles').upsert({id:uid,name:name,plan:plan,ruta:ruta,sub_perfil:sub,nivel:1,duracion_ciclo:28,ancla:ancla,escenario_default:'C',dias_presenciales:diasArr});
     if(up.error)throw new Error('La cuenta se creó, pero no se pudo guardar el perfil: '+up.error.message);
     await loadData();
     set({loading:false,pForm:{name:'',email:'',pass:'',ruta:'',plan:'presencial',error:'',ok:'✅ Clienta creada: '+name+'. Ya puede entrar con su correo y contraseña.'}});
