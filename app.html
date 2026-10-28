@@ -76,7 +76,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.27b';
+const APP_VERSION='2026.10.27c';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -416,7 +416,7 @@ function rClasesVivo(){
   const K=S.clases;if(!K||!K.horario.length)return '';
   const ahora=new Date(),lun=lunesDe(today());
   let c='<p style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:'+C.gold+';margin-bottom:4px">🎥 Clases con Brayan</p>'
-    +'<p style="font-size:12.5px;color:'+C.tm+';margin-bottom:6px">'+((S.perfilExt||{}).plan==='presencial'?'¿No podemos vernos en persona? Inscríbete a una clase donde te veo y te corrijo, hasta 2 por semana.':'Inscríbete hasta a 2 clases por semana donde te veo y te corrijo.')+(veEnVivo()?' El en vivo semanal de tu plan va aparte y no necesita inscripción.':'')+'</p>';
+    +'<p style="font-size:12.5px;color:'+C.tm+';margin-bottom:6px">'+((S.perfilExt||{}).plan==='presencial'?'¿No podemos vernos en persona? Inscríbete a una clase donde te veo y te corrijo, hasta 2 por semana.':'Inscríbete hasta a 2 clases por semana donde te veo y te corrijo.')+' Te inscribes hasta 10 horas antes de la clase.'+(veEnVivo()?' El en vivo semanal de tu plan va aparte y no necesita inscripción.':'')+'</p>';
   [0,7].forEach(function(off){
     // La próxima semana va plegada para no alargar Hoy (salvo que ya tenga clases ahí)
     if(off&&!S.verProxSemana&&!K.mias.some(function(i){return lunesDe(i.fecha)===sumarDias(lun,7);})){
@@ -441,6 +441,8 @@ function rClasesVivo(){
       const lbl=WEEK_ES[dd.getDay()]+' '+dd.getDate()+' '+MONTH_ES[dd.getMonth()]+' · '+horaBonita(x.h.hora);
       let b;
       if(ins)b='<span style="font-size:12px;font-weight:800;color:#4ADE80;margin-right:8px">✓ Inscrita</span><button data-id="'+ins.id+'" onclick="cancelarClase(this)" style="background:none;border:none;color:'+C.g2+';font-size:12px;text-decoration:underline;padding:0">Cancelar</button>';
+      // Las inscripciones cierran 10 horas antes (Brayan: a las 6 a. m. ya no alcanza a programarse si se inscriben de noche)
+      else if(claseHora(x.f,x.h.hora).getTime()-10*3600000<=Date.now())b='<span style="font-size:11.5px;color:'+C.g2+'">Inscripción cerrada</span>';
       else if(mias>=2)b='<span style="font-size:11.5px;color:'+C.g2+'">Semana completa</span>';
       else b='<button data-h="'+x.h.id+'" data-f="'+x.f+'" onclick="inscribirClase(this)" style="padding:7px 12px;border-radius:9px;border:none;'+BTN_ROJO+';color:#fff;font-family:Cinzel,serif;font-size:10px;font-weight:700;letter-spacing:.1em">INSCRIBIRME</button>';
       c+='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(184,150,62,.12)"><span style="font-size:13px;color:'+(ins?C.gs:C.td)+';font-weight:'+(ins?700:400)+'">'+lbl+'</span><span style="white-space:nowrap">'+b+'</span></div>';
