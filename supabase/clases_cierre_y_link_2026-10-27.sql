@@ -36,3 +36,16 @@ begin
   insert into clases_inscripciones (client_id, horario_id, fecha) values (v_uid, p_horario, p_fecha);
   return 'ok';
 end; $$;
+
+-- Cancelar también cierra 10 horas antes (Brayan 2026-10-27)
+create or replace function public.cancelar_clase(p_id bigint)
+returns text language plpgsql security definer set search_path to 'public' as $$
+declare v_ahora timestamp := now() at time zone 'America/Bogota'; n int;
+begin
+  delete from clases_inscripciones i using clases_horario h
+   where i.id = p_id and i.client_id = auth.uid() and h.id = i.horario_id
+     and (i.fecha + h.hora) - interval '10 hours' > v_ahora;
+  get diagnostics n = row_count;
+  if n = 0 then raise exception 'Ya no se puede cancelar: se cancela hasta 10 horas antes de la clase'; end if;
+  return 'ok';
+end; $$;

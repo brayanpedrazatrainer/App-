@@ -357,7 +357,7 @@ function rClasesAdmin(){
   if(!hay)h+=`<p style="font-size:13px;color:${C.g2};margin-bottom:12px">No hay clases activas en los próximos 14 días.</p>`;
   h+=`<p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2};margin:18px 0 8px">Tu horario semanal</p>
     <div style="background:${C.wh};border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
-    <p style="font-size:12px;color:${C.g2};margin-bottom:10px;line-height:1.5">Todas usan tu link fijo de Meet; si quieres otro para una clase, cámbialo aquí. Las clientas lo ven el día de la clase. <b>Corrección</b>: con inscripción, máximo 2 por semana por clienta; la inscripción cierra 10 horas antes (6 a. m. → 8 p. m. del día anterior). <b>En vivo semanal</b>: lo programas tú; viene en Premium y VIP, sin inscripción.</p>`;
+    <p style="font-size:12px;color:${C.g2};margin-bottom:10px;line-height:1.5">Todas usan tu link fijo de Meet; si quieres otro para una clase, cámbialo aquí. Las clientas lo ven el día de la clase. <b>Corrección</b>: con inscripción, máximo 2 por semana por clienta; inscribirse y cancelar cierran 10 horas antes (6 a. m. → 8 p. m. del día anterior). <b>En vivo semanal</b>: lo programas tú; viene en Premium y VIP, sin inscripción.</p>`;
   K.horario.slice().sort((a,b)=>orden.indexOf(a.dia)-orden.indexOf(b.dia)||String(a.hora).localeCompare(String(b.hora))).forEach(x=>{
     const dl=(DIAS_CL.find(d=>d.k===x.dia)||{}).l||x.dia;
     h+=`<div style="padding:10px 0;border-bottom:1px solid #eee;${x.activo?'':'opacity:.5'}">
