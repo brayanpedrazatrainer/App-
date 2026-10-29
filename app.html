@@ -76,7 +76,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.27d';
+const APP_VERSION='2026.10.29a';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -139,6 +139,8 @@ function render(){
   if(S.view==='no_prog'){app.innerHTML=rNoProg();return}
   if(S.view==='pausa'){app.innerHTML=rPausa();return}
   const tabs=[{k:'hoy',e:'📅',l:'Hoy'},{k:'ciclo',e:'🌙',l:'Ciclo'},{k:'rutinas',e:'💪',l:'Rutinas'},{k:'medidas',e:'📏',l:'Medidas'},{k:'nutri',e:'🍽',l:'Nutrición'}];
+  // Mi Camino 10K: la pestaña solo existe para las inscritas (no se muestra bloqueada a las demás)
+  if(S.enCamino)tabs.push({k:'camino',e:'♛',l:'Mi 10K'});
   app.innerHTML=`
     <div id="hdr" style="background:rgba(14,11,10,.94);backdrop-filter:blur(6px);padding:16px 18px 12px;position:sticky;top:0;z-index:20">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -164,6 +166,8 @@ function render(){
        :S.view==='main'&&S.tab==='rutinas'?rRutinas()
        :S.view==='main'&&S.tab==='medidas'?rMedidas()
        :S.view==='main'&&S.tab==='nutri'?rNutri()
+       :S.view==='main'&&S.tab==='camino'?rCamino()
+       :S.view==='aparecer'?rAparecer()
        :S.view==='comida'?rComidaForm()
        :S.view==='pform'?rPForm()
        :S.view==='sform'?rSForm()
@@ -1495,7 +1499,175 @@ function metaAgua(){
 }
 function abrirTab(k){
   if(k==='nutri'&&!S.nutri)cargarNutri(today());
+  if(k==='camino')cargarCamino();
   set({tab:k});
+}
+
+// ── MI CAMINO 10K ───────────────────────────────────────────
+// Sección aparte para las inscritas al 10K: NO toca el motor ni el calendario (tablas camino_*).
+// Muro, contador y voces salen de la RPC camino_muro (de las demás solo nombre, tipo de día y nota visible);
+// "Aparecí hoy" guarda con camino_aparecer (una por día, upsert). Reglas del spec de Brayan: orden alfabético fijo,
+// nada de rankings ni ritmo, el día flojo es el acento más fuerte (dorado) y faltar se dibuja neutro.
+const CAM_COL={fuerte:'#710D0B',medio:'#C7372C',flojo:'#B8963E'};
+const CAM_TXT={fuerte:'Día fuerte',medio:'Día medio',flojo:'Día flojo'};
+const CAM_ACT=[{k:'fuerza',l:'Fuerza'},{k:'trote',l:'Trote'},{k:'caminata',l:'Caminata'},{k:'movilidad',l:'Movilidad'}];
+const CAM_ZONA=[{k:'nada',l:'Nada'},{k:'rodilla',l:'Rodilla'},{k:'tibia',l:'Tibia'},{k:'talon',l:'Talón'},{k:'cadera',l:'Cadera'},{k:'otra',l:'Otra parte'}];
+const CAM_ESF=[{k:'comodo',l:'Cómodo'},{k:'exigente',l:'Exigente'},{k:'al_limite',l:'Al límite'}];
+function camFecha(f){return new Date(f+'T12:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'long'});}
+const camKm=function(n){return (Math.round(n*10)/10).toLocaleString('es-CO');};
+async function cargarCamino(){
+  try{
+    const r=await sb.rpc('camino_muro');
+    if(r.error)throw r.error;
+    S.camino=Object.assign({},S.camino,{muro:r.data,error:false});
+  }catch(e){console.error('camino:',e);S.camino=Object.assign({},S.camino,{error:true});}
+  render();
+}
+function camSel(pi,di){
+  const M=S.camino.muro,p=M.participantes[pi],f=sumarDias(M.hoy,di-13),s=S.camino.sel;
+  S.camino.sel=s&&s.p===p.id&&s.f===f?null:{p:p.id,f:f};
+  render();
+}
+function rCamino(){
+  const K=S.camino||{},M=K.muro;
+  if(!M)return card(K.error?`<p style="text-align:center;color:${C.tl};padding:14px 0">No se pudo cargar.</p><button onclick="cargarCamino()" style="display:block;margin:0 auto;background:none;border:1px solid rgba(184,150,62,.3);color:${C.gs};padding:7px 14px;border-radius:8px;font-family:var(--heroic);font-size:10px;letter-spacing:.14em">REINTENTAR</button>`:`<p style="text-align:center;color:${C.tl};padding:20px 0">Cargando…</p>`);
+  const hoy=M.hoy,evento=camFecha(M.fecha_evento);
+  const falta=Math.round((new Date(M.fecha_evento+'T12:00:00')-new Date(hoy+'T12:00:00'))/86400000);
+  const total=+M.total_km||0,meta=+M.meta||0,pct=meta?Math.min(100,total/meta*100):0;
+  let h=`<div style="text-align:center;margin:6px 0 14px">
+    <div style="display:flex;justify-content:center">${corona(34,'cam')}</div>
+    <p style="font-family:var(--brandface);font-size:26px;letter-spacing:.18em;color:${C.gold};margin-top:6px;line-height:1">MI CAMINO 10K</p>
+    <p style="font-family:var(--voice);font-style:italic;color:${C.tm};font-size:14px;margin-top:5px">${falta>1?'Faltan '+falta+' días · '+evento:falta===1?'Mañana es el '+evento:falta===0?'Hoy es el '+evento:'El camino llegó al '+evento}</p></div>`;
+  // Bloque 1 · contador del grupo (va primero a propósito: el "nosotras" antes que el "yo")
+  h+=card(`<p style="text-align:center;font-family:var(--brandface);font-size:56px;line-height:1;color:${C.gold};letter-spacing:.03em">${camKm(total)}<span style="font-size:20px;margin-left:6px;letter-spacing:.12em">KM</span></p>
+    <div style="height:8px;border-radius:6px;background:rgba(242,233,220,.08);margin:12px 0 9px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#8A6A22,#E0C97F)"></div></div>
+    <p style="text-align:center;color:${C.td};font-size:14px">Vamos <b>${camKm(total)} km</b> de ${camKm(meta)} camino al ${evento}</p>
+    ${hoy<M.fecha_inicio?`<p style="text-align:center;color:${C.tl};font-size:12px;margin-top:4px">El contador arranca el ${camFecha(M.fecha_inicio)}.</p>`:''}
+    <p style="text-align:center;font-family:var(--voice);font-style:italic;color:${C.tl};font-size:13px;margin-top:9px;line-height:1.45">Cada paso que das empuja este número, reina. No importa si hoy fueron dos minutos.</p>`);
+  // Bloque 2 · quiénes aparecieron: 14 días, hoy a la derecha, filas en orden alfabético fijo
+  const dias=[];for(let i=13;i>=0;i--)dias.push(sumarDias(hoy,-i));
+  const mk={};(M.marcas||[]).forEach(function(x){mk[x.p+'_'+x.f]=x;});
+  const cel='width:14px;height:14px;flex:0 0 14px;border-radius:3px;padding:0';
+  let g=`<div style="display:flex;align-items:center;gap:3px;padding:0 5px 4px"><span style="flex:1;min-width:0"></span>${dias.map(function(f){return `<span style="width:14px;flex:0 0 14px;text-align:center;font-size:8px;color:${f===hoy?C.gs:C.tl}">${'DLMMJVS'[new Date(f+'T12:00:00').getDay()]}</span>`;}).join('')}</div>`;
+  (M.participantes||[]).forEach(function(p,pi){
+    g+=`<div style="display:flex;align-items:center;gap:3px;padding:4px 5px;border-radius:7px;border:1px solid ${p.yo?'rgba(224,201,127,.7)':'transparent'}">
+      <span style="flex:1;min-width:0;font-size:12px;color:${p.yo?C.gs:C.td};font-weight:${p.yo?700:400};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.nombre)}</span>
+      ${dias.map(function(f,di){const m=mk[p.id+'_'+f],on=K.sel&&K.sel.p===p.id&&K.sel.f===f;
+        return `<button onclick="camSel(${pi},${di})" aria-label="${esc(p.nombre)} ${f}" style="${cel};border:${on?'2px solid #fff':m&&m.t==='fuerte'?'1px solid rgba(232,128,108,.6)':'1px solid transparent'};background:${m?CAM_COL[m.t]:'rgba(242,233,220,.07)'};${m&&m.t==='flojo'?'box-shadow:0 0 7px rgba(224,201,127,.6)':''}"></button>`;}).join('')}</div>`;
+  });
+  if(K.sel){
+    const p=(M.participantes||[]).find(function(x){return x.id===K.sel.p;}),m=mk[K.sel.p+'_'+K.sel.f];
+    const fd=new Date(K.sel.f+'T12:00:00').toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'short'});
+    let d=`<p style="font-family:var(--heroic);font-size:11px;letter-spacing:.1em;color:${C.gs}">${esc(p?p.nombre:'')} · ${fd}</p>`;
+    if(m){
+      d+=`<p style="font-size:13.5px;color:${C.td};margin-top:4px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${CAM_COL[m.t]};margin-right:6px"></span>${CAM_TXT[m.t]}</p>`;
+      if(p&&p.yo&&m.act)d+=`<p style="font-size:12.5px;color:${C.tm};margin-top:3px">${m.act.map(function(a){return (CAM_ACT.find(function(x){return x.k===a;})||{l:a}).l;}).join(' · ')}${m.km?' · '+camKm(+m.km)+' km':''}${m.min?' · '+m.min+' min':''}</p>`;
+      if(m.n)d+=`<p style="font-family:var(--voice);font-style:italic;font-size:14px;color:${C.td};margin-top:5px">"${esc(m.n)}"${p&&p.yo&&m.vis===false?` <span style="font-style:normal;font-size:11px;color:${C.tl}">· solo tú la ves</span>`:''}</p>`;
+    }else d+=`<p style="font-size:13px;color:${C.tl};margin-top:4px">Sin registro ese día.</p>`;
+    g+=`<div style="margin-top:10px;padding:10px 12px;border-radius:9px;background:rgba(242,233,220,.04);border:1px solid rgba(184,150,62,.18)">${d}</div>`;
+  }
+  g+=`<div style="display:flex;justify-content:center;gap:14px;margin-top:12px">${['fuerte','medio','flojo'].map(function(t){return `<span style="font-size:11px;color:${C.tm};display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:${CAM_COL[t]};${t==='fuerte'?'border:1px solid rgba(232,128,108,.6);':''}${t==='flojo'?'box-shadow:0 0 6px rgba(224,201,127,.6);':''}"></span>${CAM_TXT[t]}</span>`;}).join('')}</div>
+    <p style="text-align:center;font-family:var(--voice);font-style:italic;color:${C.tl};font-size:13px;margin-top:10px">Acá no hay primeras ni últimas. Lo que cuenta es que apareciste.</p>`;
+  h+=secT('Quiénes aparecieron')+card(g,'padding:14px 10px');
+  // Bloque 3 · lo de ella: los días flojos van por encima del total
+  const yo=(M.participantes||[]).find(function(x){return x.yo;}),mh=yo?mk[yo.id+'_'+hoy]:null,mias=M.mias||{total:0,flojos:0};
+  h+=secT('Tu camino')+card(`<div style="text-align:center">
+      <p style="font-family:var(--brandface);font-size:46px;line-height:1;color:${C.gold}">${mias.flojos||0}</p>
+      <p style="font-family:var(--heroic);font-size:11px;letter-spacing:.12em;color:${C.gs};margin-top:4px">DÍAS FLOJOS EN LOS QUE APARECISTE</p>
+      <p style="font-family:var(--voice);font-style:italic;color:${C.tm};font-size:13.5px;margin-top:3px">Estos son los que más valen.</p>
+      <p style="color:${C.tl};font-size:12.5px;margin:12px 0 14px">Apariciones en el camino: <b style="color:${C.td}">${mias.total||0}</b></p></div>
+    ${mh?`<div style="text-align:center;padding:12px;border-radius:10px;border:1px solid rgba(184,150,62,.3);background:rgba(184,150,62,.08)"><p style="font-family:var(--heroic);font-size:12px;letter-spacing:.1em;color:${C.gs}">HOY YA APARECISTE ✓</p><p style="font-size:12.5px;color:${C.tm};margin-top:3px">${CAM_TXT[mh.t]}</p>
+      <button onclick="camAbrir()" style="margin-top:9px;background:none;border:1px solid rgba(184,150,62,.3);color:${C.gs};padding:6px 12px;border-radius:8px;font-family:var(--heroic);font-size:9.5px;letter-spacing:.14em">CAMBIAR LO DE HOY</button></div>`
+      :btnR('♛ APARECÍ HOY','camAbrir()')}`);
+  // Bloque 4 · voces: nombre + nota, sin números
+  const vz=M.voces||[];
+  h+=secT('Lo que están sintiendo')+card(vz.length?vz.map(function(v,i){return `<div style="padding:9px 0;${i?'border-top:1px solid rgba(184,150,62,.14)':''}"><p style="font-family:var(--heroic);font-size:10.5px;letter-spacing:.1em;color:${C.gs}">${esc(v.nombre)}</p><p style="font-family:var(--voice);font-style:italic;font-size:14.5px;color:${C.td};margin-top:2px;line-height:1.4">${esc(v.n)}</p></div>`;}).join('')
+    :`<p style="text-align:center;font-family:var(--voice);font-style:italic;color:${C.tl};font-size:13.5px;padding:6px 0">Aquí van a salir las notas de las del camino.</p>`);
+  return h;
+}
+// "Aparecí hoy": 3 pasos (+ uno privado de dolor y esfuerzo si trotó o caminó). Debe tomar menos de 15 segundos.
+function camAbrir(){
+  const M=S.camino&&S.camino.muro;if(!M)return;
+  const yo=(M.participantes||[]).find(function(x){return x.yo;});
+  const m=yo?(M.marcas||[]).find(function(x){return x.p===yo.id&&x.f===M.hoy;}):null;
+  S.apar={paso:1,t:m?m.t:null,act:m&&m.act?m.act.slice():[],km:m&&m.km?String(m.km):'',min:m&&m.min?String(m.min):'',nota:m&&m.n?m.n:'',vis:m?m.vis!==false:true,dz:null,dn:null,esf:null};
+  set({view:'aparecer'});window.scrollTo(0,0);
+}
+function camCorre(){return S.apar.act.indexOf('trote')>=0||S.apar.act.indexOf('caminata')>=0;}
+function camTipo(t){S.apar.t=t;S.apar.paso=2;render();window.scrollTo(0,0);}
+function camAct(k){const a=S.apar.act,i=a.indexOf(k);if(i>=0)a.splice(i,1);else a.push(k);render();}
+function camZona(k){S.apar.dz=k;if(k!=='nada'&&!S.apar.dn)S.apar.dn='molesta';render();}
+function camSig(){
+  const A=S.apar;
+  if(A.paso===2){
+    if(!A.act.length)return;
+    if(camCorre()){
+      const km=parseFloat(String(A.km||'').replace(',','.')),mi=parseInt(A.min,10);
+      if(String(A.km).trim()&&!(km>0&&km<=60)){alert('Revisa los kilómetros: un número entre 0,1 y 60. También puedes dejarlo vacío.');return;}
+      if(String(A.min).trim()&&!(mi>=1&&mi<=600)){alert('Revisa los minutos: un número entre 1 y 600. También puedes dejarlo vacío.');return;}
+      A.paso='cuerpo';
+    }else A.paso=3;
+  }else if(A.paso==='cuerpo')A.paso=3;
+  render();window.scrollTo(0,0);
+}
+function camAtras(){
+  const A=S.apar;
+  if(A.paso===3)A.paso=camCorre()?'cuerpo':2;else if(A.paso==='cuerpo')A.paso=2;else if(A.paso===2)A.paso=1;
+  render();
+}
+async function camGuardar(){
+  const A=S.apar;if(A.guardando)return;
+  const corre=camCorre(),km=parseFloat(String(A.km||'').replace(',','.')),mi=parseInt(A.min,10),dolor=corre&&A.dz&&A.dz!=='nada';
+  A.guardando=true;render();
+  const r=await sb.rpc('camino_aparecer',{p_tipo:A.t,p_actividades:A.act,p_km:corre&&km>0?km:null,p_minutos:corre&&mi>0?mi:null,
+    p_nota:String(A.nota||'').trim().slice(0,140)||null,p_nota_visible:A.vis!==false,p_dolor_zona:dolor?A.dz:null,p_dolor_nivel:dolor?A.dn:null,
+    p_esfuerzo:corre?A.esf:null,p_uso_frase:null});
+  A.guardando=false;
+  if(r.error){render();alert('No se pudo guardar: '+r.error.message);return;}
+  A.paso='fin';
+  cargarCamino();
+}
+function rAparecer(){
+  const A=S.apar;if(!A)return '';
+  const M=(S.camino&&S.camino.muro)||{},evento=M.fecha_evento?camFecha(M.fecha_evento):'13 de marzo';
+  const tit=function(t,s){return `<p style="font-family:var(--heroic);font-weight:700;font-size:17px;letter-spacing:.06em;color:#fff;text-align:center;line-height:1.3">${t}</p>${s?`<p style="font-family:var(--voice);font-style:italic;color:${C.tm};font-size:14px;text-align:center;margin-top:6px">${s}</p>`:''}`;};
+  const opc=function(sel,txt,fn,col,extra){return `<button onclick="${fn}" style="display:flex;align-items:center;gap:12px;width:100%;padding:15px 16px;margin-top:9px;border-radius:11px;border:1px solid ${sel?C.gold:'rgba(184,150,62,.25)'};background:${sel?'rgba(184,150,62,.16)':'rgba(242,233,220,.03)'};color:${C.td};font-family:var(--heroic);font-size:14px;letter-spacing:.08em;text-align:left">${col?`<span style="width:20px;height:20px;flex:0 0 20px;border-radius:4px;background:${col};${extra||''}"></span>`:''}${txt}</button>`;};
+  const chip=function(sel,txt,fn){return `<button onclick="${fn}" style="padding:9px 13px;margin:0 6px 7px 0;border-radius:20px;border:1px solid ${sel?C.gold:'rgba(184,150,62,.25)'};background:${sel?'rgba(184,150,62,.16)':'rgba(242,233,220,.03)'};color:${sel?C.gs:C.td};font-size:13.5px">${txt}</button>`;};
+  const sig=function(txt,fn,on){return `<div style="margin-top:18px;${on===false?'opacity:.4;pointer-events:none':''}">${btnR(txt,fn)}</div>`;};
+  const atras=`<button onclick="camAtras()" style="display:block;margin:12px auto 0;background:none;border:none;color:${C.tl};font-size:12.5px;text-decoration:underline">Atrás</button>`;
+  const ins='width:100%;padding:11px 12px;border-radius:9px;border:1px solid rgba(184,150,62,.3);background:rgba(14,11,10,.6);color:#fff;font-size:15px';
+  let h='';
+  if(A.paso===1){
+    h=tit('¿Cómo estuvo tu cuerpo hoy?','Dilo como lo sentiste. Acá ninguna respuesta está mal.')+'<div style="margin-top:12px">'
+      +opc(A.t==='fuerte','Fuerte',"camTipo('fuerte')",CAM_COL.fuerte,'border:1px solid rgba(232,128,108,.6)')
+      +opc(A.t==='medio','Medio',"camTipo('medio')",CAM_COL.medio)
+      +opc(A.t==='flojo','Flojo',"camTipo('flojo')",CAM_COL.flojo,'box-shadow:0 0 8px rgba(224,201,127,.6)')+'</div>';
+  }else if(A.paso===2){
+    h=tit('¿Qué hiciste?','Puedes marcar más de una.')+'<div style="margin-top:6px">'+CAM_ACT.map(function(a){return opc(A.act.indexOf(a.k)>=0,(A.act.indexOf(a.k)>=0?'✓ ':'')+a.l,"camAct('"+a.k+"')");}).join('')+'</div>';
+    if(camCorre())h+=`<div style="display:flex;gap:10px;margin-top:14px">
+        <label style="flex:1;font-size:12px;color:${C.tm}">Kilómetros<input type="text" inputmode="decimal" value="${esc(A.km)}" oninput="S.apar.km=this.value" placeholder="Opcional" style="${ins};margin-top:5px"/></label>
+        <label style="flex:1;font-size:12px;color:${C.tm}">Minutos<input type="text" inputmode="numeric" value="${esc(A.min)}" oninput="S.apar.min=this.value" placeholder="Opcional" style="${ins};margin-top:5px"/></label></div>
+      <p style="font-size:12px;color:${C.tl};margin-top:6px">Si no lo sabes, déjalo vacío. Se guarda igual.</p>`;
+    h+=sig('SIGUIENTE','camSig()',A.act.length>0)+atras;
+  }else if(A.paso==='cuerpo'){
+    h=tit('¿Te dolió algo?')+`<div style="margin-top:12px">${CAM_ZONA.map(function(z){return chip(A.dz===z.k,z.l,"camZona('"+z.k+"')");}).join('')}</div>`;
+    if(A.dz&&A.dz!=='nada')h+=`<p style="font-size:13px;color:${C.tm};margin:8px 0 7px">¿Cuánto?</p>${chip(A.dn==='molesta','Molesta',"S.apar.dn='molesta';render()")}${chip(A.dn==='duele','Duele',"S.apar.dn='duele';render()")}`;
+    h+=`<div style="margin-top:20px">${tit('¿Qué tan duro se sintió?')}</div><div style="margin-top:12px">${CAM_ESF.map(function(e){return chip(A.esf===e.k,e.l,"S.apar.esf='"+e.k+"';render()");}).join('')}</div>
+      <p style="font-size:12px;color:${C.tl};margin-top:10px">🔒 Esto solo lo ven tú y Brayan.</p>`+sig('SIGUIENTE','camSig()')+atras;
+  }else if(A.paso===3){
+    h=tit('¿Quieres dejar algo escrito?','Qué te costó, qué te sorprendió, cómo te sentiste.')+`
+      <textarea maxlength="140" rows="3" oninput="S.apar.nota=this.value;document.getElementById('cam-cnt').textContent=this.value.length+' / 140'" placeholder="Opcional" style="${ins};margin-top:14px;resize:none;font-family:var(--voice);font-style:italic">${esc(A.nota)}</textarea>
+      <p id="cam-cnt" style="text-align:right;font-size:11px;color:${C.tl};margin-top:3px">${String(A.nota||'').length} / 140</p>
+      <label style="display:flex;align-items:center;gap:10px;margin-top:8px;font-size:14px;color:${C.td}"><input type="checkbox" ${A.vis!==false?'checked':''} onchange="S.apar.vis=this.checked" style="width:20px;height:20px;accent-color:${C.gold}"/>Que las demás lo vean</label>`
+      +sig(A.guardando?'GUARDANDO…':'GUARDAR','camGuardar()',!A.guardando)+atras;
+  }else{
+    const fin={fuerte:'Quedó registrado. Buen día para aprovechar, reina.',medio:'Quedó registrado. Así se sostiene.',flojo:'Apareciste en un día flojo. Eso es exactamente lo que te va a llevar al '+evento+'.'};
+    h=`<div style="text-align:center;padding:10px 0"><div style="display:flex;justify-content:center">${corona(48,'apar')}</div>
+      <div style="width:26px;height:26px;border-radius:5px;margin:16px auto 0;background:${CAM_COL[A.t]};${A.t==='flojo'?'box-shadow:0 0 14px rgba(224,201,127,.75)':''}"></div>
+      <p style="font-family:var(--voice);font-style:italic;font-size:${A.t==='flojo'?'20':'18'}px;color:${A.t==='flojo'?C.gs:C.td};margin-top:16px;line-height:1.45">${fin[A.t]}</p></div>`
+      +sig('VOLVER A MI 10K',"set({view:'main',tab:'camino'})");
+  }
+  return card(h,'padding:22px 18px');
 }
 function sumarDias(f,d){const x=new Date(f+'T12:00:00');x.setDate(x.getDate()+d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
 async function cargarNutri(fecha){
@@ -2147,6 +2319,9 @@ async function loadClientData(){
   // Menores de edad: fotos de progreso solo si el acudiente las autorizó en el consentimiento firmado
   let consFotos=false;
   try{const cf=await sb.from('consentimientos').select('autoriza_fotos').eq('client_id',userId).order('firmado_at',{ascending:false}).limit(1).maybeSingle();consFotos=!!(cf.data&&cf.data.autoriza_fotos);}catch(e){}
+  // Mi Camino 10K: inscrita y activa → aparece la pestaña
+  let enCamino=false;
+  try{const cp=await sb.from('camino_participantes').select('id').eq('profile_id',userId).eq('activa',true).limit(1);enCamino=!!(cp.data&&cp.data.length);}catch(e){}
   // Motor adaptativo: tarjetas de su ruta (fase, carga, tipo de sesión) + su historial de 35 días
   let motor=null;
   try{
@@ -2193,7 +2368,7 @@ async function loadClientData(){
   const allSchedR=await sb.from('scheduled_sessions').select('*').eq('client_id',userId).gte('scheduled_date',today()).order('scheduled_date').limit(62);
   const allSchedule=allSchedR.data||[];
   const defaultWeek=currentProgWeek(lastBleeding,cycleLen);
-  set({loading:false,view:perfilExt.estado==='pausada'?'pausa':PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:perfilExt.duracion_ciclo||28,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,variantes:variantes,consFotos:consFotos,clases:clases,motor:motor,motivoHoy:null});
+  set({loading:false,view:perfilExt.estado==='pausada'?'pausa':PROG.length===0?'no_prog':'main',tab:'hoy',profile:profile,prog:prog,PROG:PROG,week:defaultWeek,cycleHistory:cycleHistory,lastBleeding:lastBleeding,cycleLen:perfilExt.duracion_ciclo||28,symLog:symLog,menoLog:menoLog,meas:results[5].data||[],completions:completions,todaySchedule:todaySchedule,upcomingSchedule:upcomingSchedule,allSchedule:allSchedule,perfilExt:perfilExt,checkin:checkin,motorTarjeta:motorTarjeta,escenario:escenario,cargaLog:cargaLog,grupoData:grupoData,variantes:variantes,consFotos:consFotos,enCamino:enCamino,clases:clases,motor:motor,motivoHoy:null});
   aplicarMotor();
 }
 
@@ -2233,6 +2408,7 @@ function goBack(){
   else if(S.view==='fotos')set({view:'main',tab:'medidas'});
   else if(S.view==='guia')salirGuia();
   else if(S.view==='comida')set({view:'main',tab:'nutri',cform:null});
+  else if(S.view==='aparecer')set({view:'main',tab:'camino'});
   else set({view:'main'});
 }
 

@@ -48,14 +48,14 @@ function render(){
       </div>
     </div>
     <div style="display:flex;background:${C.bk};border-top:1px solid #2a2523">
-      ${[{k:'clients',l:'👥 Clientas'},{k:'programs',l:'💪 Programas'},{k:'motor',l:'🔬 Motor'},{k:'clases',l:'🎥 Clases'},{k:'grupos',l:'🎯 Grupos'},{k:'add',l:'➕ Nueva clienta'}].map(t=>`
+      ${[{k:'clients',l:'👥 Clientas'},{k:'programs',l:'💪 Programas'},{k:'motor',l:'🔬 Motor'},{k:'clases',l:'🎥 Clases'},{k:'camino',l:'♛ 10K'},{k:'grupos',l:'🎯 Grupos'},{k:'add',l:'➕ Nueva clienta'}].map(t=>`
         <button onclick="set({tab:'${t.k}',selClient:null,selProgram:null,selSession:null,pForm:{show:false,name:'',desc:''},sForm:{show:false,week:1,day:1,type:'Cuerpo Completo'},eForm:{show:false,name:'',muscle:'',sets:3,reps:'8-10',video:''}})"
           style="flex:1;padding:10px 0;font-weight:700;font-size:11px;border:none;background:none;color:${S.tab===t.k?C.pr:C.g2};border-bottom:3px solid ${S.tab===t.k?C.pr:'transparent'}">
           ${t.l}
         </button>`).join('')}
     </div>
     <div style="padding:14px;max-width:640px;margin:0 auto;padding-bottom:40px">
-      ${S.view==='schedule'?rSchedule():S.tab==='clients'?rClients():S.tab==='programs'?rPrograms():S.tab==='motor'?rMotor():S.tab==='clases'?rClasesAdmin():S.tab==='grupos'?rGrupos():rAddClient()}
+      ${S.view==='schedule'?rSchedule():S.tab==='clients'?rClients():S.tab==='programs'?rPrograms():S.tab==='motor'?rMotor():S.tab==='clases'?rClasesAdmin():S.tab==='camino'?rCaminoAdmin():S.tab==='grupos'?rGrupos():rAddClient()}
     </div>`;
 }
 
@@ -393,6 +393,129 @@ async function agregarHorario(){
   loadClasesAdmin();
 }
 
+// ── MI CAMINO 10K ───────────────────────────────────────────
+// Sección aparte de la app (tablas camino_*; no toca el motor). Aquí Brayan ve TODO: km, minutos, dolor, esfuerzo y
+// notas privadas. La alerta de ausencia (7+ días sin aparecer) es solo para él: nunca se le muestra a ella ni al grupo.
+const CAM_COL_A={fuerte:'#710D0B',medio:'#C7372C',flojo:'#B8963E'};
+const CAM_ZONA_A={rodilla:'la rodilla',tibia:'la tibia',talon:'el talón',cadera:'la cadera',otra:'otra parte'};
+const CAM_ESF_A={comodo:'Cómodo',exigente:'Exigente',al_limite:'Al límite'};
+async function loadCaminoAdmin(){
+  try{
+    const e=await sb.from('camino_ediciones').select('*').order('fecha_evento',{ascending:false});
+    const ed=(e.data||[]).find(x=>x.activa)||(e.data||[])[0]||null;
+    let part=[],ap=[];
+    if(ed){
+      const p=await sb.from('camino_participantes').select('*').eq('edicion_id',ed.id);part=p.data||[];
+      const a=await sb.from('camino_apariciones').select('*').eq('edicion_id',ed.id).order('fecha',{ascending:false}).order('updated_at',{ascending:false});ap=a.data||[];
+    }
+    set({caminoAdmin:{ed:ed,part:part,ap:ap}});
+  }catch(e){console.error('camino admin:',e);}
+}
+function rCaminoAdmin(){
+  const K=S.caminoAdmin;
+  if(!K)return`<p style="color:${C.g2};font-size:13px">Cargando…</p>`;
+  if(!K.ed)return`<p style="color:${C.g2};font-size:13px">No hay ediciones del camino.</p>`;
+  const ed=K.ed,hoy=hoyLocal();
+  const cli=id=>S.clients.find(x=>x.id===id)||{};
+  const nom=p=>(p.apodo&&p.apodo.trim())||String(cli(p.profile_id).name||'—').trim().split(' ')[0];
+  const dias=(a,b)=>Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000);
+  const kmTotal=K.ap.filter(a=>a.fecha>=ed.fecha_inicio&&K.part.some(p=>p.activa&&p.profile_id===a.profile_id)).reduce((s,a)=>s+(+a.km||0),0);
+  const lab=`font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${C.g2}`;
+  const box=`background:${C.wh};border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:14px`;
+  const inp=`padding:8px 10px;border:2px solid ${C.g3};border-radius:9px;font-size:13px`;
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><p style="${lab}">Mi Camino 10K</p>
+    <button onclick="loadCaminoAdmin()" style="background:#f3f4f6;border:none;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700">↻ Actualizar</button></div>
+  <div style="${box}">
+    <p style="font-weight:900;font-size:22px;color:#8A6A22">${(Math.round(kmTotal*10)/10).toLocaleString('es-CO')} km <span style="font-size:13px;font-weight:600;color:${C.g2}">del grupo · meta ${(+ed.meta_km_grupo).toLocaleString('es-CO')}</span></p>
+    <p style="font-size:12px;color:${C.g2};margin:2px 0 12px">Cuenta desde el ${new Date(ed.fecha_inicio+'T12:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'long'})} · las marcas anteriores son de prueba</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <label style="font-size:11.5px;color:${C.g2};grid-column:1/3">Nombre<input id="ce-nom" value="${esc(ed.nombre)}" style="${inp};width:100%;margin-top:3px"/></label>
+      <label style="font-size:11.5px;color:${C.g2}">Fecha del evento<input id="ce-ev" type="date" value="${ed.fecha_evento}" style="${inp};width:100%;margin-top:3px"/></label>
+      <label style="font-size:11.5px;color:${C.g2}">Abre el muro<input id="ce-ini" type="date" value="${ed.fecha_inicio}" style="${inp};width:100%;margin-top:3px"/></label>
+      <label style="font-size:11.5px;color:${C.g2}">Meta km del grupo<input id="ce-meta" type="number" min="1" value="${ed.meta_km_grupo}" style="${inp};width:100%;margin-top:3px"/></label>
+      <button onclick="guardarEdicion('${ed.id}')" style="align-self:end;padding:9px;background:${C.bk};color:#fff;border:none;border-radius:9px;font-weight:700;font-size:12.5px">Guardar</button>
+    </div></div>`;
+  // Participantes en orden alfabético (el mismo del muro) con su resumen privado
+  const act=K.part.filter(p=>p.activa).sort((a,b)=>nom(a).localeCompare(nom(b),'es'));
+  h+=`<p style="${lab};margin-bottom:8px">Las del camino (${act.length})</p><div style="${box}">`;
+  act.forEach(p=>{
+    const mias=K.ap.filter(a=>a.profile_id===p.profile_id);
+    const ult=mias[0]?mias[0].fecha:null,sin=ult?dias(ult,hoy):dias(p.fecha_ingreso,hoy);
+    const km=mias.reduce((s,a)=>s+(+a.km||0),0),fl=mias.filter(a=>a.tipo_dia==='flojo').length;
+    const alerta=hoy>=ed.fecha_inicio&&sin>=7;
+    h+=`<div style="padding:10px 0;border-bottom:1px solid #eee">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <p style="font-weight:800;font-size:14px">${esc(nom(p))} <span style="font-weight:500;font-size:12px;color:${C.g2}">${esc(cli(p.profile_id).name||'')}</span></p>
+        <div style="display:flex;gap:4px">${['10k','5k'].map(d=>`<button onclick="distanciaCamino('${p.id}','${d}')" style="padding:3px 8px;border-radius:7px;font-size:11px;font-weight:800;border:1px solid ${p.distancia_objetivo===d?'#8A6A22':C.g3};background:${p.distancia_objetivo===d?'#fdf0c8':'#fff'};color:${p.distancia_objetivo===d?'#8A6A22':C.g2}">${d.toUpperCase()}</button>`).join('')}</div></div>
+      <p style="font-size:12.5px;color:#191211;margin-top:4px">${mias.length} ${mias.length===1?'aparición':'apariciones'} · ${fl} en día flojo · ${(Math.round(km*10)/10).toLocaleString('es-CO')} km</p>
+      <p style="font-size:12px;margin-top:2px;color:${alerta?C.pr:C.g2};font-weight:${alerta?800:400}">${alerta?'⚠ ':''}${!ult?'Todavía no ha aparecido':sin===0?'Apareció hoy':sin===1?'Última vez: ayer':'Última vez: hace '+sin+' días'}${alerta?' · escríbele por privado':''}</p>
+      ${p.motivo_ingreso?`<p style="font-size:12px;color:${C.g2};margin-top:3px">🔒 Por qué está acá: ${esc(p.motivo_ingreso)}</p>`:''}
+      <div style="display:flex;gap:6px;margin-top:6px"><input id="cap-${p.id}" placeholder="Nombre en el muro" value="${esc(p.apodo||'')}" style="${inp};flex:1;padding:6px 9px;font-size:12px"/>
+        <button onclick="apodoCamino('${p.id}')" style="padding:6px 10px;background:#f3f4f6;border:none;border-radius:8px;font-size:11.5px;font-weight:700">Guardar nombre</button>
+        <button onclick="retirarCamino('${p.id}',false)" style="padding:6px 10px;background:none;border:1px solid ${C.g3};border-radius:8px;font-size:11.5px;font-weight:700;color:${C.g2}">Retirar</button></div></div>`;
+  });
+  const fuera=K.part.filter(p=>!p.activa);
+  if(fuera.length)h+=`<p style="font-size:12px;color:${C.g2};margin-top:10px">Retiradas: ${fuera.map(p=>`${esc(nom(p))} <button onclick="retirarCamino('${p.id}',true)" style="background:none;border:none;color:${C.pr};font-weight:700;font-size:12px;text-decoration:underline">volver a inscribir</button>`).join(' · ')}</p>`;
+  const libres=S.clients.filter(c=>!c.is_admin&&!K.part.some(p=>p.profile_id===c.id));
+  if(libres.length)h+=`<div style="display:flex;gap:6px;margin-top:12px"><select id="cam-nueva" style="${inp};flex:1">${libres.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
+    <button onclick="inscribirCamino('${ed.id}')" style="padding:9px 12px;background:${C.pr};color:#fff;border:none;border-radius:9px;font-weight:700;font-size:12px">Inscribir</button></div>`;
+  h+=`</div>`;
+  // Muro completo (con todo lo privado)
+  const desde=fechaMas(hoy,-13);
+  const rec=K.ap.filter(a=>a.fecha>=desde);
+  h+=`<p style="${lab};margin-bottom:8px">Muro completo · 14 días</p><div style="${box}">`;
+  if(!rec.length)h+=`<p style="font-size:13px;color:${C.g2}">Nadie ha aparecido en estos 14 días.</p>`;
+  rec.forEach(a=>{
+    const p=K.part.find(x=>x.profile_id===a.profile_id)||{profile_id:a.profile_id};
+    const dolor=a.dolor_zona?`${a.dolor_nivel==='duele'?'Le duele':'Le molesta'} ${CAM_ZONA_A[a.dolor_zona]||a.dolor_zona}`:'';
+    h+=`<div style="padding:9px 0;border-bottom:1px solid #eee;display:flex;gap:10px">
+      <span style="width:14px;height:14px;flex:0 0 14px;border-radius:3px;margin-top:3px;background:${CAM_COL_A[a.tipo_dia]}"></span>
+      <div style="flex:1;min-width:0"><p style="font-size:13px"><b>${esc(nom(p))}</b> · ${new Date(a.fecha+'T12:00:00').toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'})} · día ${a.tipo_dia}</p>
+      <p style="font-size:12px;color:${C.g2};margin-top:2px">${(a.actividades||[]).join(', ')}${a.km?' · '+a.km+' km':''}${a.minutos?' · '+a.minutos+' min':''}${a.esfuerzo?' · '+CAM_ESF_A[a.esfuerzo]:''}</p>
+      ${dolor?`<p style="font-size:12px;color:${C.pr};font-weight:800;margin-top:2px">⚠ ${dolor}</p>`:''}
+      ${a.nota?`<p style="font-size:12.5px;font-style:italic;margin-top:3px">"${esc(a.nota)}"${a.nota_visible?'':' <span style="font-style:normal;color:'+C.g2+'">🔒 privada</span>'}</p>`:''}</div>
+      <button onclick="borrarAparicion('${a.id}')" title="Borrar esta marca" style="align-self:start;background:none;border:none;color:${C.g2};font-size:15px">✕</button></div>`;
+  });
+  return h+`</div>`;
+}
+async function guardarEdicion(id){
+  const v=k=>(document.getElementById(k)||{}).value;
+  const meta=parseFloat(v('ce-meta'));
+  if(!v('ce-nom')||!v('ce-ev')||!v('ce-ini')||!(meta>0)){alert('Revisa nombre, fechas y meta.');return;}
+  const r=await sb.from('camino_ediciones').update({nombre:v('ce-nom').trim(),fecha_evento:v('ce-ev'),fecha_inicio:v('ce-ini'),meta_km_grupo:meta}).eq('id',id);
+  if(r.error){alert('No se pudo guardar: '+r.error.message);return;}
+  await loadCaminoAdmin();alert('✅ Guardado');
+}
+async function inscribirCamino(edId){
+  const id=(document.getElementById('cam-nueva')||{}).value;if(!id)return;
+  const r=await sb.from('camino_participantes').insert({edicion_id:edId,profile_id:id});
+  if(r.error){alert('No se pudo inscribir: '+r.error.message);return;}
+  loadCaminoAdmin();
+}
+async function retirarCamino(id,activa){
+  if(!activa&&!confirm('¿Retirarla del camino? Deja de ver la pestaña y sale del muro. Sus marcas se guardan.'))return;
+  const r=await sb.from('camino_participantes').update({activa:activa}).eq('id',id);
+  if(r.error){alert('No se pudo cambiar: '+r.error.message);return;}
+  loadCaminoAdmin();
+}
+async function distanciaCamino(id,d){
+  const r=await sb.from('camino_participantes').update({distancia_objetivo:d}).eq('id',id);
+  if(r.error){alert('No se pudo cambiar: '+r.error.message);return;}
+  loadCaminoAdmin();
+}
+async function apodoCamino(id){
+  const v=((document.getElementById('cap-'+id)||{}).value||'').trim();
+  const r=await sb.from('camino_participantes').update({apodo:v||null}).eq('id',id);
+  if(r.error){alert('No se pudo guardar: '+r.error.message);return;}
+  loadCaminoAdmin();
+}
+async function borrarAparicion(id){
+  if(!confirm('¿Borrar esta marca? Desaparece del muro y del contador.'))return;
+  const r=await sb.from('camino_apariciones').delete().eq('id',id);
+  if(r.error){alert('No se pudo borrar: '+r.error.message);return;}
+  loadCaminoAdmin();
+}
+
 // ── MENOR DE EDAD · CONSENTIMIENTO DEL ACUDIENTE ────────────
 // Si la última valoración dice menos de 18 años. El acudiente firma en consentimiento.html con un enlace de un solo uso.
 function edadAdmin(){const m=(S.clientMeas||[]).find(function(x){return x.edad;});return m?parseFloat(m.edad):null;}
@@ -707,6 +830,7 @@ async function loadData(){
   const clientsWithProg=(clientsR.data||[]).map(function(c){return Object.assign({},c,cpMap[c.id]||{});});
   set({loading:false,clients:clientsWithProg,programs:progsR.data||[],grupos:gruposR.data||[]});
   loadClasesAdmin();
+  loadCaminoAdmin();
 }
 
 async function openClient(id){
