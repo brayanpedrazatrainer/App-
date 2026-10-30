@@ -76,7 +76,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.30b';
+const APP_VERSION='2026.10.30c';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -393,6 +393,7 @@ function rHoy(){
 // Horario semanal de Brayan (clases_horario) + inscripciones de ella. Máx. 3 por semana (lunes a domingo),
 // esta semana y la siguiente; las reglas se validan en Supabase (inscribir_clase / cancelar_clase).
 const DIAS_ABR=['dom','lun','mar','mie','jue','vie','sab'];
+const SKOOL_CLASES='https://www.skool.com/gym-virtual-ciclico-6444/calendar';
 function horaBonita(h){const p=String(h||'').split(':'),H=+p[0],M=p[1]||'00';return (H%12||12)+':'+M+(H<12?' a. m.':' p. m.');}
 function lunesDe(f){const d=new Date(f+'T12:00:00');const dow=(d.getDay()+6)%7;d.setDate(d.getDate()-dow);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function claseHora(fecha,hora){return new Date(fecha+'T'+String(hora).slice(0,5)+':00');}
@@ -407,12 +408,13 @@ function rClaseHoy(){
   const hoyAb=DIAS_ABR[new Date(today()+'T12:00:00').getDay()];
   ((S.clases&&S.clases.horario)||[]).filter(function(hh){return hh.tipo==='en_vivo'&&veEnVivo()&&hh.dia===hoyAb&&vigente(hh);}).forEach(function(hh){items.push({h:hh,t:'📡 Hoy hay en vivo semanal',d:'Incluido en tu plan. No necesitas inscribirte.'});});
   return items.map(function(x){
-    const link=x.h.link||(S.grupoData&&S.grupoData.zoom_url);
+    // Las clases son en Skool (Brayan 2026-10-30): sin link propio, va al calendario de la comunidad
+    const link=x.h.link||(S.grupoData&&S.grupoData.zoom_url)||SKOOL_CLASES;
     return '<div style="'+PANEL+';border-color:rgba(199,55,44,.5);border-radius:14px;padding:18px;margin-bottom:12px;text-align:center">'
       +'<p style="font-weight:900;font-size:17px;color:#fff;margin-bottom:4px">'+x.t+'</p>'
       +'<p style="font-size:13px;color:'+C.g2+';margin-bottom:14px">A las '+horaBonita(x.h.hora)+' · '+x.d+'</p>'
-      +(link?'<a href="'+esc(link)+'" target="_blank" style="display:block;padding:14px;'+BTN_ROJO+';color:#fff;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.12em;text-decoration:none">🔗 UNIRME</a>'
-        :'<p style="font-size:13px;color:#fff;background:#2a2523;border-radius:10px;padding:11px">El link aparece aquí antes de que empiece.</p>')
+      +'<a href="'+esc(link)+'" target="_blank" rel="noopener" style="display:block;padding:14px;'+BTN_ROJO+';color:#fff;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.12em;text-decoration:none">ENTRAR A LA CLASE EN SKOOL</a>'
+      +'<p style="font-size:12px;color:'+C.g2+';margin-top:9px;line-height:1.5">Se abre la comunidad en Skool. Desde ahí te unes a la clase en vivo.</p>'
       +'</div>';
   }).join('');
 }
