@@ -65,6 +65,54 @@ input[type=range]{accent-color:var(--gold);width:100%;display:block;background:n
 .g-reloj.corriendo{color:var(--gold-soft)}
 .g-reloj.listo{color:var(--red)}
 .g-tbtns{display:flex;gap:8px}
+/* La carta de Hoy (copia del sobre de El Reino): el sobre se abre una vez por visita y sale la hoja */
+:root{--paper:#EFE4D2;--paper-2:#E4D6BE;--tinta:#33201C;--tinta-2:#6B4B42}
+.cr-scene{perspective:900px;perspective-origin:50% 40%;margin:10px 0 6px;display:flex;justify-content:center;width:100%}
+.cr-env{width:100%;max-width:290px;aspect-ratio:1.42/1;position:relative;border-radius:6px;transform-style:preserve-3d;
+  background:repeating-linear-gradient(58deg,rgba(0,0,0,.10) 0 3px,transparent 3px 9px),linear-gradient(155deg,#3A0F0D 0%,var(--burgundy) 52%,#2A0908 100%);
+  box-shadow:inset 0 1px 0 rgba(242,233,220,.14),inset 0 -2px 6px rgba(0,0,0,.5),0 18px 30px -14px rgba(0,0,0,.85),0 3px 0 -1px #1E0605;
+  border:1px solid rgba(184,150,62,.55)}
+.cr-inner{position:absolute;inset:6px;z-index:1;border:1px solid rgba(184,150,62,.22);border-radius:4px;box-shadow:inset 0 0 22px rgba(0,0,0,.45)}
+.cr-seam{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;border-radius:6px}
+.cr-seam::before,.cr-seam::after{content:'';position:absolute;top:0;bottom:0;width:53%;background:linear-gradient(90deg,rgba(0,0,0,.30) 0%,rgba(0,0,0,.04) 100%)}
+.cr-seam::before{left:0;clip-path:polygon(0 0,100% 50%,0 100%)}
+.cr-seam::after{right:0;transform:scaleX(-1);clip-path:polygon(0 0,100% 50%,0 100%)}
+.cr-peek{position:absolute;left:9%;right:9%;top:16%;height:40%;z-index:3;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--paper) 0%,var(--paper-2) 100%);box-shadow:0 -2px 6px rgba(0,0,0,.35);opacity:0;transition:opacity .3s ease .5s}
+.cr-flap{position:absolute;top:0;left:0;right:0;height:62%;transform-origin:top center;z-index:4;background:linear-gradient(172deg,#4A1512 0%,#340D0B 62%,#240706 100%);
+  clip-path:polygon(0 0,100% 0,50% 100%);transition:transform .85s cubic-bezier(.35,1,.35,1);transform:rotateX(0deg) translateZ(2px);backface-visibility:hidden}
+.cr-pocket{position:absolute;left:0;right:0;bottom:0;height:52%;z-index:5;border-radius:0 0 7px 7px;background:linear-gradient(178deg,#5C1714 0%,#3A0F0D 40%,#2A0908 100%);
+  border-top:1px solid rgba(184,150,62,.35);box-shadow:0 -5px 12px rgba(0,0,0,.55),inset 0 1px 0 rgba(242,233,220,.10)}
+.cr-seal{width:78px;height:78px;position:absolute;top:50%;left:50%;z-index:6;transform:translate(-50%,-50%) translateZ(18px);filter:drop-shadow(0 6px 10px rgba(0,0,0,.75));
+  transition:transform .55s cubic-bezier(.5,-.3,.6,1),opacity .5s ease}
+.cr-glow{position:absolute;inset:0;border-radius:6px;pointer-events:none;z-index:7;background:linear-gradient(105deg,transparent 38%,rgba(242,233,220,.13) 50%,transparent 62%);
+  transform:translateX(-100%);animation:cr-sweep 3.6s ease-in-out infinite}
+@keyframes cr-sweep{0%{transform:translateX(-100%)}55%,100%{transform:translateX(100%)}}
+.cr-env.open .cr-flap{transform:rotateX(-172deg) translateZ(2px)}
+.cr-env.open .cr-seal{transform:translate(-50%,-50%) translateZ(60px) scale(.3) rotate(-38deg);opacity:0}
+.cr-env.open .cr-peek{opacity:1}
+.cr-stage{position:relative;overflow:hidden;margin-bottom:14px}
+.cr-sheet{position:relative;padding:30px 26px 26px;border-radius:2px;color:var(--tinta);
+  background:repeating-linear-gradient(91deg,rgba(120,90,60,.030) 0 1px,transparent 1px 4px),radial-gradient(120% 80% at 20% 0%,#F7EFE0 0%,rgba(247,239,224,0) 60%),linear-gradient(168deg,var(--paper) 0%,#EADCC6 52%,var(--paper-2) 100%);
+  box-shadow:inset 0 0 40px rgba(150,115,75,.22),inset 0 1px 0 rgba(255,255,255,.6),0 3px 0 -1px #C9B99C,0 6px 0 -3px #B8A588,0 26px 44px -18px rgba(0,0,0,.9);
+  transform:translateY(-46%) scale(.94);opacity:0;transition:transform 1.05s cubic-bezier(.2,.9,.25,1),opacity .5s ease}
+.cr-sheet.out{transform:translateY(0) scale(1);opacity:1}
+.cr-crease{position:absolute;left:0;right:0;height:10px;pointer-events:none;background:linear-gradient(180deg,rgba(120,90,60,.16),rgba(255,255,255,.55) 50%,rgba(120,90,60,.10))}
+.cr-torn{position:absolute;left:0;right:0;top:0;height:6px;opacity:.5;background:repeating-linear-gradient(90deg,var(--paper) 0 5px,rgba(0,0,0,.06) 5px 6px,var(--paper) 6px 11px)}
+.cr-crest{display:flex;flex-direction:column;align-items:center;text-align:center}
+.cr-phase{font-family:var(--heroic);font-weight:900;font-size:18px;letter-spacing:.13em;color:var(--burgundy);line-height:1.3;margin-top:8px}
+.cr-meta{font-family:var(--heroic);font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--tinta-2);line-height:1.9;margin-top:5px}
+.cr-rule{display:flex;align-items:center;gap:9px;margin:15px 0 17px}
+.cr-rule::before,.cr-rule::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(113,13,11,.35),transparent)}
+.cr-rule span{font-size:7.5px;color:var(--burgundy);letter-spacing:.3em}
+.cr-body{font-family:var(--voice);font-weight:400;font-size:15.5px;line-height:1.68;color:var(--tinta);position:relative;z-index:2}
+.cr-body p{margin-bottom:12px}
+.cr-body p:first-child{font-family:var(--heroic);font-weight:600;font-size:12.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--burgundy);margin-bottom:15px}
+.cr-body p:last-child{margin-bottom:0}
+.cr-sign{margin-top:20px;padding-top:16px;border-top:1px solid rgba(113,13,11,.28);display:flex;justify-content:space-between;align-items:flex-end;gap:12px;position:relative;z-index:2}
+.cr-sign small{font-family:var(--heroic);font-size:7.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--tinta-2);display:block;margin-bottom:5px}
+.cr-sign b{font-family:var(--heroic);font-weight:900;font-size:23px;letter-spacing:.1em;color:var(--burgundy);line-height:1}
+.cr-from{font-family:var(--voice);font-style:italic;font-weight:400;font-size:16px;color:var(--tinta-2);white-space:nowrap}
+@media (max-width:400px){.cr-phase{font-size:16.5px}.cr-sheet{padding:26px 20px 22px}}
 .g-ghost{flex:1;width:100%;padding:12px 8px;border-radius:10px;border:1px solid rgba(184,150,62,.35);background:none;color:var(--gold-soft);font-family:var(--heroic);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 </style>
 </head>
@@ -76,7 +124,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.29a';
+const APP_VERSION='2026.10.30a';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -245,6 +293,62 @@ function currentProgWeek(lastBleeding, cycleLen){
 }
 
 
+// La carta de Hoy: textos de las cartas de El Reino (Brayan 2026-10-30), una por fase/semana.
+// El sello (lacre) va en la carta; la intención (Reconectar, Construir…) sigue en la pestaña Ciclo. No unificarlos.
+const CARTAS={
+  luna_nueva:{nombre:'REINA EN CALMA',lacre:'RESISTIR',carta:['Reina,','Hoy tu cuerpo está haciendo un trabajo que no se ve. Por eso amaneciste con el tanque en reserva.','Moverte suave hoy no te devuelve a la casilla uno. Es justo lo que hace que la próxima semana te rinda.']},
+  creciente:{nombre:'REINA EN ASCENSO',lacre:'FORJAR',carta:['Reina,','Empiezas a sentir que te alcanza el día, y eso no es casualidad.','Esta ventana no se queda abierta. Aquí es donde se construye lo que vas a ver en el espejo dentro de dos meses.']},
+  llena:{nombre:'REINA EN CIMA',lacre:'CONQUISTAR',carta:['Reina,','Hoy estás en tu punto más alto del mes. Si hay un día para ir por esa marca que se te atragantó, es este.','Un aviso de mi parte: tus ligamentos hoy están más flojos de lo normal. Estira hasta donde te sienta bien y ahí paras.']},
+  menguante_a:{nombre:'REINA EN REPLIEGUE',lacre:'SOSTENER',carta:['Reina,','Baja el ánimo y sube el hambre. Te vas a mirar al espejo y te vas a ver hinchada.','Estás en otra fase, y esa hinchazón se va sola. Esta es la semana en la que siempre te bajabas del barco. Hoy toca hacer menos para que esta vez no pase.']},
+  menguante_b:{nombre:'REINA EN REPLIEGUE',lacre:'BLINDAR',carta:['Reina,','Esta es la semana en que todo te sabe a nada y te dan ganas de tirar la toalla.','Aquí es justo donde se gana. Las que aguantan estos días son las que en tres meses ya no vuelven a empezar de cero.']},
+  semana_1:{nombre:'REINA EN REPLIEGUE',lacre:'RESISTIR',carta:['Reina,','Hoy no vas a batir ninguna marca, y está bien.','Las que llegan lejos no son las que arrasan un día. Son las que aparecen los días normales.']},
+  semana_2:{nombre:'REINA EN ASCENSO',lacre:'FORJAR',carta:['Reina,','Esta semana construimos. Y no es por el espejo solamente.','Cada libra que levantas hoy es hueso que te va a sostener en diez años.']},
+  semana_3:{nombre:'REINA EN CIMA',lacre:'CONQUISTAR',carta:['Reina,','Hoy vas por más, reina. Esta es tu semana para levantar lo que te parecía mucho.','Fuerte no es sinónimo de brusca. Calienta bien, blinda, y ahí sí ve por ella.']},
+  semana_4:{nombre:'REINA EN CALMA',lacre:'BLINDAR',carta:['Reina,','Semana de cuidar la casa antes de volver a empezar.','Nadie aplaude estas semanas, y son las que te dejan seguir entrenando cuando otras ya pararon.']}
+};
+let CARTA_VISTA=false; // el sobre se abre una sola vez por visita; después la hoja queda abierta
+function rCartaHoy(){
+  const c=cicloHoy();
+  const k=c&&CARTAS[c.fase];
+  if(!k)return '';
+  const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const animar=!CARTA_VISTA&&!reduce;
+  CARTA_VISTA=true;
+  if(animar)setTimeout(abrirCartaHoy,60);
+  const meta=c.ruta==='energia'?'Semana '+c.fase.slice(-1)+' de 4 · Día '+c.dia:(FASE_LABELS[c.fase]||{l:''}).l+' · Día '+c.dia+' de tu ciclo';
+  let h='';
+  if(animar)h+=`<div class="cr-scene" id="crScene"><div class="cr-env" id="crEnv">
+    <div class="cr-inner"></div><div class="cr-seam"></div><div class="cr-peek"></div><div class="cr-flap"></div><div class="cr-pocket"></div>
+    <div class="cr-seal"><svg viewBox="0 0 82 82" width="78" height="78">
+      <defs><radialGradient id="crWax" cx="34%" cy="26%" r="78%"><stop offset="0" stop-color="#FBE9B8"/><stop offset=".26" stop-color="#E0C97F"/><stop offset=".62" stop-color="#B8963E"/><stop offset="1" stop-color="#5E4715"/></radialGradient>
+      <linearGradient id="crRim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF3CE" stop-opacity=".85"/><stop offset="1" stop-color="#4A3810" stop-opacity=".8"/></linearGradient></defs>
+      <circle cx="41" cy="41" r="38" fill="url(#crWax)"/><circle cx="41" cy="41" r="38" fill="none" stroke="url(#crRim)" stroke-width="1.6"/>
+      <circle cx="41" cy="41" r="32" fill="none" stroke="#5E4715" stroke-width="1" opacity=".55"/>
+      <g fill="#4A3810" opacity=".92"><path d="M30 30 L35 36 L41 27 L47 36 L52 30 L50 39 L32 39 Z"/>
+      <path d="M32 42 L50 42 L50 51 C50 58 45 61 41 63 C37 61 32 58 32 51 Z" fill="none" stroke="#4A3810" stroke-width="2.2"/>
+      <path d="M41 46 L41 58 M36 50 L46 50" stroke="#4A3810" stroke-width="1.8" fill="none"/></g></svg></div>
+    <div class="cr-glow"></div></div></div>`;
+  h+=`<div class="cr-stage"><div class="cr-sheet${animar?'':' out'}" id="crSheet">
+    <div class="cr-torn"></div><div class="cr-crease" style="top:33%"></div><div class="cr-crease" style="top:66%"></div>
+    <div class="cr-crest"><svg viewBox="0 0 46 54" width="40" height="47" aria-hidden="true">
+      <path d="M9 12 L14 17 L23 7 L32 17 L37 12 L35 22 L11 22 Z" fill="#710D0B"/>
+      <path d="M11 25 L35 25 L35 35 C35 43 29 47 23 50 C17 47 11 43 11 35 Z" fill="none" stroke="#710D0B" stroke-width="1.6"/>
+      <path d="M23 29 L23 44 M17 34 L29 34" stroke="#710D0B" stroke-width="1.4"/></svg>
+      <div class="cr-phase">${k.nombre}</div><div class="cr-meta">${meta}</div></div>
+    <div class="cr-rule"><span>&#9670;</span></div>
+    <div class="cr-body">${k.carta.map(function(t){return '<p>'+t+'</p>';}).join('')}</div>
+    <div class="cr-sign"><div><small>Tu seña de hoy</small><b>${k.lacre}</b></div><div class="cr-from">— Brayan</div></div>
+  </div></div>`;
+  return h;
+}
+function abrirCartaHoy(){
+  const env=document.getElementById('crEnv'),sh=document.getElementById('crSheet');
+  if(!env||!sh)return;
+  setTimeout(function(){env.classList.add('open');},380);
+  setTimeout(function(){sh.classList.add('out');},950);
+  setTimeout(function(){const sc=document.getElementById('crScene');if(sc)sc.style.display='none';},1900);
+}
+
 function rHoy(){
   const now=new Date();
   const dateLabel=WEEK_ES[now.getDay()]+', '+now.getDate()+' '+MONTH_ES[now.getMonth()]+' '+now.getFullYear();
@@ -264,6 +368,9 @@ function rHoy(){
     <p style="font-family:Cinzel,serif;font-weight:700;font-size:21px;letter-spacing:.03em;color:${C.td};margin-bottom:3px">${dateLabel}</p>
     <p style="font-family:Fraunces,serif;font-style:italic;font-size:14px;color:${C.tm}">Tu entrenamiento del día</p>
   </div>`;
+
+  // La carta del día (sobre que se abre, como en El Reino)
+  h+=rCartaHoy();
 
   // Aviso de pago: 5 días antes de vencer y después de vencido (no bloquea; bloquear = estado 'pausada' desde el admin)
   const dPago=diasParaVencer(perfilExt.pagado_hasta);
