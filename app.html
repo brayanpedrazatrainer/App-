@@ -76,7 +76,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.10.30d';
+const APP_VERSION='2026.10.30e';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -1565,7 +1565,7 @@ function rCamino(){
     let d=`<p style="font-family:var(--heroic);font-size:11px;letter-spacing:.1em;color:${C.gs}">${esc(p?p.nombre:'')} · ${fd}</p>`;
     if(m){
       d+=`<p style="font-size:13.5px;color:${C.td};margin-top:4px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${CAM_COL[m.t]};margin-right:6px"></span>${CAM_TXT[m.t]}</p>`;
-      if(p&&p.yo&&m.act)d+=`<p style="font-size:12.5px;color:${C.tm};margin-top:3px">${m.act.map(function(a){return (CAM_ACT.find(function(x){return x.k===a;})||{l:a}).l;}).join(' · ')}${m.km?' · '+camKm(+m.km)+' km':''}${m.min?' · '+m.min+' min':''}</p>`;
+      if(p&&p.yo&&m.act)d+=`<p style="font-size:12.5px;color:${C.tm};margin-top:3px">${m.act.map(function(a){return (CAM_ACT.find(function(x){return x.k===a;})||{l:a}).l;}).join(' · ')}${m.km?' · '+(m.est?'≈ ':'')+camKm(+m.km)+' km':''}${m.min?' · '+m.min+' min':''}</p>`;
       if(m.n)d+=`<p style="font-family:var(--voice);font-style:italic;font-size:14px;color:${C.td};margin-top:5px">"${esc(m.n)}"${p&&p.yo&&m.vis===false?` <span style="font-style:normal;font-size:11px;color:${C.tl}">· solo tú la ves</span>`:''}</p>`;
     }else d+=`<p style="font-size:13px;color:${C.tl};margin-top:4px">Sin registro ese día.</p>`;
     g+=`<div style="margin-top:10px;padding:10px 12px;border-radius:9px;background:rgba(242,233,220,.04);border:1px solid rgba(184,150,62,.18)">${d}</div>`;
@@ -1594,7 +1594,7 @@ function camAbrir(){
   const M=S.camino&&S.camino.muro;if(!M)return;
   const yo=(M.participantes||[]).find(function(x){return x.yo;});
   const m=yo?(M.marcas||[]).find(function(x){return x.p===yo.id&&x.f===M.hoy;}):null;
-  S.apar={paso:1,t:m?m.t:null,act:m&&m.act?m.act.slice():[],km:m&&m.km?String(m.km):'',min:m&&m.min?String(m.min):'',nota:m&&m.n?m.n:'',vis:m?m.vis!==false:true,dz:null,dn:null,esf:null};
+  S.apar={paso:1,t:m?m.t:null,act:m&&m.act?m.act.slice():[],km:m&&m.km&&!m.est?String(m.km):'',min:m&&m.min?String(m.min):'',nota:m&&m.n?m.n:'',vis:m?m.vis!==false:true,dz:null,dn:null,esf:null};
   set({view:'aparecer'});window.scrollTo(0,0);
 }
 function camCorre(){return S.apar.act.indexOf('trote')>=0||S.apar.act.indexOf('caminata')>=0;}
@@ -1651,7 +1651,7 @@ function rAparecer(){
     if(camCorre())h+=`<div style="display:flex;gap:10px;margin-top:14px">
         <label style="flex:1;font-size:12px;color:${C.tm}">Kilómetros<input type="text" inputmode="decimal" value="${esc(A.km)}" oninput="S.apar.km=this.value" placeholder="Opcional" style="${ins};margin-top:5px"/></label>
         <label style="flex:1;font-size:12px;color:${C.tm}">Minutos<input type="text" inputmode="numeric" value="${esc(A.min)}" oninput="S.apar.min=this.value" placeholder="Opcional" style="${ins};margin-top:5px"/></label></div>
-      <p style="font-size:12px;color:${C.tl};margin-top:6px">Si no lo sabes, déjalo vacío. Se guarda igual.</p>`;
+      <p style="font-size:12px;color:${C.tl};margin-top:6px;line-height:1.45">Si tu celular o la caminadora te dicen los km, ponlos. Si no, solo los minutos y los calculamos.</p>`;
     h+=sig('SIGUIENTE','camSig()',A.act.length>0)+atras;
   }else if(A.paso==='cuerpo'){
     h=tit('¿Te dolió algo?')+`<div style="margin-top:12px">${CAM_ZONA.map(function(z){return chip(A.dz===z.k,z.l,"camZona('"+z.k+"')");}).join('')}</div>`;

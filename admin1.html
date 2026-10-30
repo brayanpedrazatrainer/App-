@@ -472,7 +472,7 @@ function rCaminoAdmin(){
     h+=`<div style="padding:9px 0;border-bottom:1px solid #eee;display:flex;gap:10px">
       <span style="width:14px;height:14px;flex:0 0 14px;border-radius:3px;margin-top:3px;background:${CAM_COL_A[a.tipo_dia]}"></span>
       <div style="flex:1;min-width:0"><p style="font-size:13px"><b>${esc(nom(p))}</b> · ${new Date(a.fecha+'T12:00:00').toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'})} · día ${a.tipo_dia}</p>
-      <p style="font-size:12px;color:${C.g2};margin-top:2px">${(a.actividades||[]).join(', ')}${a.km?' · '+a.km+' km':''}${a.minutos?' · '+a.minutos+' min':''}${a.esfuerzo?' · '+CAM_ESF_A[a.esfuerzo]:''}</p>
+      <p style="font-size:12px;color:${C.g2};margin-top:2px">${(a.actividades||[]).join(', ')}${a.km?' · '+(a.km_estimado?'≈ ':'')+a.km+' km'+(a.km_estimado?' (calculados)':''):''}${a.minutos?' · '+a.minutos+' min':''}${a.esfuerzo?' · '+CAM_ESF_A[a.esfuerzo]:''}</p>
       ${dolor?`<p style="font-size:12px;color:${C.pr};font-weight:800;margin-top:2px">⚠ ${dolor}</p>`:''}
       ${a.nota?`<p style="font-size:12.5px;font-style:italic;margin-top:3px">"${esc(a.nota)}"${a.nota_visible?'':' <span style="font-style:normal;color:'+C.g2+'">🔒 privada</span>'}</p>`:''}</div>
       <button onclick="borrarAparicion('${a.id}')" title="Borrar esta marca" style="align-self:start;background:none;border:none;color:${C.g2};font-size:15px">✕</button></div>`;
@@ -486,7 +486,7 @@ function camYoCur(){
   if(S.camYo)return S.camYo;
   const K=S.caminoAdmin||{},hoy=hoyLocal();
   const m=(K.ap||[]).find(a=>a.profile_id===S.user.id&&a.fecha===hoy);
-  return m?{t:m.tipo_dia,act:(m.actividades||[]).slice(),km:m.km||'',min:m.minutos||'',nota:m.nota||'',vis:m.nota_visible!==false}:{t:null,act:[],km:'',min:'',nota:'',vis:true};
+  return m?{t:m.tipo_dia,act:(m.actividades||[]).slice(),km:m.km_estimado?'':(m.km||''),min:m.minutos||'',nota:m.nota||'',vis:m.nota_visible!==false}:{t:null,act:[],km:'',min:'',nota:'',vis:true};
 }
 function camYoSet(k,v){const y=Object.assign({},camYoCur());y[k]=v;set({camYo:y});}
 function camYoAct(a){const y=camYoCur(),act=y.act.includes(a)?y.act.filter(x=>x!==a):y.act.concat(a);camYoSet('act',act);}
