@@ -435,8 +435,9 @@ function rCaminoAdmin(){
       <label style="font-size:11.5px;color:${C.g2}">Meta km del grupo<input id="ce-meta" type="number" min="1" value="${ed.meta_km_grupo}" style="${inp};width:100%;margin-top:3px"/></label>
       <button onclick="guardarEdicion('${ed.id}')" style="align-self:end;padding:9px;background:${C.bk};color:#fff;border:none;border-radius:9px;font-weight:700;font-size:12.5px">Guardar</button>
     </div></div>`;
-  // Participantes en orden alfabético (el mismo del muro) con su resumen privado
-  const act=K.part.filter(p=>p.activa).sort((a,b)=>nom(a).localeCompare(nom(b),'es'));
+  h+=rCaminoYo(K,inp,box,lab);
+  // Participantes en orden alfabético (el mismo del muro) con su resumen privado. Brayan va aparte, en "Tu camino".
+  const act=K.part.filter(p=>p.activa&&!cli(p.profile_id).is_admin).sort((a,b)=>nom(a).localeCompare(nom(b),'es'));
   h+=`<p style="${lab};margin-bottom:8px">Las del camino (${act.length})</p><div style="${box}">`;
   act.forEach(p=>{
     const mias=K.ap.filter(a=>a.profile_id===p.profile_id);
@@ -477,6 +478,51 @@ function rCaminoAdmin(){
       <button onclick="borrarAparicion('${a.id}')" title="Borrar esta marca" style="align-self:start;background:none;border:none;color:${C.g2};font-size:15px">✕</button></div>`;
   });
   return h+`</div>`;
+}
+// "Tu camino": Brayan también camina/trota y registra aquí con su cuenta (camino_aparecer, igual que ellas).
+// En el muro de ellas su fila sale aparte, al final, con los mismos colores por tipo de día.
+const CAM_ACT_A=[{k:'trote',l:'Trote'},{k:'caminata',l:'Caminata'},{k:'fuerza',l:'Fuerza'},{k:'movilidad',l:'Movilidad'}];
+function camYoCur(){
+  if(S.camYo)return S.camYo;
+  const K=S.caminoAdmin||{},hoy=hoyLocal();
+  const m=(K.ap||[]).find(a=>a.profile_id===S.user.id&&a.fecha===hoy);
+  return m?{t:m.tipo_dia,act:(m.actividades||[]).slice(),km:m.km||'',min:m.minutos||'',nota:m.nota||'',vis:m.nota_visible!==false}:{t:null,act:[],km:'',min:'',nota:'',vis:true};
+}
+function camYoSet(k,v){const y=Object.assign({},camYoCur());y[k]=v;set({camYo:y});}
+function camYoAct(a){const y=camYoCur(),act=y.act.includes(a)?y.act.filter(x=>x!==a):y.act.concat(a);camYoSet('act',act);}
+function camYoInput(k,v){S.camYo=Object.assign({},camYoCur(),{[k]:v});}
+function rCaminoYo(K,inp,box,lab){
+  const yoP=K.part.find(p=>p.profile_id===S.user.id&&p.activa);
+  if(!yoP)return '';
+  const hoy=hoyLocal(),mias=K.ap.filter(a=>a.profile_id===S.user.id),y=camYoCur();
+  const hecha=mias.find(a=>a.fecha===hoy),km=mias.filter(a=>a.fecha>=K.ed.fecha_inicio).reduce((s,a)=>s+(+a.km||0),0);
+  const corre=y.act.includes('trote')||y.act.includes('caminata');
+  const chip=(on,col)=>`padding:7px 10px;border-radius:9px;font-size:12.5px;font-weight:700;border:2px solid ${on?col:C.g3};background:${on?col:'#fff'};color:${on?'#fff':'#191211'}`;
+  let h=`<p style="${lab};margin-bottom:8px">Tu camino</p><div style="${box}">
+    <p style="font-size:12.5px;color:${C.g2};margin-bottom:10px">${mias.length} ${mias.length===1?'aparición':'apariciones'} · ${(Math.round(km*10)/10).toLocaleString('es-CO')} km sumados al grupo${hecha?' · <b style="color:#191211">hoy ya registraste ✓</b>':''}</p>
+    <p style="font-size:12px;font-weight:700;margin-bottom:6px">¿Cómo fue tu día?</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${[['fuerte','Fuerte'],['medio','Medio'],['flojo','Flojo']].map(([k,l])=>`<button onclick="camYoSet('t','${k}')" style="${chip(y.t===k,CAM_COL_A[k])}">${l}</button>`).join('')}</div>
+    <p style="font-size:12px;font-weight:700;margin-bottom:6px">¿Qué hiciste?</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${CAM_ACT_A.map(a=>`<button onclick="camYoAct('${a.k}')" style="${chip(y.act.includes(a.k),'#191211')}">${a.l}</button>`).join('')}</div>
+    ${corre?`<div style="display:flex;gap:6px;margin-bottom:10px">
+      <label style="font-size:11.5px;color:${C.g2};flex:1">Km<input type="number" min="0" max="60" step="0.1" value="${esc(String(y.km))}" oninput="camYoInput('km',this.value)" style="${inp};width:100%;margin-top:3px"/></label>
+      <label style="font-size:11.5px;color:${C.g2};flex:1">Minutos<input type="number" min="1" max="600" value="${esc(String(y.min))}" oninput="camYoInput('min',this.value)" style="${inp};width:100%;margin-top:3px"/></label></div>`:''}
+    <textarea maxlength="140" placeholder="Nota (opcional, máx. 140)" oninput="camYoInput('nota',this.value)" style="${inp};width:100%;height:58px;resize:none">${esc(y.nota)}</textarea>
+    <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin:6px 0 10px"><input type="checkbox" ${y.vis?'checked':''} onchange="camYoInput('vis',this.checked)"/> Que ellas vean la nota</label>
+    <button onclick="camYoGuardar()" style="width:100%;padding:11px;background:${C.pr};color:#fff;border:none;border-radius:10px;font-weight:800;font-size:13px">${hecha?'Cambiar lo de hoy':'♛ Aparecí hoy'}</button></div>`;
+  return h;
+}
+async function camYoGuardar(){
+  const y=camYoCur();
+  if(!y.t){alert('Escoge cómo fue tu día.');return;}
+  if(!y.act.length){alert('Escoge qué hiciste.');return;}
+  const corre=y.act.includes('trote')||y.act.includes('caminata');
+  const km=corre&&y.km!==''?parseFloat(y.km):null,min=corre&&y.min!==''?parseInt(y.min,10):null;
+  if(km!==null&&!(km>=0&&km<=60)){alert('Los km van de 0 a 60.');return;}
+  if(min!==null&&!(min>=1&&min<=600)){alert('Los minutos van de 1 a 600.');return;}
+  const r=await sb.rpc('camino_aparecer',{p_tipo:y.t,p_actividades:y.act,p_km:km,p_minutos:min,p_nota:y.nota||null,p_nota_visible:!!y.vis});
+  if(r.error){alert('No se pudo guardar: '+r.error.message);return;}
+  S.camYo=null;await loadCaminoAdmin();
 }
 async function guardarEdicion(id){
   const v=k=>(document.getElementById(k)||{}).value;
