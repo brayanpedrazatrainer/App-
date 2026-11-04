@@ -78,7 +78,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.11.01c';
+const APP_VERSION='2026.11.04a';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -2079,7 +2079,9 @@ function decidirSesionHoy(){
   // días seguidos entrenados (sin contar recuperación) que terminan ayer
   let seguidos=0;for(let d=1;d<=7;d++){const f=sumarDias(today(),-d),h=hist[f];if(h&&h.status==='completed'&&h.tipo!=='R')seguidos++;else break;}
   // días completos sin entrenar antes de hoy (el arranque del motor cuenta como último día entrenado)
-  let ultimo=MOTOR_DESDE;(M.hist||[]).forEach(function(h){if(h.status==='completed'&&h.fecha<today()&&h.fecha>ultimo)ultimo=h.fecha;});
+  // Clienta nueva: su calendario empieza después del arranque del motor, y antes de eso no se cuenta como días sin entrenar
+  const primerDia=(M.hist||[]).reduce(function(m,h){return h.fecha<m?h.fecha:m;},today());
+  let ultimo=sumarDias(primerDia,-1)>MOTOR_DESDE?sumarDias(primerDia,-1):MOTOR_DESDE;(M.hist||[]).forEach(function(h){if(h.status==='completed'&&h.fecha<today()&&h.fecha>ultimo)ultimo=h.fecha;});
   const sinEntrenar=Math.max(0,Math.round((new Date(today()+'T12:00:00')-new Date(ultimo+'T12:00:00'))/86400000)-1);
   // subidas por "Encendida" esta semana (lunes a ayer)
   const lun=lunesDe(today());
