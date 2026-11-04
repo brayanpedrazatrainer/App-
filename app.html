@@ -78,7 +78,7 @@ const sb=createClient(
   'https://brqojlcdtzmqfurztbnm.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycW9qbGNkdHptcWZ1cnp0Ym5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODU0MzgsImV4cCI6MjA5NzA2MTQzOH0.488ohWs2e33EWQ_J_OFfH7GIypItGKBN7GoR6_ymS_4'
 );
-const APP_VERSION='2026.11.04a';
+const APP_VERSION='2026.11.04b';
 // Paleta de El Reino: tinta, paneles marrón oscuro, crema, dorado y rojo de marca
 const C={pr:'#C7372C',dk:'#710D0B',bk:'#0E0B0A',g2:'#A08D82',g3:'rgba(184,150,62,.28)',bg:'#0E0B0A',wh:'#221818',td:'#F2E9DC',tm:'#D8C9B6',tl:'#A08D82',gold:'#B8963E',gs:'#E0C97F'};
 const PHASES=[
@@ -312,8 +312,8 @@ function rHoy(){
     }
   }
 
-  // Selector escenario (solo si tiene ruta configurada)
-  if(perfilExt.ruta){
+  // Selector escenario (solo si tiene ruta configurada; en la primera sesión no aplica porque va sin carga)
+  if(perfilExt.ruta&&!hoySinCarga()){
     const ESC={A:'🧍 Solo cuerpo',B:'💪 Mancuernas',C:'🏋️ Gimnasio'};
     h+='<div style="display:flex;gap:6px;margin-bottom:12px">';
     ['A','B','C'].forEach(function(e){
@@ -338,6 +338,7 @@ function rHoy(){
     h+='<div style="background:'+C.wh+';border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(25,18,17,.09);margin-bottom:12px;border-left:4px solid '+C.pr+'">';
     h+='<p style="font-size:13px;color:'+C.g2+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tu sesión de hoy</p>';
     h+='<p style="font-weight:900;font-size:18px;color:'+C.td+';margin-bottom:12px">'+cleanType+'</p>';
+    if(hoySinCarga())h+='<p style="font-size:14.5px;color:'+C.gs+';background:rgba(184,150,62,.10);border-radius:9px;padding:8px 10px;margin:-4px 0 12px;line-height:1.5">Tu primera sesión va sin carga externa: solo con tu cuerpo, para que aprendas bien cada movimiento.</p>';
     if(S.motivoHoy&&MOTIVO_TXT[S.motivoHoy]&&!isCompleted)h+='<p style="font-size:14.5px;color:'+C.gs+';background:rgba(184,150,62,.10);border-radius:9px;padding:8px 10px;margin:-4px 0 12px;line-height:1.5">'+MOTIVO_TXT[S.motivoHoy]+'</p>';
     if(todW>=0){
       h+='<button onclick="guiaHoy()" class="btn-reino" style="width:100%;padding:14px;'+BTN_ROJO+';color:#fff;border:none;border-radius:11px;font-family:Cinzel,serif;font-weight:700;font-size:14.5px;letter-spacing:.12em">▶ EMPEZAR MI ENTRENO</button>';
@@ -655,9 +656,24 @@ function textoSeries(n,reps){
   return {principal:principal,extras:extras,avisos:avisos};
 }
 
+// Primera sesión de clienta nueva: sin carga externa (método de Brayan, confirmado 2026-11-04). Solo cuentas creadas
+// desde esa fecha, porque hay clientas antiguas que nunca marcaron una sesión. Dura hasta que complete una sesión de entrenamiento.
+const PRIMERA_SIN_CARGA_DESDE='2026-11-04';
+function primeraSinCarga(sess){
+  const t=S.todaySchedule,M=S.motor,pr=S.profile;
+  if(!t||!sess||sess.id!==t.session_id||!M||!pr||!pr.created_at)return false;
+  if(t.status==='completed'||/recuper/i.test(sess.type||''))return false;
+  if(String(pr.created_at).slice(0,10)<PRIMERA_SIN_CARGA_DESDE)return false;
+  return !(M.hist||[]).some(function(h){return h.status==='completed'&&h.tipo!=='R';});
+}
+function hoySinCarga(){
+  let hoy=null;(S.PROG||[]).forEach(function(wk){wk.forEach(function(s){if(S.todaySchedule&&s.id===S.todaySchedule.session_id)hoy=s;});});
+  return primeraSinCarga(hoy);
+}
 // Lista de ejercicios tal como se muestra en la sesión: resuelta por escenario y filtrada por semáforo.
 // rSess y rVid la usan igual para que el índice y el nombre del video coincidan con la lista.
 function exListSesion(sess){
+  const sinCarga=primeraSinCarga(sess);
   const sem=(S.checkin&&S.checkin.semaforo)||'verde';
   const BLOQUES_ROJO=[1,2,5];
   // Regla de Brayan (2026-10-08): cada ejercicio con familia muestra SIEMPRE la versión del escenario elegido.
@@ -670,7 +686,7 @@ function exListSesion(sess){
       const ss=S.variantes&&S.variantes[ex.familia+'_L'];
       if(ss)return Object.assign({},ex,{n:ss.n,v:ss.v||ex.v,desc:ss.d||null,impacto:'bajo',sustituido:true});
     }
-    const esc2=S.escenario||'C';
+    const esc2=sinCarga&&ex.bloque===3?'A':(S.escenario||'C');
     if(!ex.familia)return ex;
     const V=S.variantes||{};
     const f=ex.familia;
@@ -687,6 +703,13 @@ function exListSesion(sess){
   // Nivel en el trabajo principal (no en recuperación activa): cambia repeticiones, peso/banda y descanso
   const nivel=(S.perfilExt&&S.perfilExt.nivel)||2;
   if(nivel!==2&&!/recuper/i.test(sess.type||''))exList=exList.map(function(ex){return ex.bloque===3?Object.assign({},ex,{reps:repsNivel(ex.reps,nivel)}):ex;});
+  // Sin carga externa: quita el peso sugerido y la palabra de carga; los ejercicios con banda conservan su banda
+  if(sinCarga)exList=exList.map(function(ex){
+    if(ex.bloque!==3||/banda/i.test(ex.n))return ex;
+    const p=String(ex.reps||'').split('·');
+    if(p[1]&&!/desc/i.test(p[1]))p[1]=' Peso corporal ';
+    return Object.assign({},ex,{carga_kg:null,reps:p.join('·')});
+  });
   if(sem==='rojo')exList=exList.filter(function(ex){return !ex.bloque||BLOQUES_ROJO.indexOf(ex.bloque)>=0;});
   return exList;
 }
